@@ -11,12 +11,14 @@ TBC
 # usage
 only test bash in mingw64 on windows 10 & windows 11:)
 ```bash
+change wall paper from Bing
+
 Usage: ezwallpaper [OPTIONS]
 
 Options:
-  -r, --resolution <RESOLUTION>  pic resolution [default: 1920x1080]
+  -r, --resolution <RESOLUTION>  pic resolution [default: UHD]
   -l, --locale <LOCALE>          zone info for searching in bing [default: zh-CN]
-  -d, --dir <DIR>                dir to store downloaded pictures [default: C:\Users\l00440707\Pictures]
+  -d, --dir <DIR>                dir to store downloaded pictures [default: $USER\Pictures]
   -h, --help                     Print help information
   -V, --version                  Print version information
 ```

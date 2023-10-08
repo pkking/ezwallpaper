@@ -18,6 +18,7 @@ const R1920X1080: &str = "1920x1080";
 const R800X480: &str = "800x480";
 const R1366X768: &str = "1366x768";
 const R1920X1200: &str = "1920x1200";
+const UHD: &str = "UHD";
 
 #[derive(Debug, Default)]
 pub struct BingProvider {
@@ -142,10 +143,11 @@ pub enum Resolution {
     R1366x768,
     R1920x1200,
     R1280x768,
+    UHD,
 }
 impl Default for Resolution {
     fn default() -> Self {
-        Resolution::R1920x1080
+        Resolution::UHD
     }
 }
 impl std::fmt::Display for Resolution {
@@ -160,6 +162,7 @@ impl std::fmt::Display for Resolution {
             Resolution::R1366x768 => write!(f, "{}", R1366X768),
             Resolution::R1920x1200 => write!(f, "{}", R1920X1200),
             Resolution::R1280x768 => write!(f, "{}", R1280X768),
+            Resolution::UHD => write!(f, "{}", UHD),
         }
     }
 }
@@ -178,6 +181,7 @@ impl FromStr for Resolution {
             R1366X768 => Ok(Resolution::R1366x768),
             R1920X1200 => Ok(Resolution::R1920x1200),
             R1280X768 => Ok(Resolution::R1280x768),
+            UHD => Ok(Resolution::UHD),
             _ => Err(BingProviderErr::InvalidParam),
         }
     }

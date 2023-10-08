@@ -7,13 +7,13 @@ extern crate wallpaper;
 
 mod wp_provider;
 mod wp_selector;
+use clap::Parser;
 use std::str::FromStr;
 use wp_provider::bing::{BingProvider, Resolution, Zone};
 use wp_provider::GetImgUrl;
-use clap::Parser;
 
-const  DEFAULT_RESOLUTION: &str = "1920x1080";
-const DEFAULT_LOCALE:  &str = "zh-CN";
+const DEFAULT_RESOLUTION: &str = "UHD";
+const DEFAULT_LOCALE: &str = "zh-CN";
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -37,7 +37,8 @@ fn main() {
 
     let bing: BingProvider = BingProvider::new()
         .with_zone(
-            Zone::from_str(&cli.locale).expect(format!("invalid locale argument {}", cli.locale).as_str()),
+            Zone::from_str(&cli.locale)
+                .expect(format!("invalid locale argument {}", cli.locale).as_str()),
         )
         .with_resolution(
             Resolution::from_str(&cli.resolution)
