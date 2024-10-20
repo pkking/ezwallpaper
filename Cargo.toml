@@ -12,28 +12,25 @@
 [package]
 edition = "2018"
 name = "ezwallpaper"
-version = "0.1.2"
-authors = ["l00440707 <lichaoran1@huawei.com>"]
-description = "change wall paper from Bing"
+version = "0.2.0"
+authors = ["li chaoran <pkwarcraft@gmail.com>"]
+description = "change wall paper from multiple sources"
 license = "MIT"
 homepage = "https://github.com/pkking/ezwallpaper.git"
 
 [dependencies]
 clap = { version = "4.0.22", features = ["derive", "env", "string", "unicode"] }
+reqwest = { version = "0.12.8", features = ["blocking", "json"] }
+dirs= "5.0.1"
+log = "0.4.22"
+env_logger = "0.11.5"
+anyhow = { version = "1.0.90", features = ["backtrace"] }
 
 [dependencies.derivative]
 version = "2.2.0"
 
-[dependencies.dirs]
-version = "4.0.0"
-
 [dependencies.failure]
 version = "0.1.8"
-
-[dependencies.reqwest10]
-version = "0.11.12"
-features = ["blocking"]
-package = "reqwest"
 
 [dependencies.serde]
 version = "1.0.147"
