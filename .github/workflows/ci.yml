@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+            toolchain: nightly
+            components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Rustfmt
+        run: cargo fmt -- --check
+      - name: Clippy
+        run: |
+          cargo --version
+          cargo clippy --version
+          cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+      - name: Run tests
+        run: |
+          cargo test --verbose

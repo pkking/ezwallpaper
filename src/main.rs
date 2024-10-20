@@ -1,19 +1,21 @@
 extern crate derivative;
 extern crate dirs;
-extern crate reqwest10;
+extern crate reqwest;
 extern crate serde_json;
 extern crate url;
 extern crate wallpaper;
 
 mod wp_provider;
 mod wp_selector;
+use anyhow::Result;
 use clap::Parser;
-use std::str::FromStr;
-use wp_provider::bing::{BingProvider, Resolution, Zone};
+use log::debug;
+use wp_provider::bing::BingProvider;
 use wp_provider::GetImgUrl;
 
 const DEFAULT_RESOLUTION: &str = "UHD";
 const DEFAULT_LOCALE: &str = "zh-CN";
+const DEFAULT_BACKEND: &str = "bing";
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -30,24 +32,50 @@ struct Args {
     /// dir to store downloaded pictures
     #[arg(short, long, default_value_t = dirs::picture_dir().unwrap().to_str().unwrap().to_string())]
     dir: String,
+
+    /// backend for wallpaper, can be bing or pexel
+    #[arg(short, long, default_value_t = DEFAULT_BACKEND.to_string())]
+    backend: String,
+
+    /// token for pexel, only valid when backend is pexel
+    #[arg(long, default_value_t = String::from(""))]
+    token: String,
 }
 
+fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
+    match cli.backend.as_str() {
+        "bing" => Ok(Box::new(
+            BingProvider::new()
+                .with_zone(&cli.locale)?
+                .with_resolution(&cli.resolution)?
+                .with_time_offset(0)
+                .with_dir(&cli.dir),
+        )),
+        "pexel" => Ok(Box::new(
+            wp_provider::pexel::PexelProvider::new()
+                .with_dir(&cli.dir)
+                .with_token(&cli.token)?
+                .with_zone(&cli.locale)?,
+        )),
+        _ => Err(anyhow::anyhow!("unsupported backend {}", cli.backend)),
+    }
+}
 fn main() {
     let cli = Args::parse();
 
-    let bing: BingProvider = BingProvider::new()
-        .with_zone(
-            Zone::from_str(&cli.locale)
-                .expect(format!("invalid locale argument {}", cli.locale).as_str()),
-        )
-        .with_resolution(
-            Resolution::from_str(&cli.resolution)
-                .expect(format!("invalid resolution argument {}", cli.resolution).as_str()),
-        )
-        .with_time_offset(0)
-        .with_dir(&cli.dir);
+    env_logger::init();
+
+    let provider = build_provider(&cli);
     // TODO: using wp selector to get pics
-    let result_vec = bing.get_img(1).unwrap();
-    println!("using wallpaper from {}", result_vec[0].path());
-    wallpaper::set_from_path(result_vec[0].path()).unwrap();
+    let result_vec = provider
+        .expect("build provider failed")
+        .get_img(1)
+        .expect("get image failed");
+    match result_vec.len() {
+        0 => {}
+        _ => {
+            debug!("using wallpaper from {}", result_vec[0].path());
+            wallpaper::set_from_path(result_vec[0].path()).expect("set wallpaper failed");
+        }
+    }
 }
