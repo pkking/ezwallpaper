@@ -12,7 +12,8 @@
 [package]
 edition = "2018"
 name = "ezwallpaper"
-version = "0.2.0"
+version = "0.2.1"
+readme = "README.md"
 authors = ["li chaoran <pkwarcraft@gmail.com>"]
 description = "change wall paper from multiple sources"
 license = "MIT"
