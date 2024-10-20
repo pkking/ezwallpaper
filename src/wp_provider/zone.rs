@@ -1,10 +1,10 @@
-
-use std::str::FromStr;
 use anyhow::Result;
+use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[allow(dead_code)]
 pub enum Zone {
+    #[default]
     Cn,
     En,
     Jp,
@@ -14,11 +14,7 @@ const CN: &str = "zh-CN";
 const US: &str = "en-US";
 const JP: &str = "ja-JP";
 const DE: &str = "de-DE";
-impl Default for Zone {
-    fn default() -> Self {
-        Zone::Cn
-    }
-}
+
 impl FromStr for Zone {
     fn from_str(val: &str) -> Result<Self> {
         match val {
@@ -29,7 +25,7 @@ impl FromStr for Zone {
             _ => Err(anyhow::anyhow!("unknown zone {}", val)),
         }
     }
-    
+
     type Err = anyhow::Error;
 }
 

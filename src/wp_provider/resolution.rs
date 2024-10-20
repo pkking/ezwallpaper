@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use anyhow::Result;
+use std::str::FromStr;
 
 const R1280X768: &str = "1280x768";
 const R640X480: &str = "640x480";
@@ -12,7 +12,7 @@ const R1366X768: &str = "1366x768";
 const R1920X1200: &str = "1920x1200";
 const UHD: &str = "UHD";
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[allow(dead_code)]
 pub enum Resolution {
     R640x480,
@@ -24,13 +24,10 @@ pub enum Resolution {
     R1366x768,
     R1920x1200,
     R1280x768,
-    UHD,
+    #[default]
+    Uhd,
 }
-impl Default for Resolution {
-    fn default() -> Self {
-        Resolution::UHD
-    }
-}
+
 impl std::fmt::Display for Resolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -43,7 +40,7 @@ impl std::fmt::Display for Resolution {
             Resolution::R1366x768 => write!(f, "{}", R1366X768),
             Resolution::R1920x1200 => write!(f, "{}", R1920X1200),
             Resolution::R1280x768 => write!(f, "{}", R1280X768),
-            Resolution::UHD => write!(f, "{}", UHD),
+            Resolution::Uhd => write!(f, "{}", UHD),
         }
     }
 }
@@ -62,7 +59,7 @@ impl FromStr for Resolution {
             R1366X768 => Ok(Resolution::R1366x768),
             R1920X1200 => Ok(Resolution::R1920x1200),
             R1280X768 => Ok(Resolution::R1280x768),
-            UHD => Ok(Resolution::UHD),
+            UHD => Ok(Resolution::Uhd),
             _ => Err(anyhow::anyhow!("unknown resolution: {}", val)),
         }
     }

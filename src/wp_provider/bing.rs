@@ -1,15 +1,15 @@
-use super::GetImgUrl;
 use super::resolution::Resolution;
 use super::zone::Zone;
+use super::GetImgUrl;
 use crate::wp_selector::{WallPaper, WpType};
 use serde::{Deserialize, Serialize};
 
-use std::fs::File;
-use std::{path::Path, str::FromStr};
-use std::vec::Vec;
-use url::Url;
 use anyhow::{anyhow, Result};
 use log::debug;
+use std::fs::File;
+use std::vec::Vec;
+use std::{path::Path, str::FromStr};
+use url::Url;
 
 #[derive(Debug, Default)]
 pub struct BingProvider {
@@ -50,14 +50,11 @@ impl BingProvider {
     }
 }
 
-
 impl GetImgUrl for BingProvider {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>> {
-        let body = reqwest::blocking::get(&format!(
+        let body = reqwest::blocking::get(format!(
             "https://www.bing.com/HPImageArchive.aspx?format=js&idx={}&n={}&mkt={}",
-            self.time_offset,
-            nums,
-            self.zone.to_string()
+            self.time_offset, nums, self.zone
         ))?
         .text()?;
         let mut res = Vec::with_capacity(nums as usize);
@@ -68,8 +65,7 @@ impl GetImgUrl for BingProvider {
             let path = download_image(
                 &Url::parse(&format!(
                     "https://www.bing.com{}_{}.jpg",
-                    u.urlbase.to_string(),
-                    self.resolution.to_string()
+                    u.urlbase, self.resolution
                 ))?,
                 &self.dir,
             )?;
@@ -82,7 +78,6 @@ impl GetImgUrl for BingProvider {
         Ok(res)
     }
 }
-
 
 fn download_image(url: &Url, dir: &str) -> Result<String> {
     let (_, mut file_name) = url

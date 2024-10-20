@@ -1,4 +1,3 @@
-use derivative;
 use derivative::Derivative;
 use std::fmt::Display;
 

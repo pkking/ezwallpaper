@@ -1,12 +1,12 @@
 use core::panic;
 use std::{fs::File, str::FromStr};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use anyhow::Result;
 
-use super::GetImgUrl;
 use super::zone::Zone;
+use super::GetImgUrl;
 use crate::wp_selector::{WallPaper, WpType};
 use log::debug;
 
@@ -85,21 +85,21 @@ impl GetImgUrl for PexelProvider {
         let url = format!(
             "https://api.pexels.com/v1/search?query=landscape%20wallpaper&per_page={}&orientation=landscape&size=large&location={}",
             nums,
-            self.zone.to_string()
+            self.zone
         );
-        
+
         let client = reqwest::blocking::Client::new();
-        let response :Images = client.get(url).header("authorization", self.token.clone()).send()?.json()?;
-     
+        let response: Images = client
+            .get(url)
+            .header("authorization", self.token.clone())
+            .send()?
+            .json()?;
+
         let mut res: Vec<WallPaper> = Vec::with_capacity(nums as usize);
         // TODO: get image from unsplash like wallpaper::set_from_url("https://source.unsplash.com/photos/random").unwrap();
         // see: https://unsplash.com/documentation#get-a-random-photo
         for i in response.photos.iter() {
-
-            let path = download_image(
-                &Url::parse(&i.src.original)?,
-                &self.dir,
-            )?;
+            let path = download_image(&Url::parse(&i.src.original)?, &self.dir)?;
             debug!("{:?}", path);
             res.push(
                 WallPaper::new()
@@ -107,7 +107,7 @@ impl GetImgUrl for PexelProvider {
                     .with_path(path),
             );
         }
-        
+
         Ok(res)
     }
 }

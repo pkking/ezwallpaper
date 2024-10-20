@@ -8,9 +8,9 @@ extern crate wallpaper;
 mod wp_provider;
 mod wp_selector;
 use clap::Parser;
+use log::debug;
 use wp_provider::bing::BingProvider;
 use wp_provider::GetImgUrl;
-use log::debug;
 
 const DEFAULT_RESOLUTION: &str = "UHD";
 const DEFAULT_LOCALE: &str = "zh-CN";
@@ -41,21 +41,21 @@ struct Args {
     token: String,
 }
 
-fn build_provider(cli : &Args) -> Box<dyn GetImgUrl> {
+fn build_provider(cli: &Args) -> Box<dyn GetImgUrl> {
     match cli.backend.as_str() {
-        "bing" => Box::new(BingProvider::new()
-            .with_zone(
-                &cli.locale
-            )
-            .with_resolution(
-                &cli.resolution
-            )
-            .with_time_offset(0)
-            .with_dir(&cli.dir)),
-        "pexel" => Box::new(wp_provider::pexel::PexelProvider::new()
-            .with_dir(&cli.dir)
-            .with_token(&cli.token)
-            .with_zone(&cli.locale)),
+        "bing" => Box::new(
+            BingProvider::new()
+                .with_zone(&cli.locale)
+                .with_resolution(&cli.resolution)
+                .with_time_offset(0)
+                .with_dir(&cli.dir),
+        ),
+        "pexel" => Box::new(
+            wp_provider::pexel::PexelProvider::new()
+                .with_dir(&cli.dir)
+                .with_token(&cli.token)
+                .with_zone(&cli.locale),
+        ),
         _ => panic!("unsupported backend"),
     }
 }
@@ -68,11 +68,10 @@ fn main() {
     // TODO: using wp selector to get pics
     let result_vec = provider.get_img(1).unwrap();
     match result_vec.len() {
-        0 => {},
+        0 => {}
         _ => {
             debug!("using wallpaper from {}", result_vec[0].path());
             wallpaper::set_from_path(result_vec[0].path()).unwrap();
         }
-        
     }
 }
