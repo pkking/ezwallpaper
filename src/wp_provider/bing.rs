@@ -29,14 +29,14 @@ impl BingProvider {
             dir: ".".to_string(),
         }
     }
-    pub fn with_zone(mut self, zone: &str) -> Self {
-        self.zone = Zone::from_str(zone).unwrap();
-        self
+    pub fn with_zone(mut self, zone: &str) -> Result<Self> {
+        self.zone = Zone::from_str(zone)?;
+        Ok(self)
     }
 
-    pub fn with_resolution(mut self, resolution: &str) -> Self {
-        self.resolution = Resolution::from_str(resolution).unwrap();
-        self
+    pub fn with_resolution(mut self, resolution: &str) -> Result<Self> {
+        self.resolution = Resolution::from_str(resolution)?;
+        Ok(self)
     }
 
     pub fn with_time_offset(mut self, time_offset: i32) -> Self {
@@ -94,7 +94,7 @@ fn download_image(url: &Url, dir: &str) -> Result<String> {
     debug!("file created");
     reqwest::blocking::get(url.as_str())?.copy_to(&mut file)?;
     debug!("download {:?} pic to {:?}", url, file_path.to_str());
-    Ok(file_path.to_str().to_owned().unwrap().into())
+    Ok(file_path.to_str().to_owned().expect("get file path").into())
 }
 
 #[derive(Serialize, Deserialize, Debug)]

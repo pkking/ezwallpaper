@@ -1,4 +1,3 @@
-use core::panic;
 use std::{fs::File, str::FromStr};
 
 use anyhow::Result;
@@ -61,17 +60,17 @@ impl PexelProvider {
             token: "".to_string(),
         }
     }
-    pub fn with_zone(mut self, zone: &str) -> Self {
-        self.zone = Zone::from_str(zone).unwrap();
-        self
+    pub fn with_zone(mut self, zone: &str) -> Result<Self> {
+        self.zone = Zone::from_str(zone)?;
+        Ok(self)
     }
 
-    pub fn with_token(mut self, token: &str) -> Self {
+    pub fn with_token(mut self, token: &str) -> Result<Self> {
         if token.is_empty() {
-            panic!("pexel token is empty");
+            anyhow::bail!("pexel token is empty");
         }
         self.token = token.to_string();
-        self
+        Ok(self)
     }
 
     pub fn with_dir(mut self, path: &str) -> Self {
@@ -113,7 +112,14 @@ impl GetImgUrl for PexelProvider {
 }
 
 fn download_image(url: &Url, dir: &str) -> Result<String> {
-    let path = format!("{}/{}", dir, url.path_segments().unwrap().last().unwrap());
+    let path = format!(
+        "{}/{}",
+        dir,
+        url.path_segments()
+            .expect("no path")
+            .last()
+            .expect("get last path segment")
+    );
     debug!("download {:?} to {:?}", url.as_str(), dir);
     let mut file = File::create(&path)?;
 

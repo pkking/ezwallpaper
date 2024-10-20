@@ -7,6 +7,7 @@ extern crate wallpaper;
 
 mod wp_provider;
 mod wp_selector;
+use anyhow::Result;
 use clap::Parser;
 use log::debug;
 use wp_provider::bing::BingProvider;
@@ -41,22 +42,22 @@ struct Args {
     token: String,
 }
 
-fn build_provider(cli: &Args) -> Box<dyn GetImgUrl> {
+fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
     match cli.backend.as_str() {
-        "bing" => Box::new(
+        "bing" => Ok(Box::new(
             BingProvider::new()
-                .with_zone(&cli.locale)
-                .with_resolution(&cli.resolution)
+                .with_zone(&cli.locale)?
+                .with_resolution(&cli.resolution)?
                 .with_time_offset(0)
                 .with_dir(&cli.dir),
-        ),
-        "pexel" => Box::new(
+        )),
+        "pexel" => Ok(Box::new(
             wp_provider::pexel::PexelProvider::new()
                 .with_dir(&cli.dir)
-                .with_token(&cli.token)
-                .with_zone(&cli.locale),
-        ),
-        _ => panic!("unsupported backend"),
+                .with_token(&cli.token)?
+                .with_zone(&cli.locale)?,
+        )),
+        _ => Err(anyhow::anyhow!("unsupported backend {}", cli.backend)),
     }
 }
 fn main() {
@@ -66,12 +67,15 @@ fn main() {
 
     let provider = build_provider(&cli);
     // TODO: using wp selector to get pics
-    let result_vec = provider.get_img(1).unwrap();
+    let result_vec = provider
+        .expect("build provider failed")
+        .get_img(1)
+        .expect("get image failed");
     match result_vec.len() {
         0 => {}
         _ => {
             debug!("using wallpaper from {}", result_vec[0].path());
-            wallpaper::set_from_path(result_vec[0].path()).unwrap();
+            wallpaper::set_from_path(result_vec[0].path()).expect("set wallpaper failed");
         }
     }
 }
