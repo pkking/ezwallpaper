@@ -40,6 +40,10 @@ struct Args {
     /// token for pexel, only valid when backend is pexel
     #[arg(long, default_value_t = String::from(""))]
     token: String,
+
+    /// download only
+    #[arg(long, default_value_t = false)]
+    download_only: bool,
 }
 
 fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
@@ -74,8 +78,10 @@ fn main() {
     match result_vec.len() {
         0 => {}
         _ => {
-            debug!("using wallpaper from {}", result_vec[0].path());
-            wallpaper::set_from_path(result_vec[0].path()).expect("set wallpaper failed");
+            if !cli.download_only {
+                debug!("using wallpaper from {}", result_vec[0].path());
+                wallpaper::set_from_path(result_vec[0].path()).expect("set wallpaper failed");
+            }
         }
     }
 }
