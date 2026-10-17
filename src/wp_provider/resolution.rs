@@ -64,3 +64,23 @@ impl FromStr for Resolution {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Resolution;
+
+    #[test]
+    fn recognizes_common_resolutions() {
+        assert!("UHD".parse::<Resolution>().is_ok());
+        assert!("1920x1080".parse::<Resolution>().is_ok());
+        assert!("1366x768".parse::<Resolution>().is_ok());
+        assert_eq!(Resolution::Uhd.to_string(), "UHD");
+        assert_eq!(Resolution::R1920x1080.to_string(), "1920x1080");
+    }
+
+    #[test]
+    fn rejects_unknown_resolution() {
+        assert!("4K".parse::<Resolution>().is_err());
+        assert!("".parse::<Resolution>().is_err());
+    }
+}

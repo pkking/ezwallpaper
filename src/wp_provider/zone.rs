@@ -39,3 +39,24 @@ impl std::fmt::Display for Zone {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Zone;
+
+    #[test]
+    fn recognizes_supported_locales() {
+        assert!("zh-CN".parse::<Zone>().is_ok());
+        assert!("en-US".parse::<Zone>().is_ok());
+        assert!("ja-JP".parse::<Zone>().is_ok());
+        assert!("de-DE".parse::<Zone>().is_ok());
+        assert_eq!(Zone::En.to_string(), "en-US");
+        assert_eq!(Zone::Cn.to_string(), "zh-CN");
+    }
+
+    #[test]
+    fn rejects_unknown_locale() {
+        assert!("en-GB".parse::<Zone>().is_err());
+        assert!("".parse::<Zone>().is_err());
+    }
+}

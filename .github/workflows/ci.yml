@@ -2,29 +2,96 @@ name: CI
 
 on:
   pull_request:
-    branches: [ "master" ]
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  plan-integrity:
+    name: Agent plan integrity
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Issue and execution plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/validate_agent_plan.py
+
+  contract-tests:
+    name: Agent contract self-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Toolchain
+      - name: Offline validator positive and negative cases
+        run: python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v
+
+  rust-quality:
+    name: Rust quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-            toolchain: nightly
-            components: rustfmt, clippy
+          toolchain: nightly
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Rustfmt
-        run: cargo fmt -- --check
-      - name: Clippy
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy (keep original strict checks)
+        run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+
+  rust-tests:
+    name: Rust tests and CLI smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Rust tests
+        shell: bash
         run: |
-          cargo --version
-          cargo clippy --version
-          cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
-      - name: Run tests
+          mkdir -p artifacts/ci
+          set -o pipefail
+          cargo test --all-targets --verbose 2>&1 | tee artifacts/ci/cargo-test.log
+      - name: Offline CLI acceptance
+        shell: bash
         run: |
-          cargo test --verbose
+          set -euo pipefail
+          mkdir -p artifacts/ci
+          cargo build --bin ezwallpaper
+          target/debug/ezwallpaper --help > artifacts/ci/help.txt
+          target/debug/ezwallpaper --version > artifacts/ci/version.txt
+          grep -q -- '--backend' artifacts/ci/help.txt
+          grep -q -- '--download-only' artifacts/ci/help.txt
+          set +e
+          target/debug/ezwallpaper --backend not-a-provider --download-only > artifacts/ci/invalid.stdout 2> artifacts/ci/invalid.stderr
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q -- 'unsupported backend' artifacts/ci/invalid.stderr
+      - name: Preserve offline test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-cli-offline-evidence
+          path: artifacts/ci/
+          if-no-files-found: warn

@@ -30,7 +30,13 @@ struct Args {
     locale: String,
 
     /// dir to store downloaded pictures
-    #[arg(short, long, default_value_t = dirs::picture_dir().unwrap().to_str().unwrap().to_string())]
+    #[arg(
+        short,
+        long,
+        default_value_t = dirs::picture_dir()
+            .map(|path| path.to_string_lossy().into_owned())
+            .unwrap_or_else(|| ".".to_string())
+    )]
     dir: String,
 
     /// backend for wallpaper, can be bing or pexel
