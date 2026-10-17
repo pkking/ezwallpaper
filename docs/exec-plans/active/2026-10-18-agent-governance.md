@@ -43,7 +43,7 @@ Make ezwallpaper agent-first, with auditable plans, safe checkpoints, independen
 
 - [x] AGENTS.md and current architecture explain safe entry points and invariants.
 - [x] Workflow, test/evidence, ADR, plan templates, and recovery protocol exist.
-- [ ] Offline validator rejects missing/mismatched Issue/Plan and bad checkpoints; unit tests exist.
+- [x] Offline validator rejects missing/mismatched Issue/Plan and bad checkpoints; unit tests exist.
 - [ ] CI runs integrity, Rust fmt/clippy/tests, offline CLI smoke and artifact upload.
 - [ ] Human admin Ruleset instructions identify the exact required check names.
 - [ ] PR refers to Issue #3 and this plan, with honest test/evidence status.
@@ -53,7 +53,7 @@ Make ezwallpaper agent-first, with auditable plans, safe checkpoints, independen
 
 - [x] 1. Introduce repository map, architecture and agent workflow contract.
 - [x] 2. Introduce Issue/Plan integrity validator with offline unit tests.
-- [ ] 3. Integrate CI quality/CLI smoke and collect evidence.
+- [x] 3. Integrate CI quality/CLI smoke and collect evidence.
 - [ ] 4. Complete PR acceptance after final CI and Ruleset verification.
 
 ## Verification matrix
@@ -73,6 +73,7 @@ None for adding governance files. Configuring or enforcing branch protection req
 
 ## Evidence log
 
+- 2026-10-18: run https://github.com/pkking/ezwallpaper/actions/runs/39080012395 at commit db075759cdf85504cb7da4f1704906b589897b48: all 4 required jobs passed; 4 Rust unit tests passed, and offline CLI smoke passed. Later governance traceability tightening must receive its own fresh CI check.
 - 2026-10-18: PR #4 opened; first run https://github.com/pkking/ezwallpaper/actions/runs/39079804163: plan integrity and self-tests passed, Rust format failed on newly added assertions; tests failed due to comparison with non-PartialEq error type.
 - 2026-10-18: second run https://github.com/pkking/ezwallpaper/actions/runs/39079871081: validator/self-tests passed, 4 Rust unit tests passed; strict Clippy identified Pexels double-ended iterator last(), and offline CLI detected default Pictures-directory unwrap panic on Linux.
 - 2026-10-18: patches replace last() with next_back() and provide a safe default path fallback. No live provider call or wallpaper-setting operation was used in the failing smoke case.
@@ -82,6 +83,7 @@ None for adding governance files. Configuring or enforcing branch protection req
 
 ## Deviations and discoveries
 
+- Agent plan integrity now also checks that the linked plan appears in this PR diff, preventing reuse of an unrelated unchanged plan as a superficial compliance marker.
 - Original CLI only worked when the OS returned a Pictures directory; Linux headless runtime can return None. Default directory now uses "." when no Pictures directory is available.
 - Existing Pexels iterator implementation triggered strict Clippy and was fixed without changing selected file-name semantics.
 - Existing nightly Clippy gate may reveal baseline issues; do not weaken it solely for green CI.

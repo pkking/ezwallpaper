@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -112,7 +113,7 @@ def validate_issue(repository: str, issue: int, token: str) -> None:
 
 
 def validate_event(event: dict, root: Path, repository: str, token: str,
-                   *, online: bool = True) -> str:
+                   *, online: bool = True, changed_files: list[str] | None = None) -> str:
     pr = event.get("pull_request")
     if not isinstance(pr, dict):
         raise IntegrityError("Expected a pull_request event")
@@ -121,9 +122,23 @@ def validate_event(event: dict, root: Path, repository: str, token: str,
         raise IntegrityError("PR body is missing")
     issue, relative = parse_metadata(body)
     state = validate_plan(root, relative, issue)
+    if changed_files is not None and relative not in changed_files:
+        raise IntegrityError("PR must update its own linked execution plan")
     if online:
         validate_issue(repository, issue, token)
     return f"Issue #{issue} -> {relative} ({state})"
+
+
+def changed_paths(base_sha: str) -> list[str]:
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", base_sha):
+        raise IntegrityError("PR_BASE_SHA is required and must be a full commit SHA")
+    try:
+        return subprocess.check_output(
+            ["git", "diff", "--name-only", f"{base_sha}...HEAD"],
+            text=True, stderr=subprocess.STDOUT
+        ).splitlines()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise IntegrityError(f"Unable to inspect PR changed paths: {exc}") from exc
 
 
 def main() -> int:
@@ -131,7 +146,8 @@ def main() -> int:
         event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
         message = validate_event(event, Path.cwd(),
                                  os.environ["GITHUB_REPOSITORY"],
-                                 os.environ.get("GH_TOKEN", ""))
+                                 os.environ.get("GH_TOKEN", ""),
+                                 changed_files=changed_paths(os.environ["PR_BASE_SHA"]))
     except (IntegrityError, KeyError, OSError, ValueError) as exc:
         print(f"PLAN INTEGRITY FAILED: {exc}", file=sys.stderr)
         return 1

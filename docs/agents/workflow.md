@@ -4,7 +4,7 @@
 
 A non-trivial change must map to exactly one GitHub Issue and one execution plan. Issues state the desired externally observable result; plans track implementation checkpoints and evidence. Split unrelated goals into separate Issues/PRs.
 
-All PRs include the two exact top-level metadata lines shown in .github/PULL_REQUEST_TEMPLATE.md. The validator requires a real open Issue and a matching plan. The first governance PR must follow the same rule.
+All PRs include the two exact top-level metadata lines shown in .github/PULL_REQUEST_TEMPLATE.md. The validator requires a real open Issue, a matching plan, and that each PR actually edits its linked plan so implementation progress cannot be detached from the reviewed diff. The first governance PR must follow the same rule.
 
 ## Plan states
 

@@ -114,6 +114,25 @@ class AgentPlanTests(unittest.TestCase):
         (self.root / "docs/exec-plans/active/task.md").unlink()
         self.assertIn("completed", self.validate("Issue: #3\nPlan: docs/exec-plans/completed/task.md"))
 
+    def test_pr_must_update_its_own_plan(self):
+        body = "Issue: #3\\nPlan: docs/exec-plans/active/task.md"
+        with self.assertRaises(validator.IntegrityError):
+            validator.validate_event(
+                self.event(body), self.root, "pkking/ezwallpaper", "",
+                online=False, changed_files=["src/main.rs"]
+            )
+        result = validator.validate_event(
+            self.event(body), self.root, "pkking/ezwallpaper", "",
+            online=False, changed_files=["docs/exec-plans/active/task.md"]
+        )
+        self.assertIn("Issue #3", result)
+
+    def test_duplicate_plan_metadata_fails(self):
+        body = ("Issue: #3\\nPlan: docs/exec-plans/active/task.md"
+                "\\nPlan: docs/exec-plans/active/task.md")
+        with self.assertRaises(validator.IntegrityError):
+            self.validate(body)
+
     def test_empty_token_fails_closed(self):
         with self.assertRaises(validator.IntegrityError):
             self.validate_online_without_token()
