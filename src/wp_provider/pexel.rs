@@ -117,7 +117,7 @@ fn download_image(url: &Url, dir: &str) -> Result<String> {
         dir,
         url.path_segments()
             .expect("no path")
-            .last()
+            .next_back()
             .expect("get last path segment")
     );
     debug!("download {:?} to {:?}", url.as_str(), dir);

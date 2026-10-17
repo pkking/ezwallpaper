@@ -1,7 +1,7 @@
 # 2026-10-18-agent-governance: reproducible agent development
 
 Issue: #3
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -41,8 +41,8 @@ Make ezwallpaper agent-first, with auditable plans, safe checkpoints, independen
 
 ## Acceptance criteria
 
-- [ ] AGENTS.md and current architecture explain safe entry points and invariants.
-- [ ] Workflow, test/evidence, ADR, plan templates, and recovery protocol exist.
+- [x] AGENTS.md and current architecture explain safe entry points and invariants.
+- [x] Workflow, test/evidence, ADR, plan templates, and recovery protocol exist.
 - [ ] Offline validator rejects missing/mismatched Issue/Plan and bad checkpoints; unit tests exist.
 - [ ] CI runs integrity, Rust fmt/clippy/tests, offline CLI smoke and artifact upload.
 - [ ] Human admin Ruleset instructions identify the exact required check names.
@@ -51,8 +51,8 @@ Make ezwallpaper agent-first, with auditable plans, safe checkpoints, independen
 
 ## Implementation slices
 
-- [ ] 1. Introduce repository map, architecture and agent workflow contract.
-- [ ] 2. Introduce Issue/Plan integrity validator with offline unit tests.
+- [x] 1. Introduce repository map, architecture and agent workflow contract.
+- [x] 2. Introduce Issue/Plan integrity validator with offline unit tests.
 - [ ] 3. Integrate CI quality/CLI smoke and collect evidence.
 - [ ] 4. Complete PR acceptance after final CI and Ruleset verification.
 
@@ -73,17 +73,22 @@ None for adding governance files. Configuring or enforcing branch protection req
 
 ## Evidence log
 
+- 2026-10-18: PR #4 opened; first run https://github.com/pkking/ezwallpaper/actions/runs/39079804163: plan integrity and self-tests passed, Rust format failed on newly added assertions; tests failed due to comparison with non-PartialEq error type.
+- 2026-10-18: second run https://github.com/pkking/ezwallpaper/actions/runs/39079871081: validator/self-tests passed, 4 Rust unit tests passed; strict Clippy identified Pexels double-ended iterator last(), and offline CLI detected default Pictures-directory unwrap panic on Linux.
+- 2026-10-18: patches replace last() with next_back() and provide a safe default path fallback. No live provider call or wallpaper-setting operation was used in the failing smoke case.
 - 2026-10-18: inspected repository content, CI, rulesets and Actions history via linked GitHub connection.
 - 2026-10-18: opened Issue #3 and created `agent/establish-development-governance`.
 - 2026-10-18: Rust toolchain unavailable locally; Rust results remain unassessed pending CI.
 
 ## Deviations and discoveries
 
+- Original CLI only worked when the OS returned a Pictures directory; Linux headless runtime can return None. Default directory now uses "." when no Pictures directory is available.
+- Existing Pexels iterator implementation triggered strict Clippy and was fixed without changing selected file-name semantics.
 - Existing nightly Clippy gate may reveal baseline issues; do not weaken it solely for green CI.
 
 ## Resume from here
 
-Add the scoped governance/validation changes on the existing agent branch; then open the linked PR and inspect its actual CI results.
+Inspect latest PR #4 CI checks for the post-fix SHA. If all pass, record run URL and proceed with archive/review gates; otherwise fix the first causal failure.
 
 ## Completion
 
