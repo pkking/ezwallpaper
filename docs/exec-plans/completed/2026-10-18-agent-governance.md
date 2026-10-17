@@ -1,7 +1,7 @@
 # 2026-10-18-agent-governance: reproducible agent development
 
 Issue: #3
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -44,28 +44,28 @@ Make ezwallpaper agent-first, with auditable plans, safe checkpoints, independen
 - [x] AGENTS.md and current architecture explain safe entry points and invariants.
 - [x] Workflow, test/evidence, ADR, plan templates, and recovery protocol exist.
 - [x] Offline validator rejects missing/mismatched Issue/Plan and bad checkpoints; unit tests exist.
-- [ ] CI runs integrity, Rust fmt/clippy/tests, offline CLI smoke and artifact upload.
-- [ ] Human admin Ruleset instructions identify the exact required check names.
-- [ ] PR refers to Issue #3 and this plan, with honest test/evidence status.
-- [ ] Final CI for the reviewed revision is green before completion.
+- [x] CI runs integrity, Rust fmt/clippy/tests, offline CLI smoke and artifact upload.
+- [x] Human admin Ruleset instructions identify the exact required check names.
+- [x] PR refers to Issue #3 and this plan, with honest test/evidence status.
+- [x] Final CI for the reviewed revision is green before completion.
 
 ## Implementation slices
 
 - [x] 1. Introduce repository map, architecture and agent workflow contract.
 - [x] 2. Introduce Issue/Plan integrity validator with offline unit tests.
 - [x] 3. Integrate CI quality/CLI smoke and collect evidence.
-- [ ] 4. Complete PR acceptance after final CI and Ruleset verification.
+- [x] 4. Complete PR acceptance after final CI and Ruleset verification.
 
 ## Verification matrix
 
 | Scope | Command / CI gate | Expected evidence | Status |
 |---|---|---|---|
-| Plan validator | `python3 -m unittest discover -s tests -p 'test_*.py' -v` | offline validation cases | pending |
-| Rust formatting | `cargo fmt --all -- --check` | formatting check output | pending |
-| Rust quality | `cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used` | lint output | pending |
-| Rust tests | `cargo test --all-targets --verbose` | test log/JUnit or summary | pending |
-| CLI smoke | `cargo run -- --help` and invalid backend without network | help + stable CLI errors | pending |
-| CI | GitHub PR jobs | run URL, conclusion, uploaded evidence | pending |
+| Plan validator | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v` | 11 validator tests passed in CI | PASS (CI #39080222969) |
+| Rust formatting | `cargo fmt --all -- --check` | formatting check output | PASS (CI #39080222969) |
+| Rust quality | `cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used` | lint output | PASS (CI #39080222969) |
+| Rust tests | `cargo test --all-targets --verbose` | 4 Rust tests passed in CI | PASS (CI #39080222969) |
+| CLI smoke | `cargo build --bin ezwallpaper`; binary `--help`, `--version`, invalid backend | help + stable CLI errors | PASS (CI #39080222969) |
+| CI | GitHub PR jobs | run URL, conclusion, uploaded evidence | PASS (CI #39080222969) |
 
 ## Decision gates
 
@@ -73,6 +73,9 @@ None for adding governance files. Configuring or enforcing branch protection req
 
 ## Evidence log
 
+- 2026-10-18: PR #4 latest head a3aeba9b93a51348564161794891c53932146b1a, all 4 required jobs passed: https://github.com/pkking/ezwallpaper/actions/runs/39080222969 ; offline artifact: https://github.com/pkking/ezwallpaper/actions/runs/39080222969/artifacts/12118453662 .
+- 2026-10-18: verified Ruleset 25323916 (name main, enforcement active, default branch master): PR required, four status checks required, delete/force push prohibited, no bypass actors. Source: https://github.com/pkking/ezwallpaper/rules/25323916 .
+- 2026-10-18: PR #4 squash merged as e09e6b88c668a1309c0b53b34fab9526f0266938 into master: https://github.com/pkking/ezwallpaper/pull/4 .
 - 2026-10-18: run https://github.com/pkking/ezwallpaper/actions/runs/39080012395 at commit db075759cdf85504cb7da4f1704906b589897b48: all 4 required jobs passed; 4 Rust unit tests passed, and offline CLI smoke passed. Later governance traceability tightening must receive its own fresh CI check.
 - 2026-10-18: PR #4 opened; first run https://github.com/pkking/ezwallpaper/actions/runs/39079804163: plan integrity and self-tests passed, Rust format failed on newly added assertions; tests failed due to comparison with non-PartialEq error type.
 - 2026-10-18: second run https://github.com/pkking/ezwallpaper/actions/runs/39079871081: validator/self-tests passed, 4 Rust unit tests passed; strict Clippy identified Pexels double-ended iterator last(), and offline CLI detected default Pictures-directory unwrap panic on Linux.
@@ -90,11 +93,11 @@ None for adding governance files. Configuring or enforcing branch protection req
 
 ## Resume from here
 
-Inspect latest PR #4 CI checks for the post-fix SHA. If all pass, record run URL and proceed with archive/review gates; otherwise fix the first causal failure.
+Merge the completion-only archive PR, then close Issue #3. This is an administrative completion checkpoint, not remaining code development.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending (offline CLI smoke)
-Remaining unassessed items: Rust CI and branch Ruleset enforcement
+Final commit: e09e6b88c668a1309c0b53b34fab9526f0266938 (merged implementation PR #4)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39080222969 (all four jobs succeeded)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39080222969/artifacts/12118453662 (offline CLI smoke, not live desktop E2E)
+Remaining unassessed items: live Windows desktop/remote-provider integration and negative merge-gate PR (out of scope). Ruleset strict-up-to-date and review-count hardening are optional future policy improvements.
