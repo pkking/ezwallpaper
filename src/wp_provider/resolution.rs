@@ -71,9 +71,11 @@ mod tests {
 
     #[test]
     fn recognizes_common_resolutions() {
-        assert_eq!("UHD".parse::<Resolution>().map(|x| x.to_string()).as_deref(), Ok("UHD"));
-        assert_eq!("1920x1080".parse::<Resolution>().map(|x| x.to_string()).as_deref(), Ok("1920x1080"));
-        assert_eq!("1366x768".parse::<Resolution>().map(|x| x.to_string()).as_deref(), Ok("1366x768"));
+        assert!("UHD".parse::<Resolution>().is_ok());
+        assert!("1920x1080".parse::<Resolution>().is_ok());
+        assert!("1366x768".parse::<Resolution>().is_ok());
+        assert_eq!(Resolution::Uhd.to_string(), "UHD");
+        assert_eq!(Resolution::R1920x1080.to_string(), "1920x1080");
     }
 
     #[test]

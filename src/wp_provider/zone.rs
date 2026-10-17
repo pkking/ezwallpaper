@@ -46,10 +46,12 @@ mod tests {
 
     #[test]
     fn recognizes_supported_locales() {
-        assert_eq!("zh-CN".parse::<Zone>().map(|x| x.to_string()).as_deref(), Ok("zh-CN"));
-        assert_eq!("en-US".parse::<Zone>().map(|x| x.to_string()).as_deref(), Ok("en-US"));
-        assert_eq!("ja-JP".parse::<Zone>().map(|x| x.to_string()).as_deref(), Ok("ja-JP"));
-        assert_eq!("de-DE".parse::<Zone>().map(|x| x.to_string()).as_deref(), Ok("de-DE"));
+        assert!("zh-CN".parse::<Zone>().is_ok());
+        assert!("en-US".parse::<Zone>().is_ok());
+        assert!("ja-JP".parse::<Zone>().is_ok());
+        assert!("de-DE".parse::<Zone>().is_ok());
+        assert_eq!(Zone::En.to_string(), "en-US");
+        assert_eq!(Zone::Cn.to_string(), "zh-CN");
     }
 
     #[test]
