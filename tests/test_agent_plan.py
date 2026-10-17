@@ -115,7 +115,7 @@ class AgentPlanTests(unittest.TestCase):
         self.assertIn("completed", self.validate("Issue: #3\nPlan: docs/exec-plans/completed/task.md"))
 
     def test_pr_must_update_its_own_plan(self):
-        body = "Issue: #3\\nPlan: docs/exec-plans/active/task.md"
+        body = "Issue: #3\nPlan: docs/exec-plans/active/task.md"
         with self.assertRaises(validator.IntegrityError):
             validator.validate_event(
                 self.event(body), self.root, "pkking/ezwallpaper", "",
@@ -128,8 +128,8 @@ class AgentPlanTests(unittest.TestCase):
         self.assertIn("Issue #3", result)
 
     def test_duplicate_plan_metadata_fails(self):
-        body = ("Issue: #3\\nPlan: docs/exec-plans/active/task.md"
-                "\\nPlan: docs/exec-plans/active/task.md")
+        body = ("Issue: #3\nPlan: docs/exec-plans/active/task.md"
+                "\nPlan: docs/exec-plans/active/task.md")
         with self.assertRaises(validator.IntegrityError):
             self.validate(body)
 
