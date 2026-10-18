@@ -60,6 +60,7 @@ fn http_client() -> Result<Client> {
     Ok(Client::builder()
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
         .build()?)
 }
 
@@ -70,6 +71,9 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
             .try_clone()
             .ok_or_else(|| anyhow::anyhow!("provider request cannot be retried"))?;
         match call.send() {
+            Ok(response) if response.status().is_redirection() => {
+                bail!("provider request returned a redirect, refusing to follow");
+            }
             Ok(response)
                 if response.status() == StatusCode::TOO_MANY_REQUESTS
                     || response.status().is_server_error() =>
