@@ -1,7 +1,7 @@
 # 2026-10-18-core-catalog-manifest: non-destructive core catalog API
 
 Issue: #9
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -63,6 +63,8 @@ User accepted publishing core outputs to OS consumers and agent-driven continuat
 
 ## Evidence log
 
+- 2026-10-18: final PR #10 head `4faaa13532af6f22410b81e9911fc9c8e1b47a8e` passed all required checks: https://github.com/pkking/ezwallpaper/actions/runs/39094244563 ; offline artifact https://github.com/pkking/ezwallpaper/actions/runs/39094244563/artifacts/12123543872 .
+- 2026-10-18: implementation PR #10 squash merged on master as `759612386f4ae798bb8caa04b4eae51d6e1eee5d`: https://github.com/pkking/ezwallpaper/pull/10 .
 - 2026-10-18: final implementation revision `1ec3084403ffdd93939462796100a39bb653eb72` all four checks PASS: https://github.com/pkking/ezwallpaper/actions/runs/39094193826 . Core catalog/manifest tests and offline CLI manifest smoke passed. Plan-only checkpoint requires a fresh CI run before merging.
 - 2026-10-18: first implementation revision e9732d57ab1f0076339416ed0efdc97a5c8d84ff failed cargo fmt but passed Rust tests and CLI smoke: https://github.com/pkking/ezwallpaper/actions/runs/39094107593 . Formatter-only correction was committed without relaxing gates.
 - 2026-10-18: initial implementation submitted; Rust format/compile/test evidence remains UNASSESSED until Actions.
@@ -74,11 +76,11 @@ No additional deviations observed yet.
 
 ## Resume from here
 
-Verify full four-check CI on this plan checkpoint head; squash merge PR #10 only after success, then archive plan via a separate PR and close Issue #9.
+Merge completion-only archive PR, then close Issue #9. Do not start additional implementation under this completed plan.
 
 ## Completion
 
-Final commit: pending
-CI run: https://github.com/pkking/ezwallpaper/actions/runs/39094193826 (tested implementation; final plan checkpoint CI still required)
-E2E artifact: pending (offline catalog and CLI smoke)
+Final commit: 759612386f4ae798bb8caa04b4eae51d6e1eee5d (implementation PR #10 squash merge)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39094244563 (all four required checks passed)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39094244563/artifacts/12123543872 (offline catalog + CLI smoke; no GUI or network)
 Remaining unassessed items: image decoding, durable cache index/retention, live DE and providers
