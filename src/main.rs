@@ -230,6 +230,9 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
             ))
         }
         "pexel" => {
+            if cli.resolution != DEFAULT_RESOLUTION {
+                bail!("--resolution is a Bing-only setting; use --min-width/--min-height for Pexels");
+            }
             if cli.bing_offset != 0 {
                 bail!("--bing-offset is only supported for Bing");
             }
@@ -250,6 +253,9 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
             Ok(Box::new(provider))
         }
         "wallhaven" => {
+            if cli.resolution != DEFAULT_RESOLUTION || cli.locale != DEFAULT_LOCALE {
+                bail!("Wallhaven does not support --resolution or --locale; use --min-width/--min-height");
+            }
             if cli.bing_offset != 0 || cli.token_file.is_some() {
                 bail!("--bing-offset and --token-file are not supported for Wallhaven");
             }
