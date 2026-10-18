@@ -36,16 +36,16 @@ AGENTS.md; README.md; docs/architecture.md; docs/architecture.svg; docs/adr/0001
 
 ## Acceptance criteria
 
-- [ ] Core on-demand content_id returns lowercase sha256:hex using streaming SHA-256.
-- [ ] Stable for same bytes at different paths and correct for known NIST test vector; fails for missing file.
-- [ ] CLI hash is offline/read-only and prints exactly one content ID line.
-- [ ] README, docs/architecture.md and diagram describe ability and limits; JSON v1 unchanged.
+- [x] Core on-demand content_id returns lowercase sha256:hex using streaming SHA-256.
+- [x] Stable for same bytes at different paths and correct for known NIST test vector; fails for missing file.
+- [x] CLI hash is offline/read-only and prints exactly one content ID line.
+- [x] README, docs/architecture.md and diagram describe ability and limits; JSON v1 unchanged.
 - [ ] Offline CI covers new command; four required checks pass on final head.
 
 ## Implementation slices
 
-- [ ] RustCrypto sha2 dependency and Core API plus deterministic tests.
-- [ ] CLI hash + offline smoke.
+- [x] RustCrypto sha2 dependency and Core API plus deterministic tests.
+- [x] CLI hash + offline smoke.
 - [ ] Documentation, CI, review and completion archive.
 
 ## Verification matrix
@@ -65,13 +65,15 @@ None for this additive, read-only API and CLI operation. Persistent content-addr
 
 - 2026-10-18: consulted RustCrypto sha2 docs and NIST FIPS 180-4, examined present Core/CLI source, created Issue and plan before implementation.
 
+- 2026-10-18: added streaming Core content_id, CLI hash, CI offline vector and docs/architecture.svg label; first PR CI pending.
+
 ## Deviations and discoveries
 
 None yet.
 
 ## Resume from here
 
-Implement Core streaming SHA-256 helper and tests on agent/content-fingerprint-25, then CLI and docs, open PR and inspect CI.
+Create PR with Issue #25 and this plan, inspect all four final-head CI jobs and repair any errors before merge.
 
 ## Completion
 
