@@ -53,7 +53,7 @@ AGENTS.md; README.md; docs/architecture.md; docs/agents/workflow.md; docs/agents
 
 | Test | Command / evidence | Status |
 |---|---|---|
-| PNG/PPM parser | `python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v` | pending |
+| PNG/PPM parser | `python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v` | PASS on 39134923690 (pre-final-doc head); final head pending |
 | True composited wallpaper | `python3 tests/e2e/sway/run.py --binary target/debug/ezwallpaper --artifact-dir artifacts/sway-e2e` | pending |
 | Legacy Rust+mock CI | Six existing jobs | pending |
 | New visual CI | Headless Sway visual E2E | pending |
@@ -66,17 +66,22 @@ None: repository already uses Sway/swaybg; this adds gated, isolated test execut
 
 - 2026-10-18: observed master `63515b274b3ed689867b0f8a0e44853e83cf6c65` and current setter/CI. Reviewed upstream wlroots headless environment contract and Sway headless compatibility warning. No new code has passed testing.
 
+- 2026-10-18: first PR CI run 39134397148 failed in new visual job: harness warning-text assertion mismatched `cannot be independently verified`. Corrected to match the actual CLI warning; this was a harness-only failure.
+- 2026-10-18: run 39134528168 successfully reached real `grim` capture but red mismatch. Downloaded artifact 12139108265: all 76,800 pixels were black, while Sway's own `output bg #000000` had created an additional opaque `swaybg` background layer. Removed conflicting Sway-config wallpaper.
+- 2026-10-18: run 39134741619: **red rendered and matched 76,800/76,800 pixels**. Baseline-after-red check failed because Sway's native empty-output background is RGB (63,63,63), not black; verified downloaded artifact 12139611710 and replaced hard-coded baseline with an initial captured compositor baseline.
+- 2026-10-18: run https://github.com/pkking/ezwallpaper/actions/runs/39134923690 succeeded (all seven jobs); Sway visual CLI→swaybg→grim reported red 100%, blue 100% pixel match and baseline recovery. Screenshots and `result.json`: https://github.com/pkking/ezwallpaper/actions/runs/39134923690/artifacts/12139122404. The successful visual run tested commit `be9c4fc3e898b1b5c010322bc3b26838d1d38b8b`. Final PR head subsequently changed only documentation and plan; must rerun final-head CI before merge.
+
 ## Deviations and discoveries
 
 A real virtual-display job is new to this repo. Await first observed GitHub CI result; no rendered pixels have yet been validated on an actual runner.
 
 ## Resume from here
 
-Open Issue #49 PR with active plan metadata and examine the new Sway visual E2E CI job (real screenshots); correct actual failures before merging. Do not classify headless rendering as passed until job conclusion and final head SHA match.
+Check the newest PR #50 final-head CI run after this plan/doc checkpoint and verify all seven jobs, including real Sway pixel E2E. If passing, merge the implementation PR; archive plan in a completion-only follow-up PR and close Issue #49 after archive merge.
 
 ## Completion
 
 Final commit: pending
 CI run: pending
-E2E artifact: pending
-Remaining unassessed items: real desktop headless outcome, GNOME/Plasma/niri, physical and multi-display scenarios.
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39134923690/artifacts/12139122404 (real red/blue single virtual Sway output)
+Remaining unassessed items: niri/GNOME/Plasma compositor outcomes, physical and multi-display scenarios; Sway real virtual-output rendering is now evidenced.
