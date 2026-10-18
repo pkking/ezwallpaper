@@ -1,7 +1,7 @@
 # 2026-10-18-provider-pools-52: bounded landscape/portrait source acquisition
 
 Issue: #52
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -37,18 +37,18 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/exec-plans/TEMP
 
 ## Acceptance criteria
 
-- [ ] Bing bounded recent-history batch and idx option (no false long history).
-- [ ] Pexels query/orientation/page/min pixels filtering; token from env or restricted file opt-in.
-- [ ] Wallhaven SFW search, orientation ratios and minimum dimensions.
-- [ ] Deterministic unit/fixture tests of URL and JSON responses; negative filter/limits and empty responses; no live credentials.
-- [ ] Defaults and old flag-only behavior unchanged, docs/ADR/diagram aligned.
+- [x] Bing bounded recent-history batch and idx option (no false long history). (code/fixture committed; CI validation pending)
+- [x] Pexels query/orientation/page/min pixels filtering; token from env or restricted file opt-in. (code/fixture committed; CI validation pending)
+- [x] Wallhaven SFW search, orientation ratios and minimum dimensions. (code/fixture committed; CI validation pending)
+- [x] Deterministic unit/fixture tests of URL and JSON responses; negative filter/limits and empty responses; no live credentials. (code/fixture committed; CI validation pending)
+- [x] Defaults and old flag-only behavior unchanged, docs/ADR/diagram aligned. (code/fixture committed; CI validation pending)
 - [ ] Final CI at PR head successful.
 
 ## Implementation slices
 
-- [ ] 1. Request validation/client helper and Bing query.
-- [ ] 2. Pexels configurable query and Wallhaven source.
-- [ ] 3. CLI options, fixture tests, docs/ADR/architecture.
+- [x] 1. Request validation/client helper and Bing query.
+- [x] 2. Pexels configurable query and Wallhaven source.
+- [x] 3. CLI options, fixture tests, docs/ADR/architecture.
 - [ ] 4. CI fix/review/merge, archive only when verified.
 
 ## Verification matrix
@@ -69,6 +69,7 @@ No new decision needed: additive opt-in flags and read-only provider extension f
 
 - 2026-10-18: head d0501d5 CI 39138533739 success; zero open PRs; relevant Issues #52-#60 open. Pexels/Wallhaven official API docs and Microsoft Q&A checked.
 - 2026-10-18: no local cargo or Github DNS; rely on final GitHub Actions verification.
+- 2026-10-18: authored Bing bounded feed, Pexels configurable search, Wallhaven SFW source, CLI filters, retry fixture/negative CLI contracts, ADR 0005, README and architecture.svg. No local cargo checks executed; all new code is UNVERIFIED pending PR CI.
 
 ## Deviations and discoveries
 
@@ -76,7 +77,7 @@ Bing's public image archive is only a recent feed, not a supported comprehensive
 
 ## Resume from here
 
-Implement provider query/configuration slice on agent/issue-52-provider-pools and open a linked PR; inspect final PR-head CI before any merge.
+Open the Issue #52 PR for agent/issue-52-provider-pools and inspect all final-head CI logs; fix compile/format/tests before merging, then update evidence and archive only after verified completion.
 
 ## Completion
 
