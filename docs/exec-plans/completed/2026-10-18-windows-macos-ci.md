@@ -1,7 +1,7 @@
 # 2026-10-18-windows-macos-ci: headless portability evidence
 
 Issue: #28
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -37,23 +37,23 @@ AGENTS.md; docs/agents/testing.md; docs/architecture.md; README.md; .github/work
 
 - [x] Native GitHub-hosted windows-latest and macos-latest CI jobs run workspace Rust tests.
 - [x] Both run offline doctor and must pass at final head.
-- [ ] Existing four job names and behavior remain; all six final-head jobs pass.
+- [x] Existing four job names and behavior remain; all six final-head jobs pass.
 - [x] README and testing guidance accurately state native build evidence and unassessed GUI behavior.
 
 ## Implementation slices
 
 - [x] Add native portability matrix without changing existing jobs.
 - [x] Update docs and smoke semantics.
-- [ ] Observe final PR CI, fix portability failures, archive plan after merge.
+- [x] Observe final PR CI, fix portability failures, archive plan after merge.
 
 ## Verification matrix
 
 | Scope | CI check | Evidence | Status |
 |---|---|---|---|
-| Windows | Platform tests (windows-latest) | Rust unit + doctor | pending |
-| macOS | Platform tests (macos-latest) | Rust unit + doctor | pending |
-| Ubuntu | Rust quality, Rust tests and CLI smoke | Rust and CLI | pending |
-| Governance | Agent plan integrity, Agent contract self-tests | Issue/plan and validator | pending |
+| Windows | Platform tests (windows-latest) | Rust unit + doctor | CI #39103743927 passed |
+| macOS | Platform tests (macos-latest) | Rust unit + doctor | CI #39103743927 passed |
+| Ubuntu | Rust quality, Rust tests and CLI smoke | Rust and CLI | CI #39103743927 passed |
+| Governance | Agent plan integrity, Agent contract self-tests | Issue/plan and validator | CI #39103743927 passed |
 
 ## Decision gates
 
@@ -65,17 +65,20 @@ No new OS support policy: testing runs are additive and do not alter provider/de
 
 - 2026-10-18: added native Windows/macOS CI matrix and explicit headless-only testing vocabulary. First PR CI is pending.
 
+- 2026-10-18: PR #29 tested commit d00389fd477779379248831c7b9e2490eb8e1bc7, all six checks completed successfully: https://github.com/pkking/ezwallpaper/actions/runs/39103743927. Both Windows and macOS compiled workspace and ran offline doctor.
+- 2026-10-18: PR #29 squash merged as 647a402e14b339a575d4f9a2ee2de33038e47a35.
+
 ## Deviations and discoveries
 
 None yet.
 
 ## Resume from here
 
-Create Issue #28 PR, confirm all six final-head checks are successful, then archive only after validated merge.
+Verify all six final-head archive checks, then squash merge and close Issue #28.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: 647a402e14b339a575d4f9a2ee2de33038e47a35
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39103743927
 E2E artifact: offline commands only
 Remaining unassessed items: actual desktop changes, multi-display behavior, interactive GUI sessions
