@@ -66,7 +66,8 @@ fn detect_session(session_type: &str, has_wayland: bool, has_x11: bool) -> Sessi
 }
 
 fn has_desktop(desktop: &str, name: &str) -> bool {
-    desktop.split([':', ';'])
+    desktop
+        .split([':', ';'])
         .any(|part| part.trim().eq_ignore_ascii_case(name))
 }
 
@@ -122,9 +123,15 @@ impl Capability {
             Platform::Linux => {
                 let desktop = &runtime.desktop;
                 let native = if desktop.to_ascii_uppercase().contains("GNOME")
-                    || ["Unity", "Pantheon", "Budgie"].iter().any(|id| has_desktop(desktop, id))
+                    || ["Unity", "Pantheon", "Budgie"]
+                        .iter()
+                        .any(|id| has_desktop(desktop, id))
                 {
-                    if has("gsettings") { Some(Adapter::GnomeGsettings) } else { None }
+                    if has("gsettings") {
+                        Some(Adapter::GnomeGsettings)
+                    } else {
+                        None
+                    }
                 } else if has_desktop(desktop, "KDE") || has_desktop(desktop, "Plasma") {
                     if has("qdbus6") {
                         Some(Adapter::PlasmaQdbus6)
@@ -134,7 +141,11 @@ impl Capability {
                         None
                     }
                 } else if has_desktop(desktop, "LXQt") {
-                    if has("pcmanfm-qt") { Some(Adapter::PcmanfmQt) } else { None }
+                    if has("pcmanfm-qt") {
+                        Some(Adapter::PcmanfmQt)
+                    } else {
+                        None
+                    }
                 } else {
                     // Older wallpaper-rs DE implementations require exact XDG names.
                     let command = match desktop.as_str() {
@@ -143,7 +154,11 @@ impl Capability {
                         "LXDE" => Some("pcmanfm"),
                         _ => None,
                     };
-                    if command.is_some_and(&has) { Some(Adapter::Native) } else { None }
+                    if command.is_some_and(&has) {
+                        Some(Adapter::Native)
+                    } else {
+                        None
+                    }
                 };
                 native.unwrap_or_else(|| {
                     if runtime.session == Session::Wayland && has("swaybg") {
@@ -234,11 +249,15 @@ impl Capability {
     }
 }
 
-
 fn file_uri(path: &Path) -> Result<String> {
     url::Url::from_file_path(path)
         .map(|uri| uri.to_string())
-        .map_err(|_| anyhow!("wallpaper path cannot be encoded as a file URI: {}", path.display()))
+        .map_err(|_| {
+            anyhow!(
+                "wallpaper path cannot be encoded as a file URI: {}",
+                path.display()
+            )
+        })
 }
 
 fn apply_gnome(path: &Path) -> Result<()> {
@@ -345,7 +364,8 @@ mod tests {
             Adapter::PlasmaQdbus
         );
         assert_eq!(
-            Capability::resolve(linux("KDE:Plasma", Session::Wayland), |cmd| cmd == "qdbus6").adapter,
+            Capability::resolve(linux("KDE:Plasma", Session::Wayland), |cmd| cmd == "qdbus6")
+                .adapter,
             Adapter::PlasmaQdbus6
         );
     }
@@ -396,9 +416,14 @@ mod tests {
     fn other_unix_platform_is_not_misreported_as_linux() {
         assert_eq!(
             Capability::resolve(
-                Runtime { os: Platform::Other, desktop: "GNOME".into(), session: Session::Wayland },
+                Runtime {
+                    os: Platform::Other,
+                    desktop: "GNOME".into(),
+                    session: Session::Wayland
+                },
                 |_| true,
-            ).adapter,
+            )
+            .adapter,
             Adapter::Unavailable
         );
     }
