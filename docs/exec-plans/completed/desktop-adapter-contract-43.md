@@ -1,7 +1,7 @@
 # desktop-adapter-contract-43: Offline desktop adapter integration evidence
 
 Issue: #43
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -39,27 +39,27 @@ Establish a repeatable end-to-end, headless test from the Core-produced `list --
 
 ## Acceptance criteria
 
-- [ ] Offline CI validates local Core JSON manifest to CLI apply command boundaries for GNOME, Plasma, niri/Sway and X11.
-- [ ] Assertions include GNOME dark-key capability, qdbus6 preference/script safety, swaybg unverified semantics, and absent adapter failure.
-- [ ] Document opt-in real desktop verification workflow with evidence labels and restoration steps.
-- [ ] Final PR-head required CI passed and code/test evidence recorded.
+- [x] Offline CI validates local Core JSON manifest to CLI apply command boundaries for GNOME, Plasma, niri/Sway and X11.
+- [x] Assertions include GNOME dark-key capability, qdbus6 preference/script safety, swaybg unverified semantics, and absent adapter failure.
+- [x] Document opt-in real desktop verification workflow with evidence labels and restoration steps.
+- [x] Final PR-head required CI passed and code/test evidence recorded.
 
 ## Implementation slices
 
 - [x] 1. Introduce isolated subprocess contract tests that consume a real built `ezwallpaper` binary.
 - [x] 2. Add the test invocation to Ubuntu offline CI and describe explicit manual live validation.
-- [ ] 3. Inspect final CI, record evidence and archive only after all acceptance is met.
+- [x] 3. Inspect final CI, record evidence and archive only after all acceptance is met.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Python test syntax | `python3 -m py_compile tests/test_desktop_adapter_contract.py` | parse success | pending |
-| Adapter E2E mock | `python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v` | subprocess trace assertions | pending |
-| Rust quality | `cargo fmt --all -- --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used` | CI logs | pending |
-| Code tests | `cargo test --workspace --all-targets --verbose` | CI logs | pending |
-| Existing CLI smoke | offline CLI acceptance in CI | CI artifacts | pending |
-| Cross-platform | Windows/macOS headless jobs | CI results | pending |
+| Python test syntax | imported by Python unittest in Ubuntu CI | all 7 tests loaded and ran; standalone py_compile not executed |
+| Adapter E2E mock | `python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v` | 7/7 PASS on PR head `dc3f994c` |
+| Rust quality | PR #44 head `dc3f994c` quality job | PASS (run 39117600122) |
+| Code tests | PR #44 head `dc3f994c` Rust tests | PASS (run 39117600122) |
+| Existing CLI smoke | offline CLI acceptance in CI | PASS, `rust-cli-offline-evidence` artifact |
+| Cross-platform | Windows/macOS headless jobs | PASS both (run 39117600122) |
 | Live desktop verification | controlled GNOME/Plasma/niri manual protocol | distinct evidence | UNASSESSED, explicitly out of automated scope |
 
 ## Decision gates
@@ -70,7 +70,9 @@ None. CI test scaffolding and documentation are routine changes within accepted 
 
 - 2026-10-18: master `5cb38c1`, CI run `39116442922` = success (baseline only).
 - 2026-10-18: Issue #43 created; branch `test/desktop-adapter-contract-43` created from baseline.
-- 2026-10-18: Added real-binary fake-command contract suite (7 scenarios), Ubuntu CI invocation, README/testing notes and controlled-live-evidence protocol. CI and Rust execution are NOT YET VERIFIED.
+- 2026-10-18: Added real-binary fake-command contract suite (7 scenarios), Ubuntu CI invocation, README/testing notes and controlled-live-evidence protocol.
+- 2026-10-18: PR #44 final implementation head `dc3f994c1a590cef1b9445e0a402c887bd40f724`; six CI jobs PASS in https://github.com/pkking/ezwallpaper/actions/runs/39117600122. Ubuntu log: Ran 7 tests in 0.495s, OK. CI artifact: `rust-cli-offline-evidence`.
+- 2026-10-18: PR #44 squash-merged into master as `20c18b7a90cc2bf7817cc113523be7871096272b`.
 
 ## Deviations and discoveries
 
@@ -79,11 +81,11 @@ None. CI test scaffolding and documentation are routine changes within accepted 
 
 ## Resume from here
 
-Open the Issue-linked PR from `test/desktop-adapter-contract-43` to `master`; inspect the PR-head Agent integrity, Rust/CLI and Windows/macOS checks, then fix any failing test before declaring success.
+Merge the plan archival PR into master after its required CI passes, then close Issue #43 with a link to the 7-test verification run; do not claim real desktop visual validation.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `20c18b7a90cc2bf7817cc113523be7871096272b` (PR #44 squash merge; tested PR head `dc3f994c1a590cef1b9445e0a402c887bd40f724`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39117600122 (six of six jobs passed)
+E2E artifact: `rust-cli-offline-evidence` (run 39117600122, synthetic command-boundary tests)
 Remaining unassessed items: real GNOME/Plasma/niri rendered wallpaper outcomes; process-lifetime behavior outside command stubs.
