@@ -37,14 +37,14 @@ AGENTS.md; docs/adr/0001-core-cli-boundaries.md; docs/adr/README.md; docs/archit
 ## Acceptance criteria
 
 - [x] Owner approved cache Option A and decision evidence is recorded.
-- [ ] Accepted ADR defines path ownership, security, version marker, index/CAS, failure modes and future migration.
-- [ ] SVG/README/architecture text reflect accepted *planned* design, not an implemented feature.
+- [x] Accepted ADR defines path ownership, security, version marker, index/CAS, failure modes and future migration.
+- [x] SVG/README/architecture text reflect accepted *planned* design, not an implemented feature.
 - [ ] Six final-head CI jobs succeed without runtime changes.
 
 ## Implementation slices
 
-- [ ] Record accepted ADR and decision tradeoffs.
-- [ ] Synchronize canonical diagram and explanatory docs.
+- [x] Record accepted ADR and decision tradeoffs.
+- [x] Synchronize canonical diagram and explanatory docs.
 - [ ] CI validate and merge; archive plan in completed/ follow-up before closing Issue #31.
 
 ## Verification matrix
@@ -65,11 +65,11 @@ Resolved 2026-10-18: Option A approved, no user-owned --dir takeover. Any destru
 
 ## Deviations and discoveries
 
-None yet.
+The ADR records the approved design but does not implement persistence.
 
 ## Resume from here
 
-Write accepted ADR 0003 and corresponding SVG/README changes in agent/adr-003-owned-store-31, open PR, inspect 6 checks, merge if green.
+Open ADR pull request; validate all six final-head checks and merge.
 
 ## Completion
 
