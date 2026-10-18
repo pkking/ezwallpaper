@@ -47,7 +47,7 @@
   <rect x="51" y="552" width="612" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="357" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">ezwallpaper CLI</text>
   <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">OS / DE / WM detection + wallpaper setter</text>
-  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Native APIs · gsettings / DBus · swaybg / feh / pcmanfm-qt</text>
+  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Native APIs · Noctalia IPC · gsettings / DBus · swaybg / feh</text>
   <rect x="686" y="552" width="323" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="847" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">Third-party consumers</text>
   <text x="847" y="603" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Rust apps · scripts · services</text>
