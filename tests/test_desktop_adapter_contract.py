@@ -300,6 +300,25 @@ class DesktopAdapterContractTests(unittest.TestCase):
             {"command": "feh", "args": ["--bg-fill", path]}
         ])
 
+    def test_provider_flags_fail_closed_before_network_or_desktop_mutation(self) -> None:
+        # Binary is invoked with PATH containing no network tools or GUI setters.
+        # Invalid provider filter/count combinations must fail before HTTP.
+        cases = [
+            (["--backend", "bing", "--orientation", "portrait", "fetch"], "Bing does not support"),
+            (["--backend", "bing", "--bing-offset", "7", "--count", "8", "fetch"], "Bing recent archive"),
+            (["--backend", "bing", "--count", "0", "fetch"], "--count must be at least one"),
+            (["--backend", "pexel", "--token", "test-only", "--count", "65", "fetch"], "Pexels batch count"),
+            (["--backend", "wallhaven", "--count", "49", "fetch"], "Wallhaven batch count"),
+            (["--backend", "wallhaven", "--page", "0", "fetch"], "Wallhaven page"),
+            (["--backend", "wallhaven", "--bing-offset", "2", "fetch"], "not supported for Wallhaven"),
+        ]
+        for arguments, expected in cases:
+            with self.subTest(arguments=arguments):
+                result = self.cli(*arguments, desktop="niri", session="unknown")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, result.stderr)
+        self.assertEqual(self.calls(), [], "reject invalid provider requests before invoking any setters")
+
     def test_headless_does_not_invoke_stubs_or_select_host_commands(self) -> None:
         self.install_stubs("gsettings", "qdbus6", "swaybg", "feh")
         path = self.core_asset_path(desktop="GNOME", session="unknown")

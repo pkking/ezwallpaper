@@ -1,11 +1,12 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
-    BingProvider, GetImgUrl, PexelProvider, StoreInventory, WallpaperAsset, WallpaperManager,
-    WallpaperManifest, WallpaperStore,
+    BingProvider, GetImgUrl, Orientation, PexelProvider, StoreInventory, WallhavenProvider,
+    WallpaperAsset, WallpaperManager, WallpaperManifest, WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 mod setter;
 
@@ -31,13 +32,45 @@ struct Args {
         .unwrap_or_else(|| ".".to_string()))]
     dir: String,
 
-    /// Image source: bing or pexel.
+    /// Image source: bing, pexel or wallhaven.
     #[arg(short, long, default_value_t = DEFAULT_BACKEND.to_string())]
     backend: String,
 
     /// Pexels API token, only used with pexel source.
     #[arg(long, default_value_t = String::from(""))]
     token: String,
+
+    /// Number of wallpapers to retrieve, bounded by provider.
+    #[arg(long, default_value_t = 1)]
+    count: u32,
+
+    /// Source image orientation: landscape or portrait (Pexels, Wallhaven only).
+    #[arg(long)]
+    orientation: Option<String>,
+
+    /// Search query (Pexels and Wallhaven only).
+    #[arg(long)]
+    query: Option<String>,
+
+    /// First result page, 1..20 (Pexels and Wallhaven only).
+    #[arg(long, default_value_t = 1)]
+    page: u32,
+
+    /// Bing recent daily-image offset, 0..7.
+    #[arg(long, default_value_t = 0)]
+    bing_offset: i32,
+
+    /// Minimum reported source pixel width (Pexels and Wallhaven).
+    #[arg(long, requires = "min_height")]
+    min_width: Option<u32>,
+
+    /// Minimum reported source pixel height (Pexels and Wallhaven).
+    #[arg(long, requires = "min_width")]
+    min_height: Option<u32>,
+
+    /// Read Pexels token from a local file (or use EZWALLPAPER_PEXELS_TOKEN).
+    #[arg(long, conflicts_with = "token")]
+    token_file: Option<PathBuf>,
 
     /// Fetch without modifying the desktop.
     #[arg(long, default_value_t = false)]
@@ -148,21 +181,98 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
     Ok(())
 }
 
+fn read_pexels_token(cli: &Args) -> Result<String> {
+    if !cli.token.is_empty() {
+        return Ok(cli.token.clone());
+    }
+    if let Some(file) = &cli.token_file {
+        let metadata = std::fs::symlink_metadata(file)?;
+        if !metadata.is_file() || metadata.file_type().is_symlink() {
+            bail!("Pexels token file must be a regular non-symlink file");
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if metadata.permissions().mode() & 0o077 != 0 {
+                bail!("Pexels token file must not be accessible by group or others (chmod 600)");
+            }
+        }
+        let token = std::fs::read_to_string(file)?;
+        return Ok(token.trim().to_owned());
+    }
+    Ok(std::env::var("EZWALLPAPER_PEXELS_TOKEN").unwrap_or_default())
+}
+
 fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
+    let orientation = cli
+        .orientation
+        .as_deref()
+        .map(Orientation::from_str)
+        .transpose()?;
+    let min_size = cli.min_width.zip(cli.min_height);
+    if cli.count == 0 {
+        bail!("--count must be at least one");
+    }
     match cli.backend.as_str() {
-        "bing" => Ok(Box::new(
-            BingProvider::new()
-                .with_zone(&cli.locale)?
-                .with_resolution(&cli.resolution)?
-                .with_time_offset(0)
-                .with_dir(&cli.dir),
-        )),
-        "pexel" => Ok(Box::new(
-            PexelProvider::new()
+        "bing" => {
+            if orientation.is_some() || cli.query.is_some() || min_size.is_some() || cli.page != 1 {
+                bail!("Bing does not support --orientation, --query, --page or minimum dimensions");
+            }
+            if cli.token_file.is_some() {
+                bail!("--token-file is only supported for Pexels");
+            }
+            Ok(Box::new(
+                BingProvider::new()
+                    .with_zone(&cli.locale)?
+                    .with_resolution(&cli.resolution)?
+                    .with_time_offset(cli.bing_offset)
+                    .with_dir(&cli.dir),
+            ))
+        }
+        "pexel" => {
+            if cli.resolution != DEFAULT_RESOLUTION {
+                bail!(
+                    "--resolution is a Bing-only setting; use --min-width/--min-height for Pexels"
+                );
+            }
+            if cli.bing_offset != 0 {
+                bail!("--bing-offset is only supported for Bing");
+            }
+            let mut provider = PexelProvider::new()
                 .with_dir(&cli.dir)
-                .with_token(&cli.token)?
-                .with_zone(&cli.locale)?,
-        )),
+                .with_token(&read_pexels_token(cli)?)?
+                .with_zone(&cli.locale)?
+                .with_page(cli.page)?
+                .with_orientation(orientation.unwrap_or(Orientation::Landscape));
+            if let Some(query) = &cli.query {
+                provider = provider.with_query(query)?;
+            } else if orientation == Some(Orientation::Portrait) {
+                provider = provider.with_query("portrait wallpaper")?;
+            }
+            if let Some((width, height)) = min_size {
+                provider = provider.with_min_size(width, height)?;
+            }
+            Ok(Box::new(provider))
+        }
+        "wallhaven" => {
+            if cli.resolution != DEFAULT_RESOLUTION || cli.locale != DEFAULT_LOCALE {
+                bail!("Wallhaven does not support --resolution or --locale; use --min-width/--min-height");
+            }
+            if cli.bing_offset != 0 || cli.token_file.is_some() {
+                bail!("--bing-offset and --token-file are not supported for Wallhaven");
+            }
+            let mut provider = WallhavenProvider::new()
+                .with_dir(&cli.dir)
+                .with_page(cli.page)?
+                .with_orientation(orientation.unwrap_or(Orientation::Landscape));
+            if let Some(query) = &cli.query {
+                provider = provider.with_query(query)?;
+            }
+            if let Some((width, height)) = min_size {
+                provider = provider.with_min_size(width, height)?;
+            }
+            Ok(Box::new(provider))
+        }
         _ => bail!("unsupported backend {}", cli.backend),
     }
 }
@@ -198,14 +308,14 @@ fn main() -> Result<()> {
         }
         Some(CliCommand::Fetch { json }) => {
             let provider = build_provider(&cli)?;
-            let assets = manager.fetch(&cli.backend, provider.as_ref(), 1)?;
+            let assets = manager.fetch(&cli.backend, provider.as_ref(), cli.count)?;
             return print_assets(&assets, *json);
         }
         None => {}
     }
 
     let provider = build_provider(&cli)?;
-    let assets = manager.fetch(&cli.backend, provider.as_ref(), 1)?;
+    let assets = manager.fetch(&cli.backend, provider.as_ref(), cli.count)?;
     if !cli.download_only {
         if let Some(asset) = assets.first() {
             apply_wallpaper(asset.path(), cli.setter, cli.output.as_deref())?;

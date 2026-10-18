@@ -1,18 +1,113 @@
 pub mod bing;
 pub mod pexel;
 mod resolution;
+pub mod wallhaven;
 mod zone;
 
 use crate::wp_selector::WallPaper;
 use anyhow::{bail, Context, Result};
+use reqwest::blocking::{Client, RequestBuilder, Response};
+use reqwest::StatusCode;
 use std::fs;
 use std::io::ErrorKind;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration;
 use tempfile::NamedTempFile;
+
+/// Provider-side orientation preference; not pixel decoding (Issue #53).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Orientation {
+    Landscape,
+    Portrait,
+}
+
+impl std::str::FromStr for Orientation {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "landscape" => Ok(Self::Landscape),
+            "portrait" => Ok(Self::Portrait),
+            _ => bail!("unsupported orientation: {} (landscape or portrait)", value),
+        }
+    }
+}
+
+impl Orientation {
+    fn as_pexels(self) -> &'static str {
+        match self {
+            Self::Landscape => "landscape",
+            Self::Portrait => "portrait",
+        }
+    }
+
+    fn as_wallhaven_ratio(self) -> &'static str {
+        match self {
+            Self::Landscape => "16x9",
+            Self::Portrait => "9x16",
+        }
+    }
+}
 
 pub trait GetImgUrl {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>>;
+}
+
+/// Shared bounded client for remote provider metadata and assets.
+fn http_client() -> Result<Client> {
+    Ok(Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?)
+}
+
+/// Retry only bounded transient failures. Keep authorization headers out of logs.
+fn request_with_retry(request: RequestBuilder) -> Result<Response> {
+    for attempt in 0..3 {
+        let call = request
+            .try_clone()
+            .ok_or_else(|| anyhow::anyhow!("provider request cannot be retried"))?;
+        match call.send() {
+            Ok(response) if response.status().is_redirection() => {
+                bail!("provider request returned a redirect, refusing to follow");
+            }
+            Ok(response)
+                if response.status() == StatusCode::TOO_MANY_REQUESTS
+                    || response.status().is_server_error() =>
+            {
+                if attempt == 2 {
+                    return Ok(response.error_for_status()?);
+                }
+            }
+            Ok(response) => return Ok(response.error_for_status()?),
+            Err(err) if err.is_connect() || err.is_timeout() => {
+                if attempt == 2 {
+                    return Err(err.into());
+                }
+            }
+            Err(err) => return Err(err.into()),
+        }
+        thread::sleep(Duration::from_millis(100 * (1 << attempt)));
+    }
+    unreachable!("bounded retry loop always returns")
+}
+
+/// Assert a provider-supplied URL stays on its documented image CDN.
+fn checked_image_url(raw: &str, allowed_hosts: &[&str]) -> Result<url::Url> {
+    let url = url::Url::parse(raw)?;
+    if url.scheme() != "https"
+        || !allowed_hosts
+            .iter()
+            .any(|host| url.host_str() == Some(host))
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        bail!("provider supplied an unsupported image URL");
+    }
+    Ok(url)
 }
 
 /// Join one untrusted URL-provided *filename*, never an upstream relative path.
@@ -130,6 +225,54 @@ fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retries_bounded_429_and_rejects_untrusted_image_origins() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("local fixture server");
+        let address = listener.local_addr().expect("local address");
+        let server = thread::spawn(move || {
+            for code in [429, 503, 200] {
+                let (mut socket, _) = listener.accept().expect("test connection");
+                let mut request = [0u8; 2048];
+                let bytes = socket.read(&mut request).expect("read request");
+                assert!(bytes > 0);
+                let answer = format!(
+                    "HTTP/1.1 {} Test\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                    code
+                );
+                socket.write_all(answer.as_bytes()).expect("fixture reply");
+            }
+        });
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .expect("fixture client");
+        let result = request_with_retry(client.get(format!("http://{}/retry", address)))
+            .expect("third attempt succeeds")
+            .text()
+            .expect("response body");
+        assert_eq!(result, "ok");
+        server.join().expect("fixture server ended");
+
+        assert!(checked_image_url(
+            "https://images.pexels.com/photos/1/photo.jpeg",
+            &["images.pexels.com"]
+        )
+        .is_ok());
+        for url in [
+            "http://images.pexels.com/photo.jpg",
+            "file:///etc/passwd",
+            "https://evil.example/photo.jpg",
+            "https://user:pass@images.pexels.com/photo.jpg",
+        ] {
+            assert!(checked_image_url(url, &["images.pexels.com"]).is_err());
+        }
+    }
 
     #[test]
     fn staging_replaces_existing_file_after_complete_stream() {
