@@ -4,9 +4,9 @@ pub mod wp_provider;
 mod wp_selector;
 
 use anyhow::{bail, Context, Result};
-use std::path::{Path, PathBuf};
-use std::fs;
 use serde::Serialize;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 pub use wp_provider::{bing::BingProvider, pexel::PexelProvider, GetImgUrl};
 
@@ -27,7 +27,10 @@ pub struct WallpaperManifest<'a> {
 
 impl<'a> WallpaperManifest<'a> {
     pub fn new(assets: &'a [WallpaperAsset]) -> Self {
-        Self { schema_version: 1, assets }
+        Self {
+            schema_version: 1,
+            assets,
+        }
     }
 }
 
@@ -88,12 +91,15 @@ impl WallpaperManager {
                 continue;
             }
             let path = entry.path();
-            let is_image = path.extension()
+            let is_image = path
+                .extension()
                 .and_then(|suffix| suffix.to_str())
-                .map(|suffix| matches!(
-                    suffix.to_ascii_lowercase().as_str(),
-                    "jpg" | "jpeg" | "png" | "webp" | "bmp"
-                ))
+                .map(|suffix| {
+                    matches!(
+                        suffix.to_ascii_lowercase().as_str(),
+                        "jpg" | "jpeg" | "png" | "webp" | "bmp"
+                    )
+                })
                 .unwrap_or(false);
             if is_image {
                 assets.push(self.verify_asset("local", path)?);
@@ -209,14 +215,22 @@ mod tests {
         fs::create_dir(dir.join("subfolder")).expect("create ignored subfolder");
         fs::write(dir.join("subfolder/hidden.png"), b"nested").expect("create ignored nested file");
 
-        let assets = WallpaperManager.list_local(&dir).expect("list direct images");
+        let assets = WallpaperManager
+            .list_local(&dir)
+            .expect("list direct images");
         assert_eq!(assets.len(), 2);
-        assert_eq!(assets[0].path().file_name().and_then(|n| n.to_str()), Some("a-wallpaper.png"));
-        assert_eq!(assets[1].path().file_name().and_then(|n| n.to_str()), Some("z-wallpaper.JPG"));
+        assert_eq!(
+            assets[0].path().file_name().and_then(|n| n.to_str()),
+            Some("a-wallpaper.png")
+        );
+        assert_eq!(
+            assets[1].path().file_name().and_then(|n| n.to_str()),
+            Some("z-wallpaper.JPG")
+        );
         assert_eq!(assets[0].size_bytes(), 7);
 
-        let manifest = serde_json::to_value(WallpaperManifest::new(&assets))
-            .expect("serialize JSON v1");
+        let manifest =
+            serde_json::to_value(WallpaperManifest::new(&assets)).expect("serialize JSON v1");
         assert_eq!(manifest["schema_version"], 1);
         assert_eq!(manifest["assets"][0]["source"], "local");
         assert_eq!(manifest["assets"][0]["size_bytes"], 7);
@@ -231,5 +245,4 @@ mod tests {
         let missing = executable.with_extension("ezwallpaper-no-such-catalog");
         assert!(WallpaperManager.list_local(missing).is_err());
     }
-
 }

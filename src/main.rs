@@ -1,6 +1,8 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
-use ezwallpaper_core::{BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest};
+use ezwallpaper_core::{
+    BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest,
+};
 use log::debug;
 use std::path::PathBuf;
 
@@ -140,10 +142,18 @@ fn apply_wallpaper(path: &std::path::Path) -> Result<()> {
 
 fn print_assets(assets: &[WallpaperAsset], json: bool) -> Result<()> {
     if json {
-        println!("{}", serde_json::to_string_pretty(&WallpaperManifest::new(assets))?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&WallpaperManifest::new(assets))?
+        );
     } else {
         for asset in assets {
-            println!("{}\t{}\t{} bytes", asset.source(), asset.path().display(), asset.size_bytes());
+            println!(
+                "{}\t{}\t{} bytes",
+                asset.source(),
+                asset.path().display(),
+                asset.size_bytes()
+            );
         }
     }
     Ok(())
