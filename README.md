@@ -16,7 +16,7 @@ The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, inclu
 - support set desktop background with images from [pexel](https://www.pexels.com/)
 
 # Usage
-Original manual use was reported on Windows 10 and 11 (MinGW64). CI validates Rust and offline CLI behavior on Ubuntu, **not** successful desktop changes on every OS/DE.
+Original manual use was reported on Windows 10 and 11 (MinGW64). CI validates Rust and offline CLI behavior on Ubuntu, and native headless Rust tests plus nonmutating `doctor` on Windows/macOS. **No hosted CI job verifies an actual desktop wallpaper change**; Windows 10/11 manual experience and platform integration outcomes remain separately scoped.
 ```bash
 change wall paper from multiple sources
 

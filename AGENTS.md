@@ -70,6 +70,7 @@ Routine fixes, tests and small refactors inside accepted boundaries do not requi
 - Implementation satisfies the linked plan/Issue and adds relevant regression tests.
 - Rust fmt, Clippy, tests and offline CLI verification pass for the final revision.
 - CI plan integrity and contract self-tests pass; actual CI run URL is recorded.
+- Additional Windows and macOS native headless CI jobs pass at the final PR head; these checks do not validate real GUI wallpaper changes.
 - Any Windows desktop action is claimed validated only if independent Windows evidence exists.
 - Plan, README and ADRs are reconciled; known gaps stay explicit.
 - Protected master merges only through the reviewed PR process configured by administrator (see docs/agents/github-merge-gates.md).

@@ -120,3 +120,22 @@ jobs:
           name: rust-cli-offline-evidence
           path: artifacts/ci/
           if-no-files-found: warn
+
+  platform-tests:
+    name: Platform tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Headless portable workspace tests
+        run: cargo test --workspace --all-targets
+      - name: Offline CLI diagnosis (never applies a wallpaper)
+        run: cargo run --quiet -- doctor
