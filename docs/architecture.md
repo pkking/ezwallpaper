@@ -33,7 +33,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). The [README architect
 ## Operational and test boundaries
 
 - Download endpoints and file bytes are untrusted. No live requests, Pexels tokens or desktop mutation in required CI; fake providers and detection tests must remain deterministic.
-- Bing/Pexels download filenames are now checked as single portable path components, and existing symlink output targets are refused. HTTP errors are handled before destination create/truncate. This is not a race-free filesystem sandbox or atomic download; an interrupted successful-status stream can still leave a partial file.
+- Bing/Pexels download filenames are validated as single portable path components and existing symlink output targets are refused. The HTTP response is checked before writing, then the stream is staged to a temporary file in the destination directory and published by replacement only after a successful full copy. A streaming error or empty body leaves the existing pathname intact and discards the staging file. **Replacement changes the inode, metadata and hardlink identity**, unlike the previous in-place overwrite. This is not a race-free filesystem sandbox or a crash-durability guarantee; symlink checks can race and filesystems may differ in rename behavior.
 - Core's initial asset check only validates existence and regular-file status. File format validation, path-safe provider downloads, sandboxing, cache history/retention and atomicity are future work.
 - External program availability alone is not a guarantee of a valid GUI session, compatible compositor or successful rendered wallpaper.
 - Ubuntu GitHub Actions compile/tests and offline CLI smoke are distinct from Windows/macOS/Linux-desktop integration evidence.

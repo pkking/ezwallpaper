@@ -1,4 +1,4 @@
-use std::{fs::File, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -120,8 +120,7 @@ fn download_image(url: &Url, dir: &str) -> Result<String> {
     // Verify upstream status before opening/truncating a destination file.
     let mut response = reqwest::blocking::get(url.as_str())?.error_for_status()?;
     debug!("download {:?} to {:?}", url.as_str(), dir);
-    let mut file = File::create(&path)?;
-    response.copy_to(&mut file)?;
+    super::write_complete_download(&path, &mut response)?;
     Ok(path
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("download output path is not UTF-8"))?
