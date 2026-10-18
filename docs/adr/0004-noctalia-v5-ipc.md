@@ -1,6 +1,6 @@
 # ADR 0004: Opt-in Noctalia v5 native IPC wallpaper setter
 
-Status: Proposed (pending Issue #55 PR review)
+Status: Accepted (additive opt-in choice within previously approved OS ecosystem integration policy)
 Date: 2026-10-18
 Issue: #55
 Supersedes: None (extends ADR 0001 and 0002)
