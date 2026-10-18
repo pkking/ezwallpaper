@@ -125,7 +125,8 @@ mod tests {
         ] {
             assert!(
                 safe_download_path(".", name).is_err(),
-                "accepted unsafe name: {name:?}"
+                "accepted unsafe name: {:?}",
+                name
             );
         }
     }
