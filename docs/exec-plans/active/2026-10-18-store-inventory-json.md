@@ -71,13 +71,15 @@ None: an additive `--json` flag on the existing read-only command, within accept
 
 - 2026-10-18: implemented separate `StoreInventory` serde contract, CLI `store list --json`, Core unit test, offline CLI smoke, README and canonical SVG synchronization. These changes have not yet been evaluated by GitHub CI.
 
+- 2026-10-18: PR #41 first tested HEAD `dcdf58c516b96b1d8c7bd23e5bda9e196a1cf9d8` (run 39115956624) passed Ubuntu Rust tests/CLI smoke, Agent plan integrity and contract self-tests; Rust quality failed solely on `src/main.rs` rustfmt differences. Applied the exact rustfmt layout fix at commit `00fff2001cb83371c8c506d6bf6e0932fd6439ed`. The first run is not final-head evidence and must not be used to merge. New final-head run remains pending.
+
 ## Deviations and discoveries
 
-None so far.
+The first validation attempt revealed two rustfmt changes in the CLI import list and JSON `println!` formatting. No code behavior change was needed.
 
 ## Resume from here
 
-Open the linked Issue #40 PR; inspect all six final-head CI jobs, repair failures, and record measured evidence in this active plan. Rust/Cargo unavailable locally.
+Inspect all six GitHub Actions checks for the PR #41 head including this checkpoint commit; repair actual failures and record final-head evidence. Do not merge pending or failing checks. Rust/Cargo unavailable locally.
 
 ## Completion
 
