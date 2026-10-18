@@ -1,19 +1,19 @@
 pub mod bing;
 pub mod pexel;
-pub mod wallhaven;
 mod resolution;
+pub mod wallhaven;
 mod zone;
 
 use crate::wp_selector::WallPaper;
 use anyhow::{bail, Context, Result};
 use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::StatusCode;
-use std::thread;
-use std::time::Duration;
 use std::fs;
 use std::io::ErrorKind;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration;
 use tempfile::NamedTempFile;
 
 /// Provider-side orientation preference; not pixel decoding (Issue #53).
@@ -70,8 +70,9 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
             .try_clone()
             .ok_or_else(|| anyhow::anyhow!("provider request cannot be retried"))?;
         match call.send() {
-            Ok(response) if response.status() == StatusCode::TOO_MANY_REQUESTS
-                || response.status().is_server_error() =>
+            Ok(response)
+                if response.status() == StatusCode::TOO_MANY_REQUESTS
+                    || response.status().is_server_error() =>
             {
                 if attempt == 2 {
                     return Ok(response.error_for_status()?);
@@ -94,7 +95,9 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
 fn checked_image_url(raw: &str, allowed_hosts: &[&str]) -> Result<url::Url> {
     let url = url::Url::parse(raw)?;
     if url.scheme() != "https"
-        || !allowed_hosts.iter().any(|host| url.host_str() == Some(host))
+        || !allowed_hosts
+            .iter()
+            .any(|host| url.host_str() == Some(host))
         || !url.username().is_empty()
         || url.password().is_some()
     {
@@ -255,7 +258,8 @@ mod tests {
         assert!(checked_image_url(
             "https://images.pexels.com/photos/1/photo.jpeg",
             &["images.pexels.com"]
-        ).is_ok());
+        )
+        .is_ok());
         for url in [
             "http://images.pexels.com/photo.jpg",
             "file:///etc/passwd",
