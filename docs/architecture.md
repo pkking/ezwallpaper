@@ -1,6 +1,6 @@
 # Architecture and supported capability boundaries
 
-Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future storage boundary: ADR 0003 (docs/adr/0003-owned-content-store.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
+Baseline: ADR 0001; proposed ADR 0004 documents Noctalia v5 IPC selection (docs/adr/0004-noctalia-v5-ipc.md). (docs/adr/0001-core-cli-boundaries.md). Approved future storage boundary: ADR 0003 (docs/adr/0003-owned-content-store.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
 
 ## Cargo workspace
 
@@ -25,6 +25,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future stora
 - macOS: AppleScript via wallpaper-rs.
 - Named Linux DE: GNOME/Unity/Pantheon/Budgie via gsettings (GNOME dark variant where writable); KDE/Plasma including multi-ID XDG via qdbus6 or qdbus scripted DBus. Older wallpaper-rs adapters remain for exact Cinnamon/MATE/XFCE/LXDE/Deepin identifiers.
 - LXQt: pcmanfm-qt -w.
+- Explicit Noctalia v5 on Linux Wayland: opt-in `--setter noctalia` plus optional `--output DP-1` invokes `noctalia msg wallpaper-set`, then confirms the path with `wallpaper-get`; five-second timeout and no swaybg fallback. `doctor` checks binary presence and read-only `msg status` reachability. Path readback does not prove rendered pixels; niri dual-screen outcomes remain unassessed.
 - Unknown Wayland compositor: swaybg fallback, **launch does not prove application**.
 - Unknown X11 window manager: feh --bg-fill fallback.
 - No session: desktop adapter intentionally unavailable; core still works.
