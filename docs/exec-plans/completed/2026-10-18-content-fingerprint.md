@@ -1,7 +1,7 @@
 # 2026-10-18-content-fingerprint: on-demand stable identity for wallpapers
 
 Issue: #25
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -40,22 +40,22 @@ AGENTS.md; README.md; docs/architecture.md; docs/architecture.svg; docs/adr/0001
 - [x] Stable for same bytes at different paths and correct for known NIST test vector; fails for missing file.
 - [x] CLI hash is offline/read-only and prints exactly one content ID line.
 - [x] README, docs/architecture.md and diagram describe ability and limits; JSON v1 unchanged.
-- [ ] Offline CI covers new command; four required checks pass on final head.
+- [x] Offline CI covers new command; four required checks pass on final head.
 
 ## Implementation slices
 
 - [x] RustCrypto sha2 dependency and Core API plus deterministic tests.
 - [x] CLI hash + offline smoke.
-- [ ] Documentation, CI, review and completion archive.
+- [x] Documentation, CI, review and completion archive.
 
 ## Verification matrix
 
 | Scope | Command / gate | Evidence | Status |
 |---|---|---|---|
-| Content ID | cargo test -p ezwallpaper-core | known vectors + cross-path | pending |
-| CLI | offline ezwallpaper hash fixture | expected checksum | pending |
-| Rust quality | fmt + strict clippy | CI | pending |
-| Governance | plan integrity + contract tests | CI | pending |
+| Content ID | cargo test -p ezwallpaper-core | known vectors + cross-path | CI #39103461928 passed |
+| CLI | offline ezwallpaper hash fixture | expected checksum | CI #39103461928 passed |
+| Rust quality | fmt + strict clippy | CI | CI #39103461928 passed |
+| Governance | plan integrity + contract tests | CI | CI #39103461928 passed |
 
 ## Decision gates
 
@@ -67,17 +67,20 @@ None for this additive, read-only API and CLI operation. Persistent content-addr
 
 - 2026-10-18: added streaming Core content_id, CLI hash, CI offline vector and docs/architecture.svg label; first PR CI pending.
 
+- 2026-10-18: PR #26 final head 4ac1b65a72066e236419d01d4a7ff2ff59054688 passed all four checks: https://github.com/pkking/ezwallpaper/actions/runs/39103461928.
+- 2026-10-18: PR #26 merged as 0ab1a8c9ef559285349ad99bd085d525eb625774.
+
 ## Deviations and discoveries
 
 None yet.
 
 ## Resume from here
 
-Create PR with Issue #25 and this plan, inspect all four final-head CI jobs and repair any errors before merge.
+Verify archival PR checks at its final head, squash merge, and close Issue #25.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: 0ab1a8c9ef559285349ad99bd085d525eb625774
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39103461928
 E2E artifact: offline CLI only
 Remaining unassessed items: persistent cache schema and race-free snapshots of concurrently modified files
