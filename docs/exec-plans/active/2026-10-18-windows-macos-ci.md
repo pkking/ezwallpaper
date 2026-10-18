@@ -35,15 +35,15 @@ AGENTS.md; docs/agents/testing.md; docs/architecture.md; README.md; .github/work
 
 ## Acceptance criteria
 
-- [ ] Native GitHub-hosted windows-latest and macos-latest CI jobs run workspace Rust tests.
-- [ ] Both run offline doctor and must pass at final head.
+- [x] Native GitHub-hosted windows-latest and macos-latest CI jobs run workspace Rust tests.
+- [x] Both run offline doctor and must pass at final head.
 - [ ] Existing four job names and behavior remain; all six final-head jobs pass.
-- [ ] README and testing guidance accurately state native build evidence and unassessed GUI behavior.
+- [x] README and testing guidance accurately state native build evidence and unassessed GUI behavior.
 
 ## Implementation slices
 
-- [ ] Add native portability matrix without changing existing jobs.
-- [ ] Update docs and smoke semantics.
+- [x] Add native portability matrix without changing existing jobs.
+- [x] Update docs and smoke semantics.
 - [ ] Observe final PR CI, fix portability failures, archive plan after merge.
 
 ## Verification matrix
@@ -63,13 +63,15 @@ No new OS support policy: testing runs are additive and do not alter provider/de
 
 - 2026-10-18: checked current workflow, existing CI check names and OS support caveats. Created Issue and plan before implementation.
 
+- 2026-10-18: added native Windows/macOS CI matrix and explicit headless-only testing vocabulary. First PR CI is pending.
+
 ## Deviations and discoveries
 
 None yet.
 
 ## Resume from here
 
-Add windows-latest/macos-latest headless matrix job, update README/testing evidence text and open PR for Issue #28.
+Create Issue #28 PR, confirm all six final-head checks are successful, then archive only after validated merge.
 
 ## Completion
 
