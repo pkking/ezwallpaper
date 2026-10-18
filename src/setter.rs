@@ -7,7 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Os {
+enum Platform {
     Windows,
     MacOs,
     Linux,
@@ -22,7 +22,7 @@ enum Session {
 
 #[derive(Debug, Clone)]
 struct Runtime {
-    os: Os,
+    os: Platform,
     desktop: String,
     session: Session,
 }
@@ -30,11 +30,11 @@ struct Runtime {
 impl Runtime {
     fn current() -> Self {
         let os = if cfg!(target_os = "windows") {
-            Os::Windows
+            Platform::Windows
         } else if cfg!(target_os = "macos") {
-            Os::MacOs
+            Platform::MacOs
         } else {
-            Os::Linux
+            Platform::Linux
         };
         let desktop = env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
         let session_type = env::var("XDG_SESSION_TYPE").unwrap_or_default();
@@ -95,8 +95,8 @@ impl Capability {
 
     fn resolve(runtime: Runtime, has: impl Fn(&str) -> bool) -> Self {
         let adapter = match runtime.os {
-            Os::Windows | Os::MacOs => Adapter::Native,
-            Os::Linux => {
+            Platform::Windows | Platform::MacOs => Adapter::Native,
+            Platform::Linux => {
                 if runtime.session == Session::Unknown {
                     Adapter::Unavailable
                 } else if runtime.desktop == "LXQt" || runtime.desktop == "LXQT" {
@@ -224,7 +224,7 @@ mod tests {
 
     fn linux(desktop: &str, session: Session) -> Runtime {
         Runtime {
-            os: Os::Linux,
+            os: Platform::Linux,
             desktop: desktop.to_owned(),
             session,
         }
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn macos_and_windows_need_no_external_command_probe() {
-        for os in [Os::MacOs, Os::Windows] {
+        for os in [Platform::MacOs, Platform::Windows] {
             assert_eq!(
                 Capability::resolve(
                     Runtime {
