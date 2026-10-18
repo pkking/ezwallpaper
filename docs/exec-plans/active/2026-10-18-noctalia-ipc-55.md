@@ -38,23 +38,23 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0001-core-c
 - [x] Implementation added for explicit all/selected-output IPC and no swaybg fallback; CI result not yet available.
 - [x] Doctor reports distinct binary / status reachability and explicitly unverified desktop changes.
 - [x] Offline stub cases added for Core manifest, output/path, no fallback, bad IPC, mismatch and timeouts; execution pending.
-- [x] ADR 0004 (proposed), architecture text/SVG and README updated.
+- [x] ADR 0004 (accepted), architecture text/SVG and README updated.
 - [ ] Final required CI passed at PR head.
 
 ## Implementation slices
 
 - [x] 1. Flag plumbing and explicit Noctalia adapter with readback/status, pure output validation (commits 7bebff0, 1c03a5e).
-- [x] 2. Offline stub tests authored; proposed ADR 0004, README and diagram reconciled (CI execution pending).
+- [x] 2. Offline stub tests authored; ADR 0004, README and diagram reconciled (CI execution pending).
 - [ ] 3. Review PR CI and finish evidence; archive only after final passing revision.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Rust fmt | cargo fmt --all -- --check | CI Rust quality | pending |
-| Clippy | cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI Rust quality | pending |
-| Tests | cargo test --workspace --all-targets | CI Rust tests | pending |
-| Adapter | python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v | Stub-only commands, negative scenarios | pending |
+| Rust fmt | cargo fmt --all -- --check | CI #39138230806 for 51dd2d5 | passed; final doc head pending |
+| Clippy | cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI #39138230806 for 51dd2d5 | passed; final doc head pending |
+| Tests | cargo test --workspace --all-targets | CI #39138230806 for 51dd2d5 | passed; final doc head pending |
+| Adapter | python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v | CI #39138230806 for 51dd2d5 | passed; final doc head pending |
 | Governance | plan-integrity/contract-tests | exact Issue/Plan linkage | pending |
 | Desktop | opt-in real niri/Noctalia and screenshot | outside default CI | UNASSESSED |
 
@@ -66,7 +66,9 @@ No new user decision required for this additive opt-in adapter under existing us
 
 - 2026-10-18: master 04924f0 and https://github.com/pkking/ezwallpaper/actions/runs/39135521617 observed success. Issues #52–#60 open; PR list empty. Official Noctalia v5 IPC documented. Created agent/issue-55-noctalia-ipc.
 - 2026-10-18: environment has no GitHub DNS and no local cargo; new code remains untested until GitHub Actions.
-- 2026-10-18: new CLI/setter/stub tests and ADR + architecture/README changes committed on issue branch. No rustfmt, Clippy, Rust tests or GUI tests executed locally; all pending GitHub CI.
+- 2026-10-18: new CLI/setter/stub tests and ADR + architecture/README changes committed on issue branch. No local cargo exists, so tests not executed locally.
+- 2026-10-18: PR #61 initial head 70ad6c6 failed only cargo fmt. Adjusted Rust formatting at head 51dd2d59656e41d041e091a59fb8e0fe068f04cb; CI https://github.com/pkking/ezwallpaper/actions/runs/39138230806 passed all seven jobs: Agent plan integrity, contract self-tests, Rust quality (fmt/Clippy), Rust tests and offline CLI smoke (including Noctalia fakes), Sway headless visual E2E, Windows tests and macOS tests. This validates test stubs, not a live Noctalia display.
+- 2026-10-18: after that passing revision, ADR and documentation checkpoint changes were added. The final documentation head still requires a fresh CI result before merge.
 
 ## Deviations and discoveries
 
@@ -74,7 +76,7 @@ Noctalia v5 native `noctalia msg` differs from the older Quickshell `qs -c nocta
 
 ## Resume from here
 
-Open PR from agent/issue-55-noctalia-ipc to master, inspect PR head CI and correct any rustfmt/Clippy/test failures before merging.
+Review CI for the latest PR #61 head (including this documentation checkpoint), merge only when all seven checks pass, then collect opt-in real niri + Noctalia multi-output evidence under Issue #59; do not close #55 or archive this plan until that evidence is complete.
 
 ## Completion
 
