@@ -126,8 +126,13 @@ impl PexelProvider {
 
     fn accepted_urls(&self, body: &str) -> Result<Vec<Url>> {
         let response: Images = serde_json::from_str(body)?;
-        response.photos.iter()
-            .filter(|image| self.min_size.is_none_or(|(w, h)| image.width >= w && image.height >= h))
+        response
+            .photos
+            .iter()
+            .filter(|image| {
+                self.min_size
+                    .is_none_or(|(w, h)| image.width >= w && image.height >= h)
+            })
             .map(|image| checked_image_url(&image.src.original, &["images.pexels.com"]))
             .collect()
     }
@@ -149,7 +154,8 @@ impl GetImgUrl for PexelProvider {
                 break;
             }
             let url = self.search_url(page, nums)?;
-            let response = request_with_retry(client.get(url).header("Authorization", &self.token))?;
+            let response =
+                request_with_retry(client.get(url).header("Authorization", &self.token))?;
             let body = response.text()?;
             let urls = self.accepted_urls(&body)?;
             let parsed: Images = serde_json::from_str(&body)?;
@@ -158,9 +164,11 @@ impl GetImgUrl for PexelProvider {
             }
             for url in urls.into_iter().take(nums as usize - wallpapers.len()) {
                 let path = download_image(&client, &url, &self.dir)?;
-                wallpapers.push(WallPaper::new()
-                    .with_type(WpType::FromLocal)
-                    .with_path(path));
+                wallpapers.push(
+                    WallPaper::new()
+                        .with_type(WpType::FromLocal)
+                        .with_path(path),
+                );
             }
             if parsed.next_page.is_none() {
                 break;
@@ -171,14 +179,18 @@ impl GetImgUrl for PexelProvider {
 }
 
 fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str) -> Result<String> {
-    let name = url.path_segments()
+    let name = url
+        .path_segments()
         .and_then(|mut segments| segments.next_back())
         .ok_or_else(|| anyhow!("Pexels image URL has no path filename"))?;
     let path = super::safe_download_path(dir, name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
     debug!("downloading Pexels image to {:?}", path);
     super::write_complete_download(&path, &mut response)?;
-    Ok(path.to_str().ok_or_else(|| anyhow!("non-UTF8 download path"))?.to_owned())
+    Ok(path
+        .to_str()
+        .ok_or_else(|| anyhow!("non-UTF8 download path"))?
+        .to_owned())
 }
 
 #[cfg(test)]
@@ -188,10 +200,13 @@ mod tests {
     #[test]
     fn search_encodes_query_orientation_and_page() {
         let base = PexelProvider::new()
-            .with_zone("en-US").expect("locale")
-            .with_query("winter woods & sky").expect("query")
+            .with_zone("en-US")
+            .expect("locale")
+            .with_query("winter woods & sky")
+            .expect("query")
             .with_orientation(Orientation::Portrait)
-            .with_page(3).expect("page");
+            .with_page(3)
+            .expect("page");
         let url = base.search_url(3, 24).expect("valid search");
         let params: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
         assert_eq!(params["query"], "winter woods & sky");
@@ -205,7 +220,9 @@ mod tests {
 
     #[test]
     fn filters_dimensions_using_metadata_before_download() {
-        let provider = PexelProvider::new().with_min_size(3840, 2160).expect("size");
+        let provider = PexelProvider::new()
+            .with_min_size(3840, 2160)
+            .expect("size");
         let body = r#"{"photos":[
           {"width":1920,"height":1080,"src":{"original":"https://images.pexels.com/photos/1/small.jpeg"}},
           {"width":4096,"height":2304,"src":{"original":"https://images.pexels.com/photos/2/large.jpeg"}}
@@ -214,7 +231,13 @@ mod tests {
         assert_eq!(urls.len(), 1);
         assert!(urls[0].as_str().ends_with("/large.jpeg"));
         assert!(provider.accepted_urls(r#"{"photos":[{"width":4000,"height":3000,"src":{"original":"http://example.com/a.jpg"}}]}"#).is_err());
-        assert_eq!(provider.accepted_urls(r#"{"photos":[]}"#).expect("empty").len(), 0);
+        assert_eq!(
+            provider
+                .accepted_urls(r#"{"photos":[]}"#)
+                .expect("empty")
+                .len(),
+            0
+        );
         assert!(provider.accepted_urls("bad json").is_err());
     }
 
