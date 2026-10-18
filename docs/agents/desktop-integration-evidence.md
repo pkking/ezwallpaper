@@ -2,6 +2,24 @@
 
 The required Ubuntu CI runs `tests/test_desktop_adapter_contract.py` against a built `ezwallpaper` binary. That test uses the **real Core JSON manifest and CLI** but injects an isolated executable-only `PATH` with fake `gsettings`, `qdbus6`, `qdbus`, `swaybg` and `feh`. It validates argument propagation, adapter selection, safe serialization, fallback behavior, and error handling. **It does not prove any visible wallpaper change** or compositor compatibility.
 
+## Automatic Sway headless rendered-frame E2E
+
+The dedicated `Sway headless visual E2E` GitHub Actions job runs on `ubuntu-24.04` and installs distribution-provided `sway`, `swaybg` and `grim`. It is **not a fake-command contract**: the test creates an isolated private Wayland runtime directory (0700), starts Sway with `WLR_BACKENDS=headless` and a single `HEADLESS-1` virtual output, and launches the real compiled `ezwallpaper apply` command under `XDG_CURRENT_DESKTOP=sway`.
+
+For each of two deterministic test images (red and blue), the harness captures the actual compositor framebuffer through `grim -t ppm` and checks that at least 97% of sampled screenshot pixels match the expected RGB color. Between images it stops only its own `ezwallpaper apply` process group (including the spawned `swaybg` process) and checks that the compositor returns to a black baseline; it never uses a broad `pkill swaybg`. Missing compositor, missing adapter, screenshot failure or wrong pixels **fail CI**, never silently skip. Output includes `result.json`, real PNG and PPM frames, a Sway startup log and CI command log. The wrapper uses finite per-command and screenshot deadlines and terminates the compositor.
+
+A passing test proves the existing CLI and swaybg adapter can produce the desired image **in the tested version of software on an isolated single virtual Sway output**. It does not establish actual niri/Sway hardware monitor output, GNOME/Plasma display behavior, multi-monitor semantics or ongoing swaybg daemon lifecycle outside the harness. In particular, the current CLI still reports `LaunchedUnverified` because a production CLI call itself has no screenshot verification.
+
+On a Linux host with Rust, `sway`, `swaybg`, `swaymsg` and `grim` installed:
+
+```sh
+cargo build --bin ezwallpaper
+python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v
+python3 tests/e2e/sway/run.py --binary target/debug/ezwallpaper --artifact-dir artifacts/sway-e2e
+```
+
+This runner exercises a compositor it starts itself; do not point it at a production Wayland session. It does not need a physical display or interactive user. Fixture generation and PPM assertions use Python's standard library.
+
 ## Evidence levels
 
 | Level | What it proves | Appropriate evidence |
