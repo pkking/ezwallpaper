@@ -84,13 +84,17 @@ impl WallpaperManager {
         let mut file = fs::File::open(path)
             .with_context(|| format!("cannot open wallpaper for hashing: {}", path.display()))?;
         if !file.metadata()?.is_file() {
-            bail!("wallpaper hash input is not a regular file: {}", path.display());
+            bail!(
+                "wallpaper hash input is not a regular file: {}",
+                path.display()
+            );
         }
         let mut hasher = Sha256::new();
         let mut buffer = [0u8; 64 * 1024];
         loop {
-            let n = file.read(&mut buffer)
-                .with_context(|| format!("cannot read wallpaper for hashing: {}", path.display()))?;
+            let n = file.read(&mut buffer).with_context(|| {
+                format!("cannot read wallpaper for hashing: {}", path.display())
+            })?;
             if n == 0 {
                 break;
             }
@@ -287,10 +291,7 @@ mod tests {
             manager.content_id(&duplicate).expect("hash duplicate"),
             expected
         );
-        assert_ne!(
-            manager.content_id(&different).expect("hash abd"),
-            expected
-        );
+        assert_ne!(manager.content_id(&different).expect("hash abd"), expected);
         // Content IDs are additive: the v1 manifest schema is not modified.
         let json = serde_json::to_value(WallpaperManifest::new(&[first]))
             .expect("serialize unchanged v1 manifest");
