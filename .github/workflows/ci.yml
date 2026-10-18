@@ -167,6 +167,40 @@ jobs:
           path: artifacts/ci/
           if-no-files-found: warn
 
+  sway-visual-e2e:
+    name: Sway headless visual E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Install real headless compositor and capture tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends sway swaybg grim
+          sway --version
+          grim -h || true
+      - name: Check pure Python PNG/PPM assertion helpers
+        run: python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v
+      - name: Build actual ezwallpaper CLI
+        run: cargo build --bin ezwallpaper
+      - name: Observe actual composited Sway wallpaper
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/sway-e2e
+          python3 tests/e2e/sway/run.py --binary target/debug/ezwallpaper --artifact-dir artifacts/sway-e2e 2>&1 | tee artifacts/sway-e2e/test.log
+      - name: Always preserve real desktop evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sway-headless-visual-e2e
+          path: artifacts/sway-e2e/
+          if-no-files-found: warn
+
   platform-tests:
     name: Platform tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

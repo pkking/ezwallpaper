@@ -30,6 +30,10 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future stora
 - No session: desktop adapter intentionally unavailable; core still works.
 - Plasma 6 and GNOME light/dark have explicit code paths but still require real desktop outcome validation. XDG multi-value KDE/GNOME IDs are detected; other DE ID variants, Wayland process lifecycle and third-party tools need real integration validation. Other Unix OSs are unassessed.
 
+## Visual integration evidence
+
+The dedicated Ubuntu 24.04 `Sway headless visual E2E` CI job provides compositor-framebuffer color assertions for the real CLI → swaybg → virtual Sway output path, with an isolated one-output Wayland session and saved screenshots. This is stronger than fake-command contract tests, but remains limited to the tested headless compositor: hardware displays, GNOME/Plasma and niri compositor results still require their own independently grounded tests. It does not change the implemented Core/CLI architecture or the `LaunchedUnverified` production-side reporting.
+
 ## Operational and test boundaries
 
 - Download endpoints and file bytes are untrusted. No live requests, Pexels tokens or desktop mutation in required CI; fake providers and detection tests must remain deterministic.
