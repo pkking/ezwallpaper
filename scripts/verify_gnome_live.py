@@ -127,6 +127,14 @@ def verify_gnome(
     snapshots = {LIGHT: get_setting(run_command, LIGHT)}
     if DARK in keys and get_writable(run_command, DARK):
         snapshots[DARK] = get_setting(run_command, DARK)
+    # Refuse to modify settings if any prior state cannot be round-tripped as
+    # a GVariant string. This check happens before any wallpaper side effect.
+    for original in snapshots.values():
+        try:
+            if not isinstance(ast.literal_eval(original), str):
+                raise VerificationError("original_gnome_setting_is_not_a_string")
+        except (SyntaxError, ValueError) as exc:
+            raise VerificationError("cannot_round_trip_original_gnome_setting") from exc
 
     if ask("Type APPLY to temporarily change this desktop wallpaper: ") != "APPLY":
         raise VerificationError("interactive_confirmation_declined")
@@ -157,6 +165,8 @@ def verify_gnome(
         outcome["visible_result"] = "USER_CONFIRMED" if observed.strip().lower() == "yes" else "USER_REPORTED_FAILURE"
     except VerificationError as exc:
         outcome["error"] = str(exc)
+    except (EOFError, KeyboardInterrupt):
+        outcome["error"] = "interactive_observation_interrupted"
     finally:
         outcome["restoration"] = "VERIFIED" if restore_all(run_command, snapshots) else "FAILED"
 
