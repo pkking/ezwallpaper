@@ -1,7 +1,7 @@
 # 2026-10-18-staged-downloads: stage provider files before publication
 
 Issue: #22
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -40,22 +40,22 @@ AGENTS.md, docs/agents/workflow.md, docs/architecture.md, docs/adr/0001-core-cli
 - [x] Failed read leaves old target bytes unchanged, leaves absent target absent, and cleans temp files.
 - [x] Existing output targets are replaced only after complete copy; original path and normal basename unchanged.
 - [x] Provider adapters use the helper and retain response error_for_status.
-- [ ] All 4 required CI jobs pass at final head, with plan evidence.
+- [x] All 4 required CI jobs pass at final head, with plan evidence.
 
 ## Implementation slices
 
 - [x] Add reused tempfile crate + injectable writer with failure tests.
 - [x] Connect both providers and update limitations.
-- [ ] Review CI, fix and archive after merge.
+- [x] Review CI, fix and archive after merge.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Core injected streams | cargo test -p ezwallpaper-core | complete & interrupted reads | pending |
-| Rust quality | cargo fmt --all -- --check + clippy strict | CI | pending |
-| Rust workspace | cargo test --workspace --all-targets | CI | pending |
-| CLI & governance | offline CLI smoke + Agent plan integrity/tests | CI | pending |
+| Core injected streams | cargo test -p ezwallpaper-core | complete & interrupted reads | CI #39103021708: success |
+| Rust quality | cargo fmt --all -- --check + clippy strict | CI | CI #39103021708: success |
+| Rust workspace | cargo test --workspace --all-targets | CI | CI #39103021708: success |
+| CLI & governance | offline CLI smoke + Agent plan integrity/tests | CI | CI #39103021708: success |
 
 ## Decision gates
 
@@ -67,17 +67,20 @@ Existing contract overwrites safe regular-file path; staged replacement changes 
 
 - 2026-10-18: added tempfile staging helper, pure stream failure tests, and wiring in Bing/Pexels. No CI result yet.
 
+- 2026-10-18: PR #23 tested commit 6c406067ab74dd794aed691098c6a8d5a13d267b passed all 4 CI checks, run https://github.com/pkking/ezwallpaper/actions/runs/39103021708.
+- 2026-10-18: PR #23 merged as 8bda2982d59876831ec2e900a7947d63a24fe4bd.
+
 ## Deviations and discoveries
 
 Temporaries are created with tempfile in the destination directory. A fixed in-place inode is not preserved. Byte stream failures are simulated with ConnectionReset (not Interrupted, which io::copy may transparently retry).
 
 ## Resume from here
 
-Open PR for #22 on agent/staged-downloads-22, check four required CI jobs at final head, fix concrete issues before merging.
+After the completion-only archival PR passes all four checks and merges, close Issue #22.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: 8bda2982d59876831ec2e900a7947d63a24fe4bd
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39103021708
 E2E artifact: offline core + CLI only
 Remaining unassessed items: live network, crash durability, hardlink/metadata compatibility on all OS
