@@ -42,14 +42,16 @@ impl Runtime {
             || env::var_os("WAYLAND_DISPLAY").is_some()
         {
             Session::Wayland
-        } else if session_type.eq_ignore_ascii_case("x11")
-            || env::var_os("DISPLAY").is_some()
-        {
+        } else if session_type.eq_ignore_ascii_case("x11") || env::var_os("DISPLAY").is_some() {
             Session::X11
         } else {
             Session::Unknown
         };
-        Self { os, desktop, session }
+        Self {
+            os,
+            desktop,
+            session,
+        }
     }
 }
 
@@ -98,7 +100,11 @@ impl Capability {
                 if runtime.session == Session::Unknown {
                     Adapter::Unavailable
                 } else if runtime.desktop == "LXQt" || runtime.desktop == "LXQT" {
-                    if has("pcmanfm-qt") { Adapter::PcmanfmQt } else { Adapter::Unavailable }
+                    if has("pcmanfm-qt") {
+                        Adapter::PcmanfmQt
+                    } else {
+                        Adapter::Unavailable
+                    }
                 } else {
                     // Match only the identifiers accepted by wallpaper-rs 3.2.0.
                     let command = if runtime.desktop.contains("GNOME")
@@ -154,8 +160,11 @@ impl Capability {
         }
         match self.adapter {
             Adapter::Native => {
-                let utf8 = path.to_str().ok_or_else(|| anyhow!("wallpaper path is not UTF-8"))?;
-                wallpaper::set_from_path(utf8).context("desktop wallpaper API failed")?;
+                let utf8 = path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("wallpaper path is not UTF-8"))?;
+                wallpaper::set_from_path(utf8)
+                    .map_err(|error| anyhow!("desktop wallpaper API failed: {}", error))?;
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PcmanfmQt => {
@@ -178,7 +187,10 @@ impl Capability {
                 // A process launch does not prove the compositor accepted the image.
                 thread::sleep(Duration::from_millis(150));
                 if let Some(exit) = child.try_wait().context("could not check swaybg process")? {
-                    bail!("swaybg exited before the wallpaper was established: {}", exit);
+                    bail!(
+                        "swaybg exited before the wallpaper was established: {}",
+                        exit
+                    );
                 }
                 Ok(ApplyStatus::LaunchedUnverified)
             }
@@ -211,12 +223,17 @@ mod tests {
     use super::*;
 
     fn linux(desktop: &str, session: Session) -> Runtime {
-        Runtime { os: Os::Linux, desktop: desktop.to_owned(), session }
+        Runtime {
+            os: Os::Linux,
+            desktop: desktop.to_owned(),
+            session,
+        }
     }
 
     #[test]
     fn gnome_requires_gsettings() {
-        let capability = Capability::resolve(linux("GNOME", Session::Wayland), |cmd| cmd == "gsettings");
+        let capability =
+            Capability::resolve(linux("GNOME", Session::Wayland), |cmd| cmd == "gsettings");
         assert_eq!(capability.adapter, Adapter::Native);
         let no_tools = Capability::resolve(linux("GNOME", Session::Wayland), |_| false);
         assert_eq!(no_tools.adapter, Adapter::Unavailable);
@@ -266,7 +283,15 @@ mod tests {
     fn macos_and_windows_need_no_external_command_probe() {
         for os in [Os::MacOs, Os::Windows] {
             assert_eq!(
-                Capability::resolve(Runtime { os, desktop: String::new(), session: Session::Unknown }, |_| false).adapter,
+                Capability::resolve(
+                    Runtime {
+                        os,
+                        desktop: String::new(),
+                        session: Session::Unknown
+                    },
+                    |_| false
+                )
+                .adapter,
                 Adapter::Native
             );
         }

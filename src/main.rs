@@ -103,10 +103,16 @@ fn main() -> Result<()> {
 
 fn apply_wallpaper(path: &std::path::Path) -> Result<()> {
     let capability = setter::Capability::detect();
-    debug!("using wallpaper adapter {} for {}", capability.adapter(), path.display());
+    debug!(
+        "using wallpaper adapter {} for {}",
+        capability.adapter(),
+        path.display()
+    );
     let outcome = capability.apply(path)?;
     if matches!(outcome, setter::ApplyStatus::LaunchedUnverified) {
-        eprintln!("wallpaper command launched, but desktop application cannot be independently verified");
+        eprintln!(
+            "wallpaper command launched, but desktop application cannot be independently verified"
+        );
     }
     Ok(())
 }

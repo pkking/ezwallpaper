@@ -60,7 +60,10 @@ impl WallpaperManager {
             .canonicalize()
             .with_context(|| format!("wallpaper file is not accessible: {}", input.display()))?;
         if !absolute.is_file() {
-            bail!("wallpaper path is not a regular file: {}", absolute.display());
+            bail!(
+                "wallpaper path is not a regular file: {}",
+                absolute.display()
+            );
         }
         Ok(WallpaperAsset {
             source: source.to_string(),
@@ -131,7 +134,10 @@ mod tests {
     fn missing_output_file_from_provider_fails_closed() {
         let executable = std::env::current_exe().expect("test executable exists");
         let source = FakeSource {
-            paths: vec![executable.with_extension("ezwallpaper-nonexistent").to_string_lossy().into_owned()],
+            paths: vec![executable
+                .with_extension("ezwallpaper-nonexistent")
+                .to_string_lossy()
+                .into_owned()],
         };
         assert!(WallpaperManager.fetch("fake", &source, 1).is_err());
     }
