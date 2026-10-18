@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
-    BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest,
-    StoreInventory, WallpaperStore,
+    BingProvider, GetImgUrl, PexelProvider, StoreInventory, WallpaperAsset, WallpaperManager,
+    WallpaperManifest, WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
@@ -114,7 +114,10 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
             // Verify the whole inventory before printing any results.
             let entries = store.list()?;
             if *json {
-                println!("{}", serde_json::to_string_pretty(&StoreInventory::new(&entries))?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&StoreInventory::new(&entries))?
+                );
             } else {
                 for entry in entries {
                     println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
