@@ -8,12 +8,13 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
 - support set desktop background with images from local file system
 - support set desktop background with images from [pexel](https://www.pexels.com/)
+- acquire SFW wallpaper candidates from [Wallhaven](https://wallhaven.cc/) as a headless Core source
 
 # Usage
 Original manual use was reported on Windows 10 and 11 (MinGW64). CI validates Rust and offline CLI behavior on Ubuntu, and native headless Rust tests plus nonmutating `doctor` on Windows/macOS. A separate **Sway Headless visual E2E** GitHub Actions job now verifies the rendered wallpaper pixels on one isolated virtual Wayland output; Windows/macOS/GNOME/Plasma/niri and physical monitor outcomes remain separately unassessed.
@@ -26,7 +27,7 @@ Options:
   -r, --resolution <RESOLUTION>  pic resolution [default: UHD]
   -l, --locale <LOCALE>          zone info for images, available: en-US, zh-CN, ja-JP, de-DE [default: zh-CN]
   -d, --dir <DIR>                dir to store downloaded pictures [default: PICTURE_DIR]
-  -b, --backend <BACKEND>        backend for wallpaper, available: bing, pexel [default: bing]
+  -b, --backend <BACKEND>        backend for wallpaper, available: bing, pexel, wallhaven [default: bing]
       --token <TOKEN>            token for pexel, only valid when backend is pexel [default: ""]
   -h, --help                     Print help
   -V, --version                  Print version
@@ -45,6 +46,35 @@ ezwallpaper.exe -b pexel --token <your token>
 ```
 The `--token` argument is required only for pexel backend, get a token from [pexels.com](https://www.pexels.com/api/key/)
 
+## Multi-source landscape and portrait acquisition
+
+The Core source APIs and CLI can prepare separate landscape and portrait pools without changing the desktop. Legacy flag-only use still requests one Bing image unless otherwise specified.
+
+```sh
+# Up to eight recent Bing daily entries, starting at today (idx=0)
+ezwallpaper --backend bing --bing-offset 0 --count 8 -d ./bing fetch --json
+
+# Fetch Pexels portrait candidates, filtering on API-reported source dimensions
+export EZWALLPAPER_PEXELS_TOKEN='your-api-key' # do not paste tokens in shell history
+ezwallpaper --backend pexel --orientation portrait --query 'mountains' \
+  --min-width 1080 --min-height 1920 --count 12 -d ./portrait fetch --json
+
+# Public SFW Wallhaven candidates, landscape 4K; no API token needed
+ezwallpaper --backend wallhaven --orientation landscape --query 'nature' \
+  --min-width 3840 --min-height 2160 --count 12 -d ./landscape fetch --json
+```
+
+Provider capability limits:
+
+| Provider | Orientation | Query/page | Minimum dimensions | Count limit |
+| --- | --- | --- | --- | --- |
+| Bing daily archive | Not supported | No search; `--bing-offset` 0..7 | Not supported | 1..8, and idx + count ≤ 8 |
+| Pexels `/v1/search` | `landscape` / `portrait` | Keyword, page 1..20 (bounded 3-page fetch) | Filter from API width/height (not decoded) | 1..64 |
+| Wallhaven API v1 (SFW) | Ratio 16:9 / 9:16 preference | Keyword, page 1..20 (bounded 3-page fetch) | `atleast` plus API metadata filtering | 1..48 |
+
+**Security and semantics:** Requests use bounded timeouts and limited 429/5xx retries; remote image URLs are HTTPS-only and restricted to the provider CDN, and downloads use staged completion. Pexels accepts the legacy `--token`, a private `--token-file`, or `EZWALLPAPER_PEXELS_TOKEN` (priority in that order), but no token is required for Wallhaven SFW. Actual API quotas, remote aspect-ratio correctness, content decoding and live network outcomes are **unassessed** by default offline CI. Do not interpret an API width/height field as verified decoded pixels. Bing is a recent feed, **not a full archive**; fetching it every hour does not guarantee different content. `--count` controls downloads, not wallpaper rotation.
+
+Sources: [Microsoft Bing API limitation](https://learn.microsoft.com/en-us/answers/questions/1473961/bing-hpimagearchive-aspx-question) · [Pexels search API](https://www.pexels.com/api/documentation/) · [Wallhaven v1 API](https://wallhaven.cc/help/api).
 ## Agent development
 
 Start with [AGENTS.md](AGENTS.md), [architecture](docs/architecture.md), and [agent workflow](docs/agents/workflow.md).
