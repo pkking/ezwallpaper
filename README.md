@@ -2,6 +2,14 @@
 
 A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Existing cron and Windows Task Scheduler users can keep their flag-only workflows. See [ADR 0001](docs/adr/0001-core-cli-boundaries.md) for the accepted architecture.
 
+## Architecture
+
+![ezwallpaper Core and CLI architecture](docs/architecture.svg)
+
+The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. Dashed elements are **planned**, not implemented: additional sources, durable cache, deduplication, tags and history.
+
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
 - support set desktop background with images from local file system

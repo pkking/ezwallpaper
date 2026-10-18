@@ -28,6 +28,13 @@ Before resuming: fetch latest Issue, PR, head SHA and latest CI run. Reconcile d
 
 Request a decision only when user-visible CLI/API semantics, security, permanent file operations, OS support policy, major dependency/toolchain commitments or architecture choices have materially different consequences. Present options, relevant code/docs evidence, recommendation and resulting risks. Routine naming, implementation, testing and documentation do not require a decision.
 
+## ADR and README diagram coupling
+
+- Canonical diagram: `docs/architecture.svg`, embedded in README. Accepted design baseline: `docs/adr/0001-core-cli-boundaries.md`.
+- An ADR that changes Core/CLI boundaries, Source/Consumer flows or OS desktop integration MUST ship an updated diagram in the same PR. The plan should list this as acceptance and test evidence.
+- An ADR without diagram impact needs an explicit rationale in **both** the ADR and PR using the prescribed metadata: `Diagram impact: none - ...` and `Architecture diagram: unchanged - ...`. Never silently skip a diagram review.
+- CI enforces the ADR↔diagram change coupling. CI cannot judge whether the artwork accurately reflects the code; reviewers must check.
+
 ## Pull request lifecycle
 
 1. Branch from latest master. Do not rewrite protected history.

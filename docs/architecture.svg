@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
+  <title id="title">ezwallpaper Core and CLI architecture</title>
+  <desc id="desc">Bing, Pexels and local files feed the headless Rust Core; Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Other sources and durable caching are future work.</desc>
+  <rect width="1060" height="700" fill="#f8fafc"/>
+  <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
+  <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
+  <rect x="26" y="90" width="1008" height="355" rx="15" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
+  <text x="50" y="122" fill="#166534" font-family="system-ui, sans-serif" font-size="21" font-weight="700">ezwallpaper-core</text>
+  <text x="812" y="120" fill="#166534" font-family="system-ui, sans-serif" font-size="14">Headless Rust library</text>
+  <g fill="#fff" stroke="#16a34a" stroke-width="1.6">
+    <rect x="51" y="145" width="201" height="59" rx="9"/>
+    <rect x="271" y="145" width="201" height="59" rx="9"/>
+    <rect x="491" y="145" width="201" height="59" rx="9"/>
+  </g>
+  <rect x="711" y="145" width="296" height="59" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.6" stroke-dasharray="7 5"/>
+  <g fill="#14532d" font-family="system-ui, sans-serif" font-size="18" font-weight="600" text-anchor="middle">
+    <text x="152" y="180">Bing</text>
+    <text x="372" y="180">Pexels</text>
+    <text x="592" y="180">Local files</text>
+    <text x="859" y="176">Other sources</text>
+  </g>
+  <text x="859" y="192" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">Planned adapters</text>
+  <g stroke="#15803d" stroke-width="2" fill="none">
+    <path d="M152 205 V227 H530 V244"/>
+    <path d="M372 205 V227"/>
+    <path d="M592 205 V227"/>
+    <path d="M859 205 V227 H530" stroke-dasharray="7 5"/>
+    <path d="M524 237 L530 244 L536 237"/>
+  </g>
+  <rect x="168" y="245" width="724" height="66" rx="11" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+  <text x="530" y="271" fill="#14532d" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">WallpaperManager + ephemeral catalog</text>
+  <text x="530" y="294" fill="#166534" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Fetch · inspect local files · list · provenance</text>
+  <path d="M530 311 V335" stroke="#15803d" stroke-width="2"/>
+  <path d="M524 329 L530 336 L536 329" fill="none" stroke="#15803d" stroke-width="2"/>
+  <rect x="182" y="337" width="696" height="57" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.7"/>
+  <text x="530" y="363" fill="#14532d" font-family="system-ui, sans-serif" font-size="18" font-weight="700" text-anchor="middle">WallpaperAsset · local file path · JSON manifest v1</text>
+  <text x="530" y="383" fill="#166534" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Shared consumer contract (Rust API / local file / JSON)</text>
+  <text x="530" y="427" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" font-style="italic" text-anchor="middle">Planned: durable cache · deduplication · tags · history</text>
+  <g stroke="#64748b" stroke-width="2" fill="none">
+    <path d="M530 445 V471 H277 V502"/>
+    <path d="M530 471 H794 V502"/>
+    <path d="M271 496 L277 503 L283 496"/>
+    <path d="M788 496 L794 503 L800 496"/>
+  </g>
+  <rect x="26" y="507" width="1008" height="157" rx="15" fill="#eff6ff" stroke="#475569" stroke-width="2"/>
+  <text x="50" y="536" fill="#334155" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Consumers</text>
+  <rect x="51" y="552" width="612" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
+  <text x="357" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">ezwallpaper CLI</text>
+  <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">OS / DE / WM detection + wallpaper setter</text>
+  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Native APIs · gsettings / DBus · swaybg / feh / pcmanfm-qt</text>
+  <rect x="686" y="552" width="323" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
+  <text x="847" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">Third-party consumers</text>
+  <text x="847" y="603" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Rust apps · scripts · services</text>
+  <text x="847" y="624" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Consume assets / manifests</text>
+  <path d="M48 685 H88" stroke="#15803d" stroke-width="2"/>
+  <text x="96" y="689" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Implemented capability</text>
+  <path d="M295 685 H335" stroke="#15803d" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="343" y="689" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Planned, not yet implemented</text>
+</svg>
