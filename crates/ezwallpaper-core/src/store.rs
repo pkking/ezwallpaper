@@ -217,7 +217,7 @@ mod tests {
             b"user original"
         );
 
-        let (_, store) = fixture();
+        let (_temp, store) = fixture();
         fs::write(store.root.join(MARKER), b"ezwallpaper-store-v2\n")
             .expect("simulate future marker");
         assert!(WallpaperStore::open(&store.root).is_err());
