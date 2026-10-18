@@ -1,7 +1,7 @@
 # 2026-10-18-gnome-live-verification: opt-in reversible desktop observation
 
 Issue: #46
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -38,18 +38,18 @@ No mandatory CI desktop mutation, network source request, wallpaper format decod
 
 ## Acceptance criteria
 
-- [ ] Explicit GNOME live opt-in preconditions and local-image safety checks implemented.
-- [ ] Snapshot relevant GNOME wallpaper keys before applying via existing CLI; restoration always attempted and verified after apply success/failure.
-- [ ] Interactive visual feedback and sanitized JSON result with honest evidence labels.
-- [ ] Deterministic negative/positive mocked tests; CI runs them without desktop, network or privileges.
-- [ ] README and desktop evidence protocol describe manual use and limitations; architecture SVG unchanged with rationale.
+- [x] Explicit GNOME live opt-in preconditions and local-image safety checks implemented.
+- [x] Snapshot relevant GNOME wallpaper keys before applying via existing CLI; restoration always attempted and verified after apply success/failure.
+- [x] Interactive visual feedback and sanitized JSON result with honest evidence labels.
+- [x] Deterministic negative/positive mocked tests; CI runs them without desktop, network or privileges.
+- [x] README and desktop evidence protocol describe manual use and limitations; architecture SVG unchanged with rationale.
 - [ ] Six CI jobs pass at final PR head; exact run/artifact evidence documented.
 
 ## Implementation slices
 
-- [ ] 1. Implement a standalone GNOME live verification script with restore guard and sanitization.
-- [ ] 2. Test state-machine success, refusal, errors and restoration with injected fake subprocess commands; add offline CI unittest step.
-- [ ] 3. Document invocation and boundaries, inspect CI and repair failures.
+- [x] 1. Implement a standalone GNOME live verification script with restore guard and sanitization.
+- [x] 2. Test state-machine success, refusal, errors and restoration with injected fake subprocess commands; add offline CI unittest step.
+- [ ] 3. Documented invocation and boundaries; CI verification and repairs pending.
 
 ## Verification matrix
 
@@ -69,13 +69,16 @@ None. This script requires explicit interactive user action for *existing* wallp
 
 - 2026-10-18: inspected master, all open PR/Issues, GNOME `setter.rs`, existing mocked command contracts and documentation. Latest master CI 39117960819 completed successfully.
 
+- 2026-10-18: added `scripts/verify_gnome_live.py` with explicit session/TTY/confirmation gates, GNOME GSettings preflight snapshots and finally-based readback restoration. Real desktop use remains UNASSESSED.
+- 2026-10-18: added in-memory mocked tests in `tests/test_gnome_live_verification.py`; wired Ubuntu CI and documented manual GNOME-only recovery protocol. No verification has been executed yet on this branch.
+
 ## Deviations and discoveries
 
-None.
+No unexpected behavior observed yet; quality and test evidence pending GitHub CI.
 
 ## Resume from here
 
-Implement the opt-in helper and wholly mocked test module, then wire the tests into Ubuntu CI and document GNOME-only evidence; submit Issue #46 PR and inspect actual final-head six-check CI.
+Open Issue #46 PR from this branch with the linked plan metadata; review the initial six GitHub Actions jobs and test log, correct failures, then record tested final head and evidence. No live desktop action may occur in required CI.
 
 ## Completion
 
