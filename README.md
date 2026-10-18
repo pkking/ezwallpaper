@@ -48,7 +48,7 @@ See [testing and evidence requirements](docs/agents/testing.md) and [branch prot
 
 ## Core library and standalone desktop operations
 
-`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. Persistent catalogs, JSON manifest and image decoding are not implemented yet.
+`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. Durable catalogs and image decoding are not implemented; ephemeral local listing and JSON v1 manifests are available.
 
 ```sh
 # Diagnose available wallpaper integration, no network/desktop effects
@@ -78,3 +78,18 @@ Supported integration mechanisms (not all independently validated):
 `doctor` reports integration prerequisites, not proof that the desktop applied an image. For swaybg it is possible to launch a process without observing the resulting wallpaper; the CLI explicitly warns of this limitation. It does not yet own/replace existing swaybg processes. No GUI is needed for `--download-only` or direct core library use. Path/content validation is limited to regular-file existence at this stage.
 
 Developer workflow: `cargo test --workspace --all-targets`, `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used`, and `cargo fmt --all -- --check`.
+
+## Headless catalog and machine-readable consumer contract
+
+```sh
+# Enumerate image-like files in a directory without a desktop or network
+ezwallpaper --dir ~/Pictures list
+
+# Publish stable JSON v1 metadata for scripts and other consumers
+ezwallpaper --dir ~/Pictures list --json
+
+# Fetch one image from Bing into the configured directory, but do not apply it
+ezwallpaper --dir ~/Pictures fetch --json
+```
+
+The JSON manifest is `{"schema_version":1,"assets":[{"source":"local","path":"/absolute/file.jpg","size_bytes":12345}]}`. Fields describe the local file and its origin; files are not copied into the JSON and are only accessible on the same filesystem/mount. Enumeration is nonrecursive, stable by canonical path, limited to .jpg/.jpeg/.png/.webp/.bmp regular files, and skips symbolic links. File-extension filtering is **not** content decoding or validation. `list` does not alter the listed files. The original flag-only command still fetches and applies wallpaper unless `--download-only` is specified.

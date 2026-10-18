@@ -5,14 +5,30 @@ mod wp_selector;
 
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
+use std::fs;
+use serde::Serialize;
 
 pub use wp_provider::{bing::BingProvider, pexel::PexelProvider, GetImgUrl};
 
 /// A local file that a consumer can read. File content is not image-decoded yet.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct WallpaperAsset {
     source: String,
     path: PathBuf,
+    size_bytes: u64,
+}
+
+/// Stable, ephemeral output for consumers written in any language.
+#[derive(Debug, Serialize)]
+pub struct WallpaperManifest<'a> {
+    pub schema_version: u32,
+    pub assets: &'a [WallpaperAsset],
+}
+
+impl<'a> WallpaperManifest<'a> {
+    pub fn new(assets: &'a [WallpaperAsset]) -> Self {
+        Self { schema_version: 1, assets }
+    }
 }
 
 impl WallpaperAsset {
@@ -22,6 +38,10 @@ impl WallpaperAsset {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn size_bytes(&self) -> u64 {
+        self.size_bytes
     }
 }
 
@@ -54,6 +74,35 @@ impl WallpaperManager {
         self.verify_asset("local", path)
     }
 
+    /// Enumerate only direct, non-symlink regular files with image-like extensions.
+    /// This is an ephemeral view; file content is not decoded and nothing is changed.
+    pub fn list_local(&self, directory: impl AsRef<Path>) -> Result<Vec<WallpaperAsset>> {
+        let folder = directory.as_ref();
+        let entries = fs::read_dir(folder)
+            .with_context(|| format!("cannot list wallpaper directory: {}", folder.display()))?;
+        let mut assets = Vec::new();
+        for entry in entries {
+            let entry = entry?;
+            // DirEntry::file_type does not follow symbolic links.
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
+            let path = entry.path();
+            let is_image = path.extension()
+                .and_then(|suffix| suffix.to_str())
+                .map(|suffix| matches!(
+                    suffix.to_ascii_lowercase().as_str(),
+                    "jpg" | "jpeg" | "png" | "webp" | "bmp"
+                ))
+                .unwrap_or(false);
+            if is_image {
+                assets.push(self.verify_asset("local", path)?);
+            }
+        }
+        assets.sort_by(|left, right| left.path.cmp(&right.path));
+        Ok(assets)
+    }
+
     fn verify_asset(&self, source: &str, path: impl AsRef<Path>) -> Result<WallpaperAsset> {
         let input = path.as_ref();
         let absolute = input
@@ -65,9 +114,11 @@ impl WallpaperManager {
                 absolute.display()
             );
         }
+        let size_bytes = absolute.metadata()?.len();
         Ok(WallpaperAsset {
             source: source.to_string(),
             path: absolute,
+            size_bytes,
         })
     }
 }
@@ -141,4 +192,44 @@ mod tests {
         };
         assert!(WallpaperManager.fetch("fake", &source, 1).is_err());
     }
+    #[test]
+    fn local_catalog_filters_sorts_and_serializes_without_desktop() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+
+        let dir = std::env::temp_dir().join(format!(
+            "ezwallpaper-catalog-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&dir).expect("create isolated test catalog");
+        fs::write(dir.join("z-wallpaper.JPG"), b"image-z").expect("create jpeg-named fixture");
+        fs::write(dir.join("a-wallpaper.png"), b"image-a").expect("create png-named fixture");
+        fs::write(dir.join("notes.txt"), b"not an image").expect("create nonimage");
+        fs::create_dir(dir.join("subfolder")).expect("create ignored subfolder");
+        fs::write(dir.join("subfolder/hidden.png"), b"nested").expect("create ignored nested file");
+
+        let assets = WallpaperManager.list_local(&dir).expect("list direct images");
+        assert_eq!(assets.len(), 2);
+        assert_eq!(assets[0].path().file_name().and_then(|n| n.to_str()), Some("a-wallpaper.png"));
+        assert_eq!(assets[1].path().file_name().and_then(|n| n.to_str()), Some("z-wallpaper.JPG"));
+        assert_eq!(assets[0].size_bytes(), 7);
+
+        let manifest = serde_json::to_value(WallpaperManifest::new(&assets))
+            .expect("serialize JSON v1");
+        assert_eq!(manifest["schema_version"], 1);
+        assert_eq!(manifest["assets"][0]["source"], "local");
+        assert_eq!(manifest["assets"][0]["size_bytes"], 7);
+        assert!(manifest["assets"][0]["path"].as_str().is_some());
+
+        fs::remove_dir_all(dir).expect("clean isolated fixtures");
+    }
+
+    #[test]
+    fn missing_catalog_directory_is_error() {
+        let executable = std::env::current_exe().expect("test executable exists");
+        let missing = executable.with_extension("ezwallpaper-no-such-catalog");
+        assert!(WallpaperManager.list_local(missing).is_err());
+    }
+
 }

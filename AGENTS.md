@@ -48,7 +48,7 @@ Routine fixes, tests and small refactors inside accepted boundaries do not requi
 ## Repository map
 - src/main.rs — backward-compatible CLI parsing, core fetch and local apply/doctor orchestration.
 - src/setter.rs — OS/DE/WM detection, wallpaper backend selection and external command glue.
-- crates/ezwallpaper-core/src/lib.rs — headless WallpaperManager/WallpaperAsset contract.
+- crates/ezwallpaper-core/src/lib.rs — headless WallpaperManager/WallpaperAsset and JSON WallpaperManifest v1 contract; non-destructive local catalog.
 - crates/ezwallpaper-core/src/wp_provider/ — Bing/Pexels adapters, locale and resolution.
 - crates/ezwallpaper-core/src/wp_selector.rs — existing wallpaper provider value type.
 - .github/workflows/ci.yml — required checks.

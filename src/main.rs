@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
-use ezwallpaper_core::{BingProvider, GetImgUrl, PexelProvider, WallpaperManager};
+use ezwallpaper_core::{BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest};
 use log::debug;
 use std::path::PathBuf;
 
@@ -48,6 +48,18 @@ struct Args {
 enum CliCommand {
     /// Show OS, desktop session and available wallpaper adapter without side effects.
     Doctor,
+    /// List locally available wallpaper files without network or desktop changes.
+    List {
+        /// Emit a machine-readable JSON v1 asset manifest.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Fetch from Bing/Pexels but do not apply; useful for other OS consumers.
+    Fetch {
+        /// Emit a machine-readable JSON v1 asset manifest.
+        #[arg(long)]
+        json: bool,
+    },
     /// Apply a pre-existing local file without network requests.
     Apply {
         /// Absolute or relative path to an existing wallpaper image.
@@ -88,6 +100,15 @@ fn main() -> Result<()> {
             let asset = manager.open_local(path)?;
             return apply_wallpaper(asset.path());
         }
+        Some(CliCommand::List { json }) => {
+            let assets = manager.list_local(&cli.dir)?;
+            return print_assets(&assets, *json);
+        }
+        Some(CliCommand::Fetch { json }) => {
+            let provider = build_provider(&cli)?;
+            let assets = manager.fetch(&cli.backend, provider.as_ref(), 1)?;
+            return print_assets(&assets, *json);
+        }
         None => {}
     }
 
@@ -113,6 +134,17 @@ fn apply_wallpaper(path: &std::path::Path) -> Result<()> {
         eprintln!(
             "wallpaper command launched, but desktop application cannot be independently verified"
         );
+    }
+    Ok(())
+}
+
+fn print_assets(assets: &[WallpaperAsset], json: bool) -> Result<()> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(&WallpaperManifest::new(assets))?);
+    } else {
+        for asset in assets {
+            println!("{}\t{}\t{} bytes", asset.source(), asset.path().display(), asset.size_bytes());
+        }
     }
     Ok(())
 }

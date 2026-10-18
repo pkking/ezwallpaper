@@ -43,8 +43,8 @@ AGENTS.md, docs/adr/0001-core-cli-boundaries.md, docs/architecture.md, crates/ez
 
 ## Implementation slices
 
-- [ ] 1. Core non-destructive catalog, manifest schema and unit tests.
-- [ ] 2. CLI list/fetch output commands and CI/offline acceptance.
+- [x] 1. Core non-destructive catalog, manifest schema and unit tests.
+- [x] 2. CLI list/fetch output commands and CI/offline acceptance.
 - [ ] 3. Documentation, review, full CI and checkpoint.
 
 ## Verification matrix
@@ -63,6 +63,7 @@ User accepted publishing core outputs to OS consumers and agent-driven continuat
 
 ## Evidence log
 
+- 2026-10-18: initial implementation submitted; Rust format/compile/test evidence remains UNASSESSED until Actions.
 - 2026-10-18: main baseline `801077333da7b3fc7b554ad683676ffdcad690ca`; created Issue #9 and plan-first branch.
 
 ## Deviations and discoveries
