@@ -102,14 +102,33 @@ jobs:
           # Explicit isolated store smoke: no network, GUI, or implicit --dir changes.
           store_root="$catalog_dir/owned-store"
           target/debug/ezwallpaper store --root "$store_root" init > artifacts/ci/store-init.txt
+          target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-empty-list.txt
+          test ! -s artifacts/ci/store-empty-list.txt
           target/debug/ezwallpaper store --root "$store_root" import "$catalog_dir/hash-fixture.png" > artifacts/ci/store-import.txt
           grep -Fxq 'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' artifacts/ci/store-import.txt
           content_id="$(cat artifacts/ci/store-import.txt)"
+          # Identical bytes must deduplicate, and inventory must survive reopening.
+          target/debug/ezwallpaper store --root "$store_root" import "$catalog_dir/hash-fixture.png" > artifacts/ci/store-reimport.txt
+          grep -Fxq "$content_id" artifacts/ci/store-reimport.txt
+          target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-list.txt
+          printf '%s\t3 bytes\n' "$content_id" > artifacts/ci/store-list.expected
+          cmp artifacts/ci/store-list.expected artifacts/ci/store-list.txt
           target/debug/ezwallpaper store --root "$store_root" inspect "$content_id" > artifacts/ci/store-inspect.txt
           grep -Fq "$content_id" artifacts/ci/store-inspect.txt
           target/debug/ezwallpaper store --root "$store_root" export "$content_id" "$catalog_dir/exported.jpg" > artifacts/ci/store-export.txt
           cmp "$catalog_dir/hash-fixture.png" "$catalog_dir/exported.jpg"
           ! target/debug/ezwallpaper store --root "$store_root" export "$content_id" "$catalog_dir/exported.jpg"
+          # Corrupt a disposable cache index; no partial result may be printed.
+          index_bucket="$(find "$store_root/cache/index-v5" -type f | head -n 1)"
+          test -n "$index_bucket"
+          printf '\nbroken\t{}' > "$index_bucket"
+          set +e
+          target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-broken.stdout 2> artifacts/ci/store-broken.stderr
+          list_status=$?
+          set -e
+          test "$list_status" -ne 0
+          test ! -s artifacts/ci/store-broken.stdout
+          test -s artifacts/ci/store-broken.stderr
           target/debug/ezwallpaper doctor > artifacts/ci/doctor.txt
           grep -q -- 'adapter:' artifacts/ci/doctor.txt
           set +e
