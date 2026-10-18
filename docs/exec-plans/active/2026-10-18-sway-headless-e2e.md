@@ -1,7 +1,7 @@
 # 2026-10-18-sway-headless-e2e: real Wayland compositor screenshot verification
 
 Issue: #49
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -36,17 +36,17 @@ AGENTS.md; README.md; docs/architecture.md; docs/agents/workflow.md; docs/agents
 
 ## Acceptance criteria
 
-- [ ] Reproducible isolated Sway session, deterministic fixtures, real `ezwallpaper apply`.
-- [ ] Screenshot PPM pixel assertions for two solid colors and ordered visual transition.
-- [ ] Graceful cleanup and artifacts on failure; deterministic parser/fixture unit tests.
-- [ ] Dedicated CI headless visual E2E job using distribution packages with no live wallpaper effects outside private socket.
-- [ ] README/testing/evidence documentation honestly identifies Sway headless validated vs other unassessed environments.
+- [x] Reproducible isolated Sway session, deterministic fixtures, real `ezwallpaper apply`.
+- [x] Screenshot PPM pixel assertions for two solid colors and ordered visual transition.
+- [x] Graceful cleanup and artifacts on failure; deterministic parser/fixture unit tests.
+- [x] Dedicated CI headless visual E2E job using distribution packages with no live wallpaper effects outside private socket.
+- [x] README/testing/evidence documentation honestly identifies Sway headless validated vs other unassessed environments.
 - [ ] All baseline jobs and new E2E CI pass on final PR HEAD with issue-linked plan and evidence.
 
 ## Implementation slices
 
-- [ ] 1. Implement zero-dependency Python harness + offline unit tests.
-- [ ] 2. Wire Ubuntu-24.04 GitHub Actions job and artifact capture.
+- [x] 1. Implement zero-dependency Python harness + offline unit tests.
+- [x] 2. Wire Ubuntu-24.04 GitHub Actions job and artifact capture.
 - [ ] 3. Update evidence and docs, run full PR CI and repair, finish plan archive.
 
 ## Verification matrix
@@ -68,11 +68,11 @@ None: repository already uses Sway/swaybg; this adds gated, isolated test execut
 
 ## Deviations and discoveries
 
-None.
+A real virtual-display job is new to this repo. Await first observed GitHub CI result; no rendered pixels have yet been validated on an actual runner.
 
 ## Resume from here
 
-Implement deterministic PNG/PPM test helpers and the isolated headless Sway harness, then add CI job and open PR; inspect new E2E logs and fix observed failures.
+Open Issue #49 PR with active plan metadata and examine the new Sway visual E2E CI job (real screenshots); correct actual failures before merging. Do not classify headless rendering as passed until job conclusion and final head SHA match.
 
 ## Completion
 
