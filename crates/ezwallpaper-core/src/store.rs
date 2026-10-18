@@ -4,7 +4,7 @@
 use anyhow::{bail, Context, Result};
 use cacache::{SyncReader, SyncWriter};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -127,11 +127,11 @@ impl WallpaperStore {
         for metadata in cacache::list_sync(&cache) {
             let metadata = metadata.context("cannot enumerate Core store index")?;
             validate_id(&metadata.key)?;
-            if !unique.contains_key(&metadata.key) {
+            if let Entry::Vacant(slot) = unique.entry(metadata.key.clone()) {
                 let entry = self
                     .inspect(&metadata.key)
                     .with_context(|| format!("invalid Core store entry {}", metadata.key))?;
-                unique.insert(metadata.key, entry);
+                slot.insert(entry);
             }
         }
         Ok(unique.into_values().collect())
@@ -187,6 +187,22 @@ impl WallpaperStore {
     }
 }
 
+// Mirror the serialized cacache 13.x index row fields so that malformed but
+// correctly checksummed JSON cannot be silently skipped by list_sync.
+#[derive(serde::Deserialize)]
+struct IndexedRow {
+    key: String,
+    integrity: Option<String>,
+    #[serde(rename = "time")]
+    _time: u128,
+    #[serde(rename = "size")]
+    _size: usize,
+    #[serde(rename = "metadata")]
+    _metadata: serde_json::Value,
+    #[serde(rename = "raw_metadata")]
+    _raw_metadata: Option<Vec<u8>>,
+}
+
 /// Verify every physical index row before using cacache's canonical index API.
 /// cacache 13.x ignores corrupt row checksums / JSON in its own enumeration;
 /// without this guard a broken store could be presented as an empty/partial one.
@@ -235,16 +251,11 @@ fn validate_index_bucket(path: &Path) -> Result<()> {
         if expected_hash != actual_hash {
             bail!("Core store index row failed checksum verification");
         }
-        let value: serde_json::Value =
-            serde_json::from_str(record).context("invalid Core store index JSON")?;
-        let key = value
-            .get("key")
-            .and_then(serde_json::Value::as_str)
-            .context("Core store index key is missing or invalid")?;
-        validate_id(key)?;
-        let integrity = value
-            .get("integrity")
-            .and_then(serde_json::Value::as_str)
+        let row: IndexedRow =
+            serde_json::from_str(record).context("invalid Core store index JSON or fields")?;
+        validate_id(&row.key)?;
+        let integrity = row
+            .integrity
             .context("Core store index integrity is missing or invalid")?;
         integrity
             .parse::<cacache::Integrity>()
@@ -360,6 +371,29 @@ mod tests {
         assert!(store.list().is_err());
         assert_eq!(fs::read(&bucket).expect("list must be read-only"), before);
         assert_eq!(fs::read(&source).expect("source must be untouched"), b"abc");
+    }
+
+    #[test]
+    fn list_rejects_well_checksums_rows_with_missing_required_fields() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("source.jpg");
+        fs::write(&source, b"abc").expect("source");
+        let saved = store.import_file(&source).expect("import");
+        let metadata = cacache::metadata_sync(store.cache_dir(), &saved.content_id)
+            .expect("metadata lookup")
+            .expect("stored index entry");
+        // Missing 'size': valid JSON and checksum, but cacache would skip it.
+        let row = format!(
+            r#"{{"key":"{}","integrity":"{}","time":1,"metadata":null,"raw_metadata":null}}"#,
+            saved.content_id, metadata.integrity
+        );
+        let hash = format!("{:x}", Sha256::digest(row.as_bytes()));
+        let bucket = first_index_bucket(&store);
+        fs::write(&bucket, format!("\n{}\t{}", hash, row)).expect("corrupt index fixture");
+        let before = fs::read(&bucket).expect("corrupt bytes");
+        assert!(store.list().is_err());
+        assert_eq!(fs::read(&bucket).expect("read-only"), before);
+        assert_eq!(fs::read(&source).expect("original"), b"abc");
     }
 
     #[test]
