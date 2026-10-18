@@ -46,8 +46,8 @@ AGENTS.md, docs/architecture.md, docs/agents/testing.md, docs/agents/workflow.md
 
 ## Implementation slices
 
-- [ ] 1. Architecture ADR, workspace wiring and core migration.
-- [ ] 2. CLI setter adapter + doctor + offline tests.
+- [x] 1. Architecture ADR, workspace wiring and core migration.
+- [x] 2. CLI setter adapter + doctor + offline tests.
 - [ ] 3. CI integration, documentation and final validation.
 
 ## Verification matrix
@@ -67,6 +67,7 @@ User approved the two-part core/CLI model and widened OS support definition; rou
 
 ## Evidence log
 
+- 2026-10-18: workspace/core extraction and CLI detection committed as `f074e8fedc13af54e689a0edd8138bac8c7b90d9`; tests remain UNASSESSED pending GitHub Actions.
 - 2026-10-18: baseline commit `12752764dd927ab4609755279eac566c8bba649d`; inspected current code and CI using linked GitHub connection.
 - 2026-10-18: Issue #6 created; following branch and plan-first governance.
 
@@ -76,7 +77,7 @@ Initial architecture can preserve providers' old GetImgUrl and WallPaper shapes 
 
 ## Resume from here
 
-Implement workspace core and CLI boundaries on `agent/core-cli-workspace`, update this plan in the same PR, then inspect GitHub Actions logs; do not claim PASS until latest HEAD is green.
+Open PR from agent/core-cli-workspace; run full GitHub Actions checks. Fix first failing formatter/compiler/contract gate and rerun. Archive only after final head CI succeeds.
 
 ## Completion
 
