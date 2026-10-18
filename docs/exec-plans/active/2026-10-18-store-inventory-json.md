@@ -1,7 +1,7 @@
 # 2026-10-18-store-inventory-json: portable versioned store inventory JSON
 
 Issue: #40
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -38,18 +38,18 @@ No changes to existing WallpaperManifest v1, cache layout, imported bytes, file 
 
 ## Acceptance criteria
 
-- [ ] `ezwallpaper store --root DIR list --json` produces JSON version 1, with stable schema and an empty array for empty store.
-- [ ] Existing human `store list` and WallpaperManifest v1 remain unchanged.
-- [ ] StoredWallpaper serialization is tested without external network/desktop; list remains sorted and duplicate-free.
-- [ ] Corrupted index causes nonzero exit with zero stdout in JSON mode, as in text mode.
-- [ ] README, docs/architecture.md and diagram describe the new implemented interface.
+- [x] `ezwallpaper store --root DIR list --json` produces JSON version 1, with stable schema and an empty array for empty store.
+- [x] Existing human `store list` and WallpaperManifest v1 remain unchanged.
+- [x] StoredWallpaper serialization is tested without external network/desktop; list remains sorted and duplicate-free.
+- [x] Corrupted index causes nonzero exit with zero stdout in JSON mode, as in text mode.
+- [x] README, docs/architecture.md and diagram describe the new implemented interface.
 - [ ] All six final-head CI checks pass, with exact run and log evidence recorded.
 
 ## Implementation slices
 
-- [ ] 1. Define separate JSON inventory contract on verified Core list results, with focused unit tests.
-- [ ] 2. Add optional --json flag to store list and offline CLI CI tests for valid and corrupt inventory.
-- [ ] 3. Update architecture diagram/docs/README and validate final PR CI.
+- [x] 1. Define separate JSON inventory contract on verified Core list results, with focused unit tests (unverified until CI).
+- [x] 2. Add optional --json flag to store list and offline CLI CI tests for valid and corrupt inventory (unverified until CI).
+- [ ] 3. Updated architecture diagram/docs/README; validate final PR CI before marking this slice complete.
 
 ## Verification matrix
 
@@ -69,13 +69,15 @@ None: an additive `--json` flag on the existing read-only command, within accept
 
 - 2026-10-18: inspected final master, README diagram, existing store list and JSON manifest patterns; PR #38 and #39 merged and Issue #37 closed.
 
+- 2026-10-18: implemented separate `StoreInventory` serde contract, CLI `store list --json`, Core unit test, offline CLI smoke, README and canonical SVG synchronization. These changes have not yet been evaluated by GitHub CI.
+
 ## Deviations and discoveries
 
 None so far.
 
 ## Resume from here
 
-Implement the versioned JSON output in `store.rs` and `src/main.rs`, then extend the offline CI smoke and README/architecture depiction on this Issue-linked branch. Rust builds require GitHub CI evidence.
+Open the linked Issue #40 PR; inspect all six final-head CI jobs, repair failures, and record measured evidence in this active plan. Rust/Cargo unavailable locally.
 
 ## Completion
 
