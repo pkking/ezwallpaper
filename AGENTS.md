@@ -13,6 +13,7 @@ This is the authoritative map for coding agents, not a substitute for inspecting
 - This is a Rust 2018 workspace: headless ezwallpaper-core manages sources and local wallpaper assets, and the ezwallpaper CLI integrates desktop backends. Core MUST NOT depend on wallpaper-rs, inspect GUI sessions or run OS wallpaper commands. Preserve existing flags/defaults unless a user-visible change is approved and tested.
 - Bing and Pexels retrieval uses network and writes downloaded files. The wallpaper library changes the user's desktop. Never perform a live download or mutate desktop state during unit or required CI tests.
 - Pexels API tokens are credentials. Never commit, display, log, store in fixtures or upload them as CI artifacts. Never send secrets to GitHub PRs or untrusted code.
+- Store imports are copy-only; managed store roots must be explicitly initialized and exports must never overwrite original user files. Do not add deletion or auto-import without a new approved ADR.
 - Validate paths, URLs and external responses at their boundaries. Do not allow an external image name to escape a configured download directory; make any new network tests deterministic with fixtures.
 - OS/DE support includes native APIs and well-defined external ecosystem tools. Distinguish implemented adapters from validated desktop outcomes. Platform compatibility must be established by evidence. README currently reports manual Windows 10/11 usage; Linux CI compilation does not prove successful wallpaper setting on Windows, macOS or Wayland.
 - Existing limitations (including unwraps, error handling and absent Cargo.lock) are not evidence of supported behavior. Do not silently rewrite unrelated code to clean up the baseline.
@@ -56,6 +57,7 @@ Routine fixes, tests and small refactors inside accepted boundaries do not requi
 - src/main.rs — backward-compatible CLI parsing, core fetch and local apply/doctor orchestration.
 - src/setter.rs — OS/DE/WM detection, wallpaper backend selection and external command glue.
 - crates/ezwallpaper-core/src/lib.rs — headless WallpaperManager/WallpaperAsset and JSON WallpaperManifest v1 contract; non-destructive local catalog.
+- crates/ezwallpaper-core/src/store.rs — opt-in Core-owned, version-marked CAS; no implicit legacy --dir adoption, deletion/GC, or overwrite on export (ADR 0003).
 - crates/ezwallpaper-core/src/wp_provider/ — Bing/Pexels adapters, locale and resolution.
 - crates/ezwallpaper-core/src/wp_selector.rs — existing wallpaper provider value type.
 - .github/workflows/ci.yml — required checks.
