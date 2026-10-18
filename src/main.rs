@@ -231,7 +231,9 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
         }
         "pexel" => {
             if cli.resolution != DEFAULT_RESOLUTION {
-                bail!("--resolution is a Bing-only setting; use --min-width/--min-height for Pexels");
+                bail!(
+                    "--resolution is a Bing-only setting; use --min-width/--min-height for Pexels"
+                );
             }
             if cli.bing_offset != 0 {
                 bail!("--bing-offset is only supported for Bing");
