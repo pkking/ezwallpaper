@@ -1,7 +1,7 @@
 # 2026-10-18-core-catalog-manifest: non-destructive core catalog API
 
 Issue: #9
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -35,27 +35,27 @@ AGENTS.md, docs/adr/0001-core-cli-boundaries.md, docs/architecture.md, crates/ez
 
 ## Acceptance criteria
 
-- [ ] Core asset metadata and versioned JSON manifest are implemented.
-- [ ] Nonrecursive sorted local list is safe, filter documented and tested.
-- [ ] CLI list and fetch subcommands output manifest/human data and preserve flag-only behavior.
-- [ ] Deterministic offline tests and CLI smoke prove JSON output with no network or desktop setter.
-- [ ] Four required checks pass at final PR head.
+- [x] Core asset metadata and versioned JSON manifest are implemented.
+- [x] Nonrecursive sorted local list is safe, filter documented and tested.
+- [x] CLI list and fetch subcommands output manifest/human data and preserve flag-only behavior.
+- [x] Deterministic offline tests and CLI smoke prove JSON output with no network or desktop setter.
+- [x] Four required checks pass at final PR head.
 
 ## Implementation slices
 
 - [x] 1. Core non-destructive catalog, manifest schema and unit tests.
 - [x] 2. CLI list/fetch output commands and CI/offline acceptance.
-- [ ] 3. Documentation, review, full CI and checkpoint.
+- [x] 3. Documentation, review, full CI and checkpoint.
 
 ## Verification matrix
 
 | Scope | Command / CI gate | Expected evidence | Status |
 |---|---|---|---|
-| Core | cargo test -p ezwallpaper-core | filters, sorting, JSON | pending |
-| Workspace | cargo test --workspace --all-targets | all offline Rust tests | pending |
-| Quality | cargo fmt and strict clippy | CI job Rust quality | pending |
-| CLI | offline list --json, fetch --help | JSON v1, no GUI/network | pending |
-| Governance | Agent plan integrity and contract self-tests | CI jobs | pending |
+| Core | cargo test -p ezwallpaper-core | filters, sorting, JSON | PASS, run 39094193826 |
+| Workspace | cargo test --workspace --all-targets | all offline Rust tests | PASS, run 39094193826 |
+| Quality | cargo fmt and strict clippy | CI job Rust quality | PASS, run 39094193826 |
+| CLI | offline list --json, fetch --help | JSON v1, no GUI/network | PASS, run 39094193826 |
+| Governance | Agent plan integrity and contract self-tests | CI jobs | PASS, run 39094193826 |
 
 ## Decision gates
 
@@ -63,6 +63,8 @@ User accepted publishing core outputs to OS consumers and agent-driven continuat
 
 ## Evidence log
 
+- 2026-10-18: final implementation revision `1ec3084403ffdd93939462796100a39bb653eb72` all four checks PASS: https://github.com/pkking/ezwallpaper/actions/runs/39094193826 . Core catalog/manifest tests and offline CLI manifest smoke passed. Plan-only checkpoint requires a fresh CI run before merging.
+- 2026-10-18: first implementation revision e9732d57ab1f0076339416ed0efdc97a5c8d84ff failed cargo fmt but passed Rust tests and CLI smoke: https://github.com/pkking/ezwallpaper/actions/runs/39094107593 . Formatter-only correction was committed without relaxing gates.
 - 2026-10-18: initial implementation submitted; Rust format/compile/test evidence remains UNASSESSED until Actions.
 - 2026-10-18: main baseline `801077333da7b3fc7b554ad683676ffdcad690ca`; created Issue #9 and plan-first branch.
 
@@ -72,11 +74,11 @@ No additional deviations observed yet.
 
 ## Resume from here
 
-Implement core directory catalog and JSON manifest plus CLI commands on `agent/core-catalog-manifest`. Open PR with Issue #9 and this plan; use latest GitHub Actions head SHA to resolve all failing gates.
+Verify full four-check CI on this plan checkpoint head; squash merge PR #10 only after success, then archive plan via a separate PR and close Issue #9.
 
 ## Completion
 
 Final commit: pending
-CI run: pending
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39094193826 (tested implementation; final plan checkpoint CI still required)
 E2E artifact: pending (offline catalog and CLI smoke)
 Remaining unassessed items: image decoding, durable cache index/retention, live DE and providers
