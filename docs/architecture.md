@@ -1,6 +1,6 @@
 # Architecture and supported capability boundaries
 
-Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
+Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future storage boundary: ADR 0003 (docs/adr/0003-owned-content-store.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
 
 ## Cargo workspace
 
@@ -41,3 +41,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). The [README architect
 
 5. `ezwallpaper --dir <directory> list [--json]`: enumerate direct regular files matching image-like extensions (no network or wallpaper setter) and optionally emit JSON v1.
 6. `ezwallpaper [source flags] fetch [--json]`: request one source wallpaper and return its local asset manifest without setting desktop. External consumers should prefer this over legacy fetch-and-apply.
+
+## Planned Core-owned store (not implemented yet)
+
+ADR 0003 approves an isolated, opt-in, version-marked content-addressed store using `cacache`. The existing `--dir` and manifest v1 are not changed. Import copies files; inspect and safe export are explicitly requested. Deletion and automatic eviction are deferred.
