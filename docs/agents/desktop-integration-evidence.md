@@ -46,6 +46,33 @@ Record one result per named OS/DE/compositor version and session type. Store onl
 }
 ```
 
+## GNOME: opt-in live verification with automatic restoration
+
+The repository provides a **manual-only** helper, separate from ordinary CLI operations. No required CI job runs the helper against a real GNOME desktop.
+
+On an expendable interactive GNOME account/session, obtain a valid local PNG/JPEG and establish an independent restore path in GNOME Settings. Then use:
+
+```sh
+python3 scripts/verify_gnome_live.py \
+  --binary ./target/debug/ezwallpaper \
+  --image /absolute/path/to/test.png \
+  --confirm-live-change
+```
+
+The helper refuses a non-TTY environment, missing confirmation, non-GNOME desktops, inactive X11/Wayland displays, missing executables, or mismatched PNG/JPEG signatures. It checks `ezwallpaper doctor`, snapshots the original **writable** GNOME `picture-uri` and (if available and writable) `picture-uri-dark` values in process memory, validates the original GVariant strings, and asks the operator to type `APPLY` before any wallpaper mutation.
+
+It invokes the existing `ezwallpaper apply`, reads the changed GSettings keys back, then asks the user to report whether the image is visibly rendered. Even after an apply failure or interruption, it attempts to restore **every** snapshotted key and verifies the final values. If restoration fails, use GNOME Settings or restore the disposable session/VM manually; no automatic rollback can be guaranteed against concurrent desktop changes or external failures.
+
+On completion, stdout contains only sanitized JSON statuses (`apply`, `setting_readback`, `visible_result`, `restoration`), not the prior wallpaper URI or fixture path; prompts and restoration warnings appear on stderr. `visible_result: USER_CONFIRMED` means **operator-reported visibility**, not independent screenshot/pixel verification. This helper captures no screenshots, does not fetch network images and does not alter standard CLI defaults. Multi-monitor behavior, dark/light transitions and real compositor outcomes remain to be tested per session.
+
+Mock-only safety tests, safe to run headlessly:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v
+```
+
+These tests inject a stateful in-memory command runner, not real gsettings or wallpaper tools. Review evidence for sensitive content and associate any manually collected screenshot with the exact tested commit, GNOME release, session and monitor configuration before publishing.
+
 ## Running the automated contract test locally
 
 On Linux, from the repository root:
