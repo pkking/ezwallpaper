@@ -8,7 +8,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [proposed ADR 0004](docs/adr/0004-noctalia-v5-ipc.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -80,9 +80,23 @@ Supported integration mechanisms (not all independently validated):
 | KDE Plasma | Qt6 qdbus6 (preferred) / qdbus | KDE/Plasma identifier including multi-value XDG_CURRENT_DESKTOP; live Plasma6 result unassessed |
 | XFCE / Cinnamon / MATE / LXDE / Deepin | wallpaper-rs | matching identifier and xfconf-query, dconf or pcmanfm |
 | LXQt | pcmanfm-qt | pcmanfm-qt executable |
+| niri / other Wayland compositor with Noctalia v5 | explicit `--setter noctalia`, optional `--output` | live Noctalia v5 IPC; path readback, not pixel proof |
 | Wayland compositor (including niri/Sway when compatible) | swaybg | compatible compositor and installed swaybg |
 | i3 / other X11 WM | feh | X11 session and installed feh |
 
+### Noctalia v5 integration (opt-in)
+
+On a Wayland session running Noctalia v5, prefer its existing shell-owned wallpaper renderer over launching another swaybg process:
+
+```sh
+ezwallpaper --setter noctalia doctor
+ezwallpaper --setter noctalia --output DP-1 apply "/absolute/path/my wallpaper.png"
+ezwallpaper --setter noctalia apply "/absolute/path/my wallpaper.png"  # all monitors
+```
+
+`--setter auto` preserves the previous setter choice and can still launch swaybg on niri; select Noctalia explicitly to avoid duplicate wallpaper layers. `--output` requires Noctalia and accepts one connector name. Commands use the official native v5 `noctalia msg wallpaper-set` and `wallpaper-get` IPC, not the legacy Quickshell v4 API. IPC failure, mismatched readback and timeout return errors without falling back to swaybg. `doctor` distinguishes binary discovery from a read-only `msg status` check. A matching path only establishes **applied-path-observed**, not visual confirmation on a real screen.
+
+Noctalia's own automatic rotation and any future ezwallpaper rotation scheduler must have a single authority. This PR does not configure or stop Noctalia rotation. See [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md), the [Noctalia v5 wallpaper IPC documentation](https://docs.noctalia.dev/noctalia/ipc/media-and-ui/) and [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) for physical dual-output and lock screen evidence still required.
 `doctor` reports integration prerequisites, not proof that the desktop applied an image. For swaybg it is possible to launch a process without observing the resulting wallpaper; the CLI explicitly warns of this limitation. It does not yet own/replace existing swaybg processes. No GUI is needed for `--download-only` or direct core library use. Path/content validation is limited to regular-file existence at this stage.
 
 Developer workflow: `cargo test --workspace --all-targets`, `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used`, and `cargo fmt --all -- --check`. The [desktop integration evidence protocol](docs/agents/desktop-integration-evidence.md) distinguishes isolated Core → CLI → GNOME/Plasma/niri/X11 command-contract CI from real desktop wallpaper observations. Both fake-command tests and real compositor screenshots are automated for Sway only; **all other OS/DE visual outcomes remain unassessed**.
