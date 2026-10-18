@@ -68,8 +68,8 @@ Supported integration mechanisms (not all independently validated):
 | --- | --- | --- |
 | Windows | wallpaper-rs Win32 API | interactive desktop |
 | macOS | wallpaper-rs AppleScript | desktop and permissions |
-| GNOME / Unity / Pantheon | wallpaper-rs gsettings | matching XDG_CURRENT_DESKTOP and gsettings |
-| KDE | wallpaper-rs qdbus | exact KDE identifier and qdbus; Plasma 6 compatibility unassessed |
+| GNOME / Unity / Pantheon / Budgie | gsettings, both URI keys where available | Wayland or X11 session and gsettings; GNOME 42+ dark mode is handled |
+| KDE Plasma | Qt6 qdbus6 (preferred) / qdbus | KDE/Plasma identifier including multi-value XDG_CURRENT_DESKTOP; live Plasma6 result unassessed |
 | XFCE / Cinnamon / MATE / LXDE / Deepin | wallpaper-rs | matching identifier and xfconf-query, dconf or pcmanfm |
 | LXQt | pcmanfm-qt | pcmanfm-qt executable |
 | Wayland compositor (including niri/Sway when compatible) | swaybg | compatible compositor and installed swaybg |
@@ -93,3 +93,7 @@ ezwallpaper --dir ~/Pictures fetch --json
 ```
 
 The JSON manifest is `{"schema_version":1,"assets":[{"source":"local","path":"/absolute/file.jpg","size_bytes":12345}]}`. Fields describe the local file and its origin; files are not copied into the JSON and are only accessible on the same filesystem/mount. Enumeration is nonrecursive, stable by canonical path, limited to .jpg/.jpeg/.png/.webp/.bmp regular files, and skips symbolic links. File-extension filtering is **not** content decoding or validation. `list` does not alter the listed files. The original flag-only command still fetches and applies wallpaper unless `--download-only` is specified.
+
+### GNOME and Plasma desktop compatibility
+
+The CLI now uses directly detected `gsettings` for GNOME-family desktops, writing `picture-uri` and the writable `picture-uri-dark` key where the GNOME schema provides it. Plasma uses KDE's documented DBus `evaluateScript` hook and prefers `qdbus6` before `qdbus`; scripts use encoded file URIs and escaped JS string literals. `XDG_CURRENT_DESKTOP=KDE:Plasma` is recognized. Both remain **implemented, not live-desktop validated**, until tested on a real GNOME or Plasma installation.

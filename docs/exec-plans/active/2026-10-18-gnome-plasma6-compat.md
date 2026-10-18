@@ -43,8 +43,8 @@ AGENTS.md, docs/adr/0001-core-cli-boundaries.md, docs/architecture.md, src/sette
 
 ## Implementation slices
 
-- [ ] 1. Explicit GNOME and Plasma command adapters with safe URI/script.
-- [ ] 2. Pure detection/test matrix, capability reporting and documentation.
+- [x] 1. Explicit GNOME and Plasma command adapters with safe URI/script.
+- [x] 2. Pure detection/test matrix, capability reporting and documentation.
 - [ ] 3. Final CI and review; archive after merge.
 
 ## Verification matrix
@@ -63,6 +63,7 @@ User explicitly approved broad ecosystem-program OS support and delegated implem
 
 ## Evidence log
 
+- 2026-10-18: GNOME/Plasma adaptation committed; CI unassessed pending PR checks.
 - 2026-10-18: inspected source and official GNOME/KDE/qdbus6 docs; created Issue #12 and plan. CI pending.
 
 ## Deviations and discoveries

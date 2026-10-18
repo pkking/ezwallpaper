@@ -11,6 +11,7 @@ enum Platform {
     Windows,
     MacOs,
     Linux,
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,20 +34,18 @@ impl Runtime {
             Platform::Windows
         } else if cfg!(target_os = "macos") {
             Platform::MacOs
-        } else {
+        } else if cfg!(target_os = "linux") {
             Platform::Linux
+        } else {
+            Platform::Other
         };
         let desktop = env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
         let session_type = env::var("XDG_SESSION_TYPE").unwrap_or_default();
-        let session = if session_type.eq_ignore_ascii_case("wayland")
-            || env::var_os("WAYLAND_DISPLAY").is_some()
-        {
-            Session::Wayland
-        } else if session_type.eq_ignore_ascii_case("x11") || env::var_os("DISPLAY").is_some() {
-            Session::X11
-        } else {
-            Session::Unknown
-        };
+        let session = detect_session(
+            &session_type,
+            env::var_os("WAYLAND_DISPLAY").is_some(),
+            env::var_os("DISPLAY").is_some(),
+        );
         Self {
             os,
             desktop,
@@ -55,9 +54,28 @@ impl Runtime {
     }
 }
 
+/// An explicit XDG session type is more reliable than inherited display variables.
+fn detect_session(session_type: &str, has_wayland: bool, has_x11: bool) -> Session {
+    match session_type.to_ascii_lowercase().as_str() {
+        "wayland" => Session::Wayland,
+        "x11" => Session::X11,
+        _ if has_wayland => Session::Wayland,
+        _ if has_x11 => Session::X11,
+        _ => Session::Unknown,
+    }
+}
+
+fn has_desktop(desktop: &str, name: &str) -> bool {
+    desktop.split([':', ';'])
+        .any(|part| part.trim().eq_ignore_ascii_case(name))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Adapter {
     Native,
+    GnomeGsettings,
+    PlasmaQdbus6,
+    PlasmaQdbus,
     PcmanfmQt,
     Swaybg,
     Feh,
@@ -68,6 +86,9 @@ impl Adapter {
     fn name(self) -> &'static str {
         match self {
             Self::Native => "wallpaper-rs native OS/DE adapter",
+            Self::GnomeGsettings => "gsettings (GNOME light/dark)",
+            Self::PlasmaQdbus6 => "qdbus6 (Plasma scripting)",
+            Self::PlasmaQdbus => "qdbus (Plasma scripting)",
             Self::PcmanfmQt => "pcmanfm-qt (LXQt)",
             Self::Swaybg => "swaybg (Wayland external adapter)",
             Self::Feh => "feh (X11 external adapter)",
@@ -96,41 +117,43 @@ impl Capability {
     fn resolve(runtime: Runtime, has: impl Fn(&str) -> bool) -> Self {
         let adapter = match runtime.os {
             Platform::Windows | Platform::MacOs => Adapter::Native,
+            Platform::Other => Adapter::Unavailable,
+            Platform::Linux if runtime.session == Session::Unknown => Adapter::Unavailable,
             Platform::Linux => {
-                if runtime.session == Session::Unknown {
-                    Adapter::Unavailable
-                } else if runtime.desktop == "LXQt" || runtime.desktop == "LXQT" {
-                    if has("pcmanfm-qt") {
-                        Adapter::PcmanfmQt
+                let desktop = &runtime.desktop;
+                let native = if desktop.to_ascii_uppercase().contains("GNOME")
+                    || ["Unity", "Pantheon", "Budgie"].iter().any(|id| has_desktop(desktop, id))
+                {
+                    if has("gsettings") { Some(Adapter::GnomeGsettings) } else { None }
+                } else if has_desktop(desktop, "KDE") || has_desktop(desktop, "Plasma") {
+                    if has("qdbus6") {
+                        Some(Adapter::PlasmaQdbus6)
+                    } else if has("qdbus") {
+                        Some(Adapter::PlasmaQdbus)
                     } else {
-                        Adapter::Unavailable
+                        None
                     }
+                } else if has_desktop(desktop, "LXQt") {
+                    if has("pcmanfm-qt") { Some(Adapter::PcmanfmQt) } else { None }
                 } else {
-                    // Match only the identifiers accepted by wallpaper-rs 3.2.0.
-                    let command = if runtime.desktop.contains("GNOME")
-                        || runtime.desktop == "Unity"
-                        || runtime.desktop == "Pantheon"
-                    {
-                        Some("gsettings")
-                    } else {
-                        match runtime.desktop.as_str() {
-                            "KDE" => Some("qdbus"),
-                            "X-Cinnamon" | "MATE" | "Deepin" => Some("dconf"),
-                            "XFCE" => Some("xfconf-query"),
-                            "LXDE" => Some("pcmanfm"),
-                            _ => None,
-                        }
+                    // Older wallpaper-rs DE implementations require exact XDG names.
+                    let command = match desktop.as_str() {
+                        "X-Cinnamon" | "MATE" | "Deepin" => Some("dconf"),
+                        "XFCE" => Some("xfconf-query"),
+                        "LXDE" => Some("pcmanfm"),
+                        _ => None,
                     };
-                    if command.is_some_and(&has) {
-                        Adapter::Native
-                    } else if runtime.session == Session::Wayland && has("swaybg") {
+                    if command.is_some_and(&has) { Some(Adapter::Native) } else { None }
+                };
+                native.unwrap_or_else(|| {
+                    if runtime.session == Session::Wayland && has("swaybg") {
                         Adapter::Swaybg
                     } else if runtime.session == Session::X11 && has("feh") {
                         Adapter::Feh
                     } else {
                         Adapter::Unavailable
                     }
-                }
+                })
             }
         };
         Self { runtime, adapter }
@@ -167,6 +190,18 @@ impl Capability {
                     .map_err(|error| anyhow!("desktop wallpaper API failed: {}", error))?;
                 Ok(ApplyStatus::Submitted)
             }
+            Adapter::GnomeGsettings => {
+                apply_gnome(path)?;
+                Ok(ApplyStatus::Submitted)
+            }
+            Adapter::PlasmaQdbus6 => {
+                apply_plasma(path, "qdbus6")?;
+                Ok(ApplyStatus::Submitted)
+            }
+            Adapter::PlasmaQdbus => {
+                apply_plasma(path, "qdbus")?;
+                Ok(ApplyStatus::Submitted)
+            }
             Adapter::PcmanfmQt => {
                 checked_command("pcmanfm-qt", &["-w", &path.to_string_lossy()])?;
                 Ok(ApplyStatus::Submitted)
@@ -199,6 +234,54 @@ impl Capability {
     }
 }
 
+
+fn file_uri(path: &Path) -> Result<String> {
+    url::Url::from_file_path(path)
+        .map(|uri| uri.to_string())
+        .map_err(|_| anyhow!("wallpaper path cannot be encoded as a file URI: {}", path.display()))
+}
+
+fn apply_gnome(path: &Path) -> Result<()> {
+    let uri = file_uri(path)?;
+    // GSettings parses a GVariant string; JSON double-quoted strings escape data.
+    let value = serde_json::to_string(&uri)?;
+    const SCHEMA: &str = "org.gnome.desktop.background";
+    checked_command("gsettings", &["set", SCHEMA, "picture-uri", &value])?;
+
+    // GNOME < 42 does not expose the dark key. Only write when available and writable.
+    let dark = Command::new("gsettings")
+        .args(["writable", SCHEMA, "picture-uri-dark"])
+        .output()
+        .context("could not check GNOME dark wallpaper capability")?;
+    if dark.status.success() && String::from_utf8_lossy(&dark.stdout).trim() == "true" {
+        checked_command("gsettings", &["set", SCHEMA, "picture-uri-dark", &value])?;
+    }
+    Ok(())
+}
+
+fn plasma_script(path: &Path) -> Result<String> {
+    let uri = file_uri(path)?;
+    // JSON-encoded strings are valid JavaScript literal strings; avoid path/script injection.
+    let literal = serde_json::to_string(&uri)?;
+    Ok(format!(
+        "for (const desktop of desktops()) {{ desktop.currentConfigGroup = [\"Wallpaper\", \"org.kde.image\", \"General\"]; desktop.writeConfig(\"Image\", {}); }}",
+        literal
+    ))
+}
+
+fn apply_plasma(path: &Path, command: &str) -> Result<()> {
+    let script = plasma_script(path)?;
+    checked_command(
+        command,
+        &[
+            "org.kde.plasmashell",
+            "/PlasmaShell",
+            "org.kde.PlasmaShell.evaluateScript",
+            &script,
+        ],
+    )
+}
+
 fn checked_command(command: &str, args: &[&str]) -> Result<()> {
     let result = Command::new(command)
         .args(args)
@@ -215,7 +298,23 @@ fn command_available(command: &str) -> bool {
         Some(path) => path,
         None => return false,
     };
-    env::split_paths(&path).any(|folder: PathBuf| folder.join(command).is_file())
+    env::split_paths(&path).any(|folder: PathBuf| {
+        let candidate = folder.join(command);
+        match candidate.metadata() {
+            Ok(metadata) if metadata.is_file() => {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    metadata.permissions().mode() & 0o111 != 0
+                }
+                #[cfg(not(unix))]
+                {
+                    true
+                }
+            }
+            _ => false,
+        }
+    })
 }
 
 #[cfg(test)]
@@ -234,20 +333,20 @@ mod tests {
     fn gnome_requires_gsettings() {
         let capability =
             Capability::resolve(linux("GNOME", Session::Wayland), |cmd| cmd == "gsettings");
-        assert_eq!(capability.adapter, Adapter::Native);
+        assert_eq!(capability.adapter, Adapter::GnomeGsettings);
         let no_tools = Capability::resolve(linux("GNOME", Session::Wayland), |_| false);
         assert_eq!(no_tools.adapter, Adapter::Unavailable);
     }
 
     #[test]
-    fn kde_requires_exact_upstream_identifier_and_qdbus() {
+    fn kde_accepts_multi_id_and_prefers_qdbus6() {
         assert_eq!(
             Capability::resolve(linux("KDE", Session::X11), |cmd| cmd == "qdbus").adapter,
-            Adapter::Native
+            Adapter::PlasmaQdbus
         );
         assert_eq!(
-            Capability::resolve(linux("KDE:Plasma", Session::X11), |cmd| cmd == "qdbus").adapter,
-            Adapter::Unavailable
+            Capability::resolve(linux("KDE:Plasma", Session::Wayland), |cmd| cmd == "qdbus6").adapter,
+            Adapter::PlasmaQdbus6
         );
     }
 
@@ -277,6 +376,40 @@ mod tests {
             Capability::resolve(linux("GNOME", Session::Unknown), |_| true).adapter,
             Adapter::Unavailable
         );
+    }
+
+    #[test]
+    fn explicit_xdg_session_takes_priority() {
+        assert_eq!(detect_session("x11", true, true), Session::X11);
+        assert_eq!(detect_session("wayland", false, true), Session::Wayland);
+        assert_eq!(detect_session("", false, false), Session::Unknown);
+    }
+
+    #[test]
+    fn multiple_desktop_identifiers_are_tokenized() {
+        assert!(has_desktop("KDE:Plasma", "plasma"));
+        assert!(has_desktop("X-Cinnamon;MATE", "MATE"));
+        assert!(!has_desktop("NOTKDE", "KDE"));
+    }
+
+    #[test]
+    fn other_unix_platform_is_not_misreported_as_linux() {
+        assert_eq!(
+            Capability::resolve(
+                Runtime { os: Platform::Other, desktop: "GNOME".into(), session: Session::Wayland },
+                |_| true,
+            ).adapter,
+            Adapter::Unavailable
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn plasma_script_serializes_untrusted_path_as_data() {
+        let script = plasma_script(Path::new("/tmp/folder/quote\\\"; alert(1);.png"))
+            .expect("absolute path generates valid file URI");
+        assert!(script.contains("desktop.writeConfig"));
+        assert!(!script.contains("alert(1);"));
     }
 
     #[test]
