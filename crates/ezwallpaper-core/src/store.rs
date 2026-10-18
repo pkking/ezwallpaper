@@ -161,3 +161,119 @@ fn hash_copy<R: Read, W: Write>(mut src: R, mut target: W) -> Result<(String, u6
     if total == 0 { bail!("empty wallpaper content is not importable"); }
     Ok((format!("sha256:{:x}", hash.finalize()), total))
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> (tempfile::TempDir, WallpaperStore) {
+        let temp = tempfile::tempdir().expect("isolated fixture");
+        let store = WallpaperStore::init(temp.path().join("managed"))
+            .expect("initialize fresh store");
+        (temp, store)
+    }
+
+    #[test]
+    fn init_refuses_existing_user_files_and_mismatched_marker() {
+        let temp = tempfile::tempdir().expect("isolated fixture");
+        let pictures = temp.path().join("pictures");
+        fs::create_dir(&pictures).expect("existing folder");
+        fs::write(pictures.join("keep.jpg"), b"user original").expect("original fixture");
+        assert!(WallpaperStore::init(&pictures).is_err());
+        assert_eq!(fs::read(pictures.join("keep.jpg")).expect("untouched"), b"user original");
+
+        let (_, store) = fixture();
+        fs::write(store.root.join(MARKER), b"ezwallpaper-store-v2\n")
+            .expect("simulate future marker");
+        assert!(WallpaperStore::open(&store.root).is_err());
+    }
+
+    #[test]
+    fn import_is_copy_only_deduplicated_and_survives_reopen() {
+        let (temp, store) = fixture();
+        let first = temp.path().join("one.png");
+        let second = temp.path().join("other.jpeg");
+        fs::write(&first, b"abc").expect("first");
+        fs::write(&second, b"abc").expect("same bytes");
+        let one = store.import_file(&first).expect("first import");
+        let two = store.import_file(&second).expect("second import");
+        let key = "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        assert_eq!(one.content_id, key);
+        assert_eq!(one, two);
+        assert_eq!(one.size_bytes, 3);
+        assert_eq!(fs::read(&first).expect("original"), b"abc");
+        assert_eq!(fs::read(&second).expect("original"), b"abc");
+
+        let reopened = WallpaperStore::open(&store.root).expect("reopen store");
+        assert_eq!(reopened.inspect(key).expect("verified lookup"), one);
+    }
+
+    #[test]
+    fn safe_export_refuses_overwrite_and_keeps_originals() {
+        let (temp, store) = fixture();
+        let original = temp.path().join("original.png");
+        fs::write(&original, b"abc").expect("source fixture");
+        let saved = store.import_file(&original).expect("import");
+        let dest = temp.path().join("exported.png");
+        assert_eq!(store.export(&saved.content_id, &dest).expect("export"), saved);
+        assert_eq!(fs::read(&dest).expect("export contents"), b"abc");
+        let before = fs::read_dir(temp.path()).expect("entries").count();
+        assert!(store.export(&saved.content_id, &dest).is_err());
+        assert_eq!(fs::read(&dest).expect("still old export"), b"abc");
+        assert_eq!(fs::read(&original).expect("original not moved"), b"abc");
+        assert_eq!(fs::read_dir(temp.path()).expect("entries").count(), before);
+    }
+
+    #[test]
+    fn missing_entries_and_invalid_ids_fail_closed_without_export_files() {
+        let (temp, store) = fixture();
+        let missing = format!("sha256:{}", "0".repeat(64));
+        let output = temp.path().join("not-created.jpg");
+        assert!(store.inspect("sha256:INVALID").is_err());
+        assert!(store.inspect(&missing).is_err());
+        assert!(store.export(&missing, &output).is_err());
+        assert!(!output.exists());
+        assert_eq!(fs::read_dir(temp.path()).expect("entries").count(), 1);
+    }
+
+    #[test]
+    fn missing_and_empty_imports_are_rejected_without_modifying_source() {
+        let (temp, store) = fixture();
+        assert!(store.import_file(temp.path().join("not-there")).is_err());
+        let empty = temp.path().join("empty.jpg");
+        fs::write(&empty, b"").expect("empty source");
+        assert!(store.import_file(&empty).is_err());
+        assert_eq!(fs::read(&empty).expect("unchanged input"), b"");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn store_root_symlink_and_export_symlink_are_rejected() {
+        use std::os::unix::fs::symlink;
+        let (temp, store) = fixture();
+        let alias = temp.path().join("alias-store");
+        symlink(&store.root, &alias).expect("store symlink");
+        assert!(WallpaperStore::open(&alias).is_err());
+
+        let src = temp.path().join("source");
+        fs::write(&src, b"content").expect("source");
+        let entry = store.import_file(&src).expect("import");
+        let link = temp.path().join("alias-export");
+        symlink(&src, &link).expect("export symlink");
+        assert!(store.export(&entry.content_id, &link).is_err());
+        assert_eq!(fs::read(&src).expect("original"), b"content");
+    }
+
+    struct BrokenInput;
+    impl Read for BrokenInput {
+        fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::ConnectionReset, "fixture stream failure"))
+        }
+    }
+
+    #[test]
+    fn failed_stream_reports_an_error() {
+        assert!(hash_copy(BrokenInput, io::sink()).is_err());
+    }
+}
