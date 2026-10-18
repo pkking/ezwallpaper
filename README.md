@@ -102,6 +102,12 @@ ezwallpaper --dir ~/Pictures fetch --json
 
 The JSON manifest is `{"schema_version":1,"assets":[{"source":"local","path":"/absolute/file.jpg","size_bytes":12345}]}`. Fields describe the local file and its origin; files are not copied into the JSON and are only accessible on the same filesystem/mount. Enumeration is nonrecursive, stable by canonical path, limited to .jpg/.jpeg/.png/.webp/.bmp regular files, and skips symbolic links. File-extension filtering is **not** content decoding or validation. `list` does not alter the listed files. The original flag-only command still fetches and applies wallpaper unless `--download-only` is specified.
 
+### Automated Sway Headless screenshot E2E (unattended)
+
+A separate GitHub Actions **Sway headless visual E2E** job starts a disposable single-output Wayland compositor and invokes the compiled CLI through its real `swaybg` setter, then captures screenshots with `grim` and checks that more than 97% of sampled pixels match deterministic red/blue wallpaper fixtures. It also confirms that removing the test-owned `swaybg` process returns the frame to the original black virtual background. Real screenshots, logs and a machine-readable verdict are retained as CI artifacts on failure and success; there is no human confirmation step or physical monitor. See [rendered-frame E2E evidence](docs/agents/desktop-integration-evidence.md#automatic-sway-headless-rendered-frame-e2e).
+
+This validates only the tested headless Sway compositor, **not** niri, real hardware displays, other Wayland compositors, GNOME, Plasma or multi-monitor integration. It does not change the CLI's `LaunchedUnverified` production result.
+
 ### Controlled GNOME live verification (explicit opt-in)
 
 In addition to the isolated command-contract tests, `scripts/verify_gnome_live.py` provides an **interactive GNOME-only** verification workflow that requires an explicit live-change flag, a valid local PNG/JPEG, a typed confirmation and automatic attempted restoration of the original writable GNOME wallpaper keys. It checks restoration by reading settings back and prints sanitized JSON evidence; it does **not** capture screenshots or independently prove pixels rendered. This helper is never executed against a real desktop in CI.
