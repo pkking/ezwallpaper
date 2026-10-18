@@ -310,7 +310,7 @@ class DesktopAdapterContractTests(unittest.TestCase):
             (["--backend", "pexel", "--token", "test-only", "--count", "65", "fetch"], "Pexels batch count"),
             (["--backend", "wallhaven", "--count", "49", "fetch"], "Wallhaven batch count"),
             (["--backend", "wallhaven", "--page", "0", "fetch"], "Wallhaven page"),
-            (["--backend", "wallhaven", "--bing-offset", "2", "fetch"], "only supported for Bing"),
+            (["--backend", "wallhaven", "--bing-offset", "2", "fetch"], "not supported for Wallhaven"),
         ]
         for arguments, expected in cases:
             with self.subTest(arguments=arguments):
