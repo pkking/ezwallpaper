@@ -31,7 +31,7 @@ An explicit second storage root costs additional disk space and copying time; id
 
 ## Implementation status
 
-**Approved architecture, not implemented by this ADR PR.** A follow-up Issue will implement the isolated store and verify Linux, Windows and macOS headless behavior.
+**Approved architecture, implemented under Issue #33** in a separate, reviewed code change. See `crates/ezwallpaper-core/src/store.rs` and the `ezwallpaper store` CLI commands. Real desktop effects, automatic GC and migrations remain unimplemented.
 
 ## Evidence
 
