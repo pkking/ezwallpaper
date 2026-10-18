@@ -4,6 +4,7 @@
 use anyhow::{bail, Context, Result};
 use cacache::{SyncReader, SyncWriter};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -127,6 +128,19 @@ impl WallpaperStore {
         })
     }
 
+    /// Enumerate stable unique IDs from the existing CAS index, verifying
+    /// every blob. This explicit operation scans full content; it is not a
+    /// metadata-only query, and malformed or corrupted entries fail closed.
+    pub fn list(&self) -> Result<Vec<StoredWallpaper>> {
+        let mut keys = BTreeSet::new();
+        for metadata in cacache::list_sync(self.cache_dir()) {
+            let metadata = metadata.context("cannot read Core store index entry")?;
+            validate_id(&metadata.key)?;
+            keys.insert(metadata.key);
+        }
+        keys.into_iter().map(|key| self.inspect(&key)).collect()
+    }
+
     /// Export a complete verified blob without overwriting any existing file.
     pub fn export(&self, id: &str, destination: impl AsRef<Path>) -> Result<StoredWallpaper> {
         validate_id(id)?;
@@ -241,6 +255,34 @@ mod tests {
 
         let reopened = WallpaperStore::open(&store.root).expect("reopen store");
         assert_eq!(reopened.inspect(key).expect("verified lookup"), one);
+    }
+
+    #[test]
+    fn listing_is_read_only_sorted_unique_and_verified() {
+        let (temp, store) = fixture();
+        assert!(store.list().expect("new store has empty index").is_empty());
+
+        let first = temp.path().join("first.png");
+        let another = temp.path().join("second.jpeg");
+        let duplicate = temp.path().join("third.jpg");
+        fs::write(&first, b"xyz").expect("first content");
+        fs::write(&another, b"abc").expect("second content");
+        fs::write(&duplicate, b"xyz").expect("duplicate content");
+
+        let first = store.import_file(&first).expect("first import");
+        let another = store.import_file(&another).expect("second import");
+        assert_eq!(
+            store.import_file(&duplicate).expect("duplicate import").content_id,
+            first.content_id
+        );
+        let mut expected = vec![first, another];
+        expected.sort_by(|a, b| a.content_id.cmp(&b.content_id));
+        let entries = store.list().expect("verified catalog");
+        assert_eq!(entries, expected);
+        assert_eq!(
+            WallpaperStore::open(&store.root).expect("reopen").list().expect("relist"),
+            expected
+        );
     }
 
     #[test]
