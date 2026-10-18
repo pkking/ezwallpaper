@@ -105,6 +105,9 @@ jobs:
           target/debug/ezwallpaper store --root "$store_root" import "$catalog_dir/hash-fixture.png" > artifacts/ci/store-import.txt
           grep -Fxq 'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' artifacts/ci/store-import.txt
           content_id="$(cat artifacts/ci/store-import.txt)"
+          target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-list.txt
+          grep -Fxq "$content_id$(printf '\t')3 bytes" artifacts/ci/store-list.txt
+          test "$(wc -l < artifacts/ci/store-list.txt)" -eq 1
           target/debug/ezwallpaper store --root "$store_root" inspect "$content_id" > artifacts/ci/store-inspect.txt
           grep -Fq "$content_id" artifacts/ci/store-inspect.txt
           target/debug/ezwallpaper store --root "$store_root" export "$content_id" "$catalog_dir/exported.jpg" > artifacts/ci/store-export.txt
