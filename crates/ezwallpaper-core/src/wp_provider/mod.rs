@@ -16,6 +16,41 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
+/// Provider-side orientation preference; not pixel decoding (Issue #53).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Orientation {
+    Landscape,
+    Portrait,
+}
+
+impl std::str::FromStr for Orientation {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "landscape" => Ok(Self::Landscape),
+            "portrait" => Ok(Self::Portrait),
+            _ => bail!("unsupported orientation: {} (landscape or portrait)", value),
+        }
+    }
+}
+
+impl Orientation {
+    fn as_pexels(self) -> &'static str {
+        match self {
+            Self::Landscape => "landscape",
+            Self::Portrait => "portrait",
+        }
+    }
+
+    fn as_wallhaven_ratio(self) -> &'static str {
+        match self {
+            Self::Landscape => "16x9",
+            Self::Portrait => "9x16",
+        }
+    }
+}
+
 pub trait GetImgUrl {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>>;
 }
