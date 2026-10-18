@@ -1,7 +1,7 @@
 # 2026-10-18-core-cli-workspace: split wallpaper management from desktop integration
 
 Issue: #6
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -37,29 +37,29 @@ AGENTS.md, docs/architecture.md, docs/agents/testing.md, docs/agents/workflow.md
 
 ## Acceptance criteria
 
-- [ ] ADR documents capability-based OS/DE support and core/CLI responsibilities.
-- [ ] Core is independently buildable/testable and exports source, asset and manager interfaces without OS setter.
-- [ ] Existing flag-only command still fetches and applies (or download-only).
-- [ ] CLI includes offline doctor and apply of local path with explicit error semantics.
-- [ ] Detection and core boundary unit tests plus CLI smoke run without network or GUI.
-- [ ] All four required PR checks pass for final implementation HEAD and evidence is logged.
+- [x] ADR documents capability-based OS/DE support and core/CLI responsibilities.
+- [x] Core is independently buildable/testable and exports source, asset and manager interfaces without OS setter.
+- [x] Existing flag-only command still fetches and applies (or download-only).
+- [x] CLI includes offline doctor and apply of local path with explicit error semantics.
+- [x] Detection and core boundary unit tests plus CLI smoke run without network or GUI.
+- [x] All four required PR checks pass for final implementation HEAD and evidence is logged.
 
 ## Implementation slices
 
 - [x] 1. Architecture ADR, workspace wiring and core migration.
 - [x] 2. CLI setter adapter + doctor + offline tests.
-- [ ] 3. CI integration, documentation and final validation.
+- [x] 3. CI integration, documentation and final validation.
 
 ## Verification matrix
 
 | Scope | Command / CI gate | Expected evidence | Status |
 |---|---|---|---|
-| Plan validator | Agent plan integrity | Issue #6 metadata/updated plan | pending |
-| Core | cargo test -p ezwallpaper-core | mock providers and asset checks | pending |
-| Rust | cargo fmt / clippy -D warnings -W clippy::unwrap_used | deterministic quality | pending |
-| CLI | cargo test --all-targets | detection and adapter tests | pending |
-| Offline acceptance | CLI --help, --version, --backend bad, doctor and apply bad path | no network/desktop mutation | pending |
-| Final CI | 4 required jobs | final SHA, URLs/artifacts | pending |
+| Plan validator | Agent plan integrity | Issue #6 metadata/updated plan | PASS, run 39093617470 |
+| Core | cargo test -p ezwallpaper-core | mock providers and asset checks | PASS, run 39093617470 |
+| Rust | cargo fmt / clippy -D warnings -W clippy::unwrap_used | deterministic quality | PASS, run 39093617470 |
+| CLI | cargo test --all-targets | detection and adapter tests | PASS, run 39093617470 |
+| Offline acceptance | CLI --help, --version, --backend bad, doctor and apply bad path | no network/desktop mutation | PASS, run 39093617470 |
+| Final CI | 4 required jobs | final SHA, URLs/artifacts | PASS, run 39093617470 |
 
 ## Decision gates
 
@@ -67,6 +67,8 @@ User approved the two-part core/CLI model and widened OS support definition; rou
 
 ## Evidence log
 
+- 2026-10-18: final implementation revision `211527a27a5b82bc0f13ae3b107225d2d94843ea`: all four required PR checks PASS in https://github.com/pkking/ezwallpaper/actions/runs/39093617470 ; workspace tests, headless core check, doctor and invalid apply-path smoke succeeded. This checklist-only plan update will itself require fresh CI evidence before merge.
+- 2026-10-18: earlier CI identified Rustfmt differences, `wallpaper-rs` non-Send/Sync boxed error incompatible with anyhow Context, and strict Clippy naming issues (`wrong_self_convention`, `enum_variant_names`); fixed causes without relaxing checks. Earlier failing runs 39093409417, 39093502003, 39093561793 retained as evidence.
 - 2026-10-18: workspace/core extraction and CLI detection committed as `f074e8fedc13af54e689a0edd8138bac8c7b90d9`; tests remain UNASSESSED pending GitHub Actions.
 - 2026-10-18: baseline commit `12752764dd927ab4609755279eac566c8bba649d`; inspected current code and CI using linked GitHub connection.
 - 2026-10-18: Issue #6 created; following branch and plan-first governance.
@@ -77,11 +79,11 @@ Initial architecture can preserve providers' old GetImgUrl and WallPaper shapes 
 
 ## Resume from here
 
-Open PR from agent/core-cli-workspace; run full GitHub Actions checks. Fix first failing formatter/compiler/contract gate and rerun. Archive only after final head CI succeeds.
+Check latest GitHub Actions run for this plan-only checkpoint commit, verify four required checks completed success on PR #7 head; then squash-merge protected PR #7. Archive plan in completion-only PR and close Issue #6 after merge.
 
 ## Completion
 
 Final commit: pending
-CI run: pending
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39093617470 (tested implementation before plan checkpoint; verify latest head as well)
 E2E artifact: pending (offline CLI evidence)
 Remaining unassessed items: real Windows/macOS/Wayland desktop integrations, online API integration and durable cache/retention
