@@ -37,6 +37,13 @@ For work interrupted at any step, keep the plan in active/ and record the exact 
 
 Never claim passing Rust tests if Cargo did not run. An HTTP response in a mock proves the mock contract, not the live provider. Failing or skipped checks are not passing checks.
 
+## README architecture diagram invariant
+
+- `README.md` must render `docs/architecture.svg`, the canonical source-controlled diagram. Keep the diagram aligned with `docs/architecture.md`, the accepted ADRs and code; indicate planned components explicitly rather than depicting them as implemented.
+- When a PR creates or changes an architecture-affecting ADR, edit `docs/architecture.svg` in **the same PR**, along with any corresponding architecture text/README explanation. Updating the diagram in a later task is not sufficient.
+- If an ADR change cannot affect source/core/consumer boundaries, data flows, contracts, or OS/DE setter integration, document the explicit non-impact rationale both in the ADR (`Diagram impact: none - ...`) and the PR (`Architecture diagram: unchanged - ...`). The PR integrity CI verifies the choice. A bare 'not applicable' is not a rationale.
+- Before merging, visually inspect the rendered README diagram and run the local offline integrity tests. Never declare the README accurate from SVG validity alone.
+
 ## Changes requiring an ADR and human decision
 - New privileged integrations, key handling, telemetry or persistent user data.
 - Backward-incompatible CLI defaults/flag changes, on-disk file naming and retention.
@@ -52,6 +59,7 @@ Routine fixes, tests and small refactors inside accepted boundaries do not requi
 - crates/ezwallpaper-core/src/wp_provider/ — Bing/Pexels adapters, locale and resolution.
 - crates/ezwallpaper-core/src/wp_selector.rs — existing wallpaper provider value type.
 - .github/workflows/ci.yml — required checks.
+- docs/architecture.svg — canonical README architecture diagram; update in the same PR as architecture-changing ADRs.
 - docs/architecture.md — verified architecture and risks.
 - docs/agents/ — detailed execution, verification and GitHub governance.
 - docs/exec-plans/ — active/completed work state.

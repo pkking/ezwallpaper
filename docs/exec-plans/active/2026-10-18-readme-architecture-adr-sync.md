@@ -41,16 +41,16 @@ Embed a source-controlled visual architecture diagram in README showing Source â
 
 ## Acceptance criteria
 
-- [ ] README displays source-controlled architecture diagram with core, CLI and third-party consumers.
-- [ ] SVG is valid and distinguishes implemented paths from future items.
-- [ ] AGENTS, ADR guidelines, workflow and PR template require synchronized updates.
+- [x] README displays source-controlled architecture diagram with core, CLI and third-party consumers.
+- [x] SVG is source-controlled and visually distinguishes implemented paths from future items (XML validation pending).
+- [x] AGENTS, ADR guidelines, workflow and PR template require synchronized updates.
 - [ ] Deterministic CI and tests reject changed ADRs missing updated figure or justified no-impact statement.
 - [ ] Final reviewed PR head passes all required CI checks.
 
 ## Implementation slices
 
-- [ ] Add SVG diagram and README embedding, link from architecture documentation.
-- [ ] Add governance language in AGENTS/ADR/PR workflow.
+- [x] Add SVG diagram and README embedding, link from architecture documentation.
+- [x] Add governance language in AGENTS/ADR/PR workflow.
 - [ ] Extend validator + offline regression tests, observe CI.
 
 ## Verification matrix
@@ -68,6 +68,8 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Evidence log
 
+- 2026-10-18: added README-embedded docs/architecture.svg showing implemented Core, CLI and third-party paths, while explicitly marking planned sources/cache.
+- 2026-10-18: established explicit ADR diagram synchronization rules in AGENTS.md, docs/adr/README.md, docs/agents/workflow.md and PR template.
 - 2026-10-18: inspected README, AGENTS.md, accepted ADR 0001, CLI/core implementation map and CI validator.
 - 2026-10-18: opened Issue #14, created branch agent/readme-architecture-adr-sync.
 
@@ -77,7 +79,7 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Resume from here
 
-Add architecture SVG/README/guideline/validator changes to agent/readme-architecture-adr-sync, create Issue-linked PR, inspect all required CI checks and repair failures before review.
+Implement and test machine enforcement in scripts/validate_agent_plan.py and offline contract tests, then create PR and inspect all required checks.
 
 ## Completion
 

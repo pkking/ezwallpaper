@@ -1,6 +1,6 @@
 # Architecture and supported capability boundaries
 
-Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). This document describes code currently being implemented, not a claim of OS desktop validation.
+Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
 
 ## Cargo workspace
 
