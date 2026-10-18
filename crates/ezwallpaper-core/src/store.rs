@@ -94,14 +94,19 @@ impl WallpaperStore {
         }
         let (key, _) = hash_copy(&mut input, io::sink())?;
         input.seek(SeekFrom::Start(0))?;
-        let mut writer = SyncWriter::create(self.cache_dir(), &key)
-            .context("cannot start Core store import")?;
+        let mut writer =
+            SyncWriter::create(self.cache_dir(), &key).context("cannot start Core store import")?;
         let (copied_key, bytes) = hash_copy(&mut input, &mut writer)?;
         if key != copied_key {
             bail!("wallpaper changed during import; no cache entry was committed");
         }
-        writer.commit().context("cannot commit complete wallpaper into CAS")?;
-        Ok(StoredWallpaper { content_id: key, size_bytes: bytes })
+        writer
+            .commit()
+            .context("cannot commit complete wallpaper into CAS")?;
+        Ok(StoredWallpaper {
+            content_id: key,
+            size_bytes: bytes,
+        })
     }
 
     /// Verify the entire blob, not just presence of a metadata index entry.
@@ -110,18 +115,24 @@ impl WallpaperStore {
         let mut reader = SyncReader::open(self.cache_dir(), id)
             .with_context(|| format!("Core store entry not found or unreadable: {}", id))?;
         let (actual, size_bytes) = hash_copy(&mut reader, io::sink())?;
-        reader.check().context("CAS entry failed internal integrity check")?;
+        reader
+            .check()
+            .context("CAS entry failed internal integrity check")?;
         if actual != id {
             bail!("CAS entry bytes do not match requested SHA-256 content ID");
         }
-        Ok(StoredWallpaper { content_id: actual, size_bytes })
+        Ok(StoredWallpaper {
+            content_id: actual,
+            size_bytes,
+        })
     }
 
     /// Export a complete verified blob without overwriting any existing file.
     pub fn export(&self, id: &str, destination: impl AsRef<Path>) -> Result<StoredWallpaper> {
         validate_id(id)?;
         let destination = destination.as_ref();
-        let parent = destination.parent()
+        let parent = destination
+            .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
         let mut staged = NamedTempFile::new_in(parent)
@@ -129,19 +140,32 @@ impl WallpaperStore {
         let mut reader = SyncReader::open(self.cache_dir(), id)
             .with_context(|| format!("Core store entry not found or unreadable: {}", id))?;
         let (actual, size_bytes) = hash_copy(&mut reader, staged.as_file_mut())?;
-        reader.check().context("CAS entry failed internal integrity check")?;
+        reader
+            .check()
+            .context("CAS entry failed internal integrity check")?;
         if actual != id {
             bail!("CAS entry bytes do not match requested SHA-256 content ID");
         }
-        staged.persist_noclobber(destination)
-            .with_context(|| format!("export target exists or cannot be created: {}", destination.display()))?;
-        Ok(StoredWallpaper { content_id: actual, size_bytes })
+        staged.persist_noclobber(destination).with_context(|| {
+            format!(
+                "export target exists or cannot be created: {}",
+                destination.display()
+            )
+        })?;
+        Ok(StoredWallpaper {
+            content_id: actual,
+            size_bytes,
+        })
     }
 }
 
 fn validate_id(id: &str) -> Result<()> {
     let digest = id.strip_prefix("sha256:").unwrap_or("");
-    if digest.len() != 64 || !digest.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+    if digest.len() != 64
+        || !digest
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
         bail!("expected sha256: followed by exactly 64 lowercase hex characters");
     }
     Ok(())
@@ -152,16 +176,23 @@ fn hash_copy<R: Read, W: Write>(mut src: R, mut target: W) -> Result<(String, u6
     let mut total = 0u64;
     let mut buffer = [0u8; 64 * 1024];
     loop {
-        let n = src.read(&mut buffer).context("wallpaper stream read failed")?;
-        if n == 0 { break; }
-        target.write_all(&buffer[..n]).context("wallpaper stream write failed")?;
+        let n = src
+            .read(&mut buffer)
+            .context("wallpaper stream read failed")?;
+        if n == 0 {
+            break;
+        }
+        target
+            .write_all(&buffer[..n])
+            .context("wallpaper stream write failed")?;
         hash.update(&buffer[..n]);
         total += n as u64;
     }
-    if total == 0 { bail!("empty wallpaper content is not importable"); }
+    if total == 0 {
+        bail!("empty wallpaper content is not importable");
+    }
     Ok((format!("sha256:{:x}", hash.finalize()), total))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -169,8 +200,8 @@ mod tests {
 
     fn fixture() -> (tempfile::TempDir, WallpaperStore) {
         let temp = tempfile::tempdir().expect("isolated fixture");
-        let store = WallpaperStore::init(temp.path().join("managed"))
-            .expect("initialize fresh store");
+        let store =
+            WallpaperStore::init(temp.path().join("managed")).expect("initialize fresh store");
         (temp, store)
     }
 
@@ -181,7 +212,10 @@ mod tests {
         fs::create_dir(&pictures).expect("existing folder");
         fs::write(pictures.join("keep.jpg"), b"user original").expect("original fixture");
         assert!(WallpaperStore::init(&pictures).is_err());
-        assert_eq!(fs::read(pictures.join("keep.jpg")).expect("untouched"), b"user original");
+        assert_eq!(
+            fs::read(pictures.join("keep.jpg")).expect("untouched"),
+            b"user original"
+        );
 
         let (_, store) = fixture();
         fs::write(store.root.join(MARKER), b"ezwallpaper-store-v2\n")
@@ -216,7 +250,10 @@ mod tests {
         fs::write(&original, b"abc").expect("source fixture");
         let saved = store.import_file(&original).expect("import");
         let dest = temp.path().join("exported.png");
-        assert_eq!(store.export(&saved.content_id, &dest).expect("export"), saved);
+        assert_eq!(
+            store.export(&saved.content_id, &dest).expect("export"),
+            saved
+        );
         assert_eq!(fs::read(&dest).expect("export contents"), b"abc");
         let before = fs::read_dir(temp.path()).expect("entries").count();
         assert!(store.export(&saved.content_id, &dest).is_err());
@@ -268,7 +305,10 @@ mod tests {
     struct BrokenInput;
     impl Read for BrokenInput {
         fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
-            Err(io::Error::new(io::ErrorKind::ConnectionReset, "fixture stream failure"))
+            Err(io::Error::new(
+                io::ErrorKind::ConnectionReset,
+                "fixture stream failure",
+            ))
         }
     }
 
