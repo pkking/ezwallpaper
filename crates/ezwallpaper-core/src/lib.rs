@@ -45,16 +45,16 @@ impl WallpaperManager {
         source
             .get_img(count)?
             .into_iter()
-            .map(|wallpaper| self.from_path(source_id, wallpaper.path()))
+            .map(|wallpaper| self.verify_asset(source_id, wallpaper.path()))
             .collect()
     }
 
     /// Open an existing local file without network or desktop side effects.
     pub fn open_local(&self, path: impl AsRef<Path>) -> Result<WallpaperAsset> {
-        self.from_path("local", path)
+        self.verify_asset("local", path)
     }
 
-    fn from_path(&self, source: &str, path: impl AsRef<Path>) -> Result<WallpaperAsset> {
+    fn verify_asset(&self, source: &str, path: impl AsRef<Path>) -> Result<WallpaperAsset> {
         let input = path.as_ref();
         let absolute = input
             .canonicalize()
