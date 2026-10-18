@@ -372,8 +372,7 @@ mod tests {
         let metadata = cacache::metadata_sync(&cache, &saved.content_id)
             .expect("metadata lookup")
             .expect("indexed content");
-        cacache::remove_hash_sync(&cache, &metadata.integrity)
-            .expect("simulate a missing blob");
+        cacache::remove_hash_sync(&cache, &metadata.integrity).expect("simulate a missing blob");
         assert!(store.list().is_err());
         assert_eq!(fs::read(&source).expect("source remains intact"), b"abc");
 
