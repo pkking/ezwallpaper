@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use anyhow::{anyhow, Result};
 use log::debug;
 use std::fs::File;
-use std::vec::Vec;
 use std::str::FromStr;
+use std::vec::Vec;
 use url::Url;
 
 #[derive(Debug, Default)]
@@ -128,11 +128,14 @@ mod tests {
 
     #[test]
     fn bing_query_id_cannot_traverse_download_directory() {
-        let url = Url::parse("https://www.bing.com/th?id=..%2Fescape.jpg")
-            .expect("valid URL fixture");
-        let name = url.query_pairs()
+        let url =
+            Url::parse("https://www.bing.com/th?id=..%2Fescape.jpg").expect("valid URL fixture");
+        let name = url
+            .query_pairs()
             .find(|(key, _)| key == "id")
-            .expect("id parameter").1.into_owned();
+            .expect("id parameter")
+            .1
+            .into_owned();
         assert!(super::super::safe_download_path(".", &name).is_err());
     }
 }
