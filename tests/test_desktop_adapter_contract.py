@@ -150,8 +150,9 @@ class DesktopAdapterContractTests(unittest.TestCase):
         script = args[3]
         marker = 'desktop.writeConfig("Image", '
         self.assertEqual(script.count(marker), 1)
-        serialized_uri = script.split(marker, 1)[1].split(");", 1)[0]
-        uri = json.loads(serialized_uri)
+        remainder = script.split(marker, 1)[1]
+        uri, end = json.JSONDecoder().raw_decode(remainder)
+        self.assertTrue(remainder[end:].startswith(");"))
         self.assertEqual(unquote(urlsplit(uri).path), path)
 
     def test_niri_swaybg_launch_is_explicitly_unverified(self) -> None:
