@@ -89,6 +89,8 @@ enum StoreOperation {
     Init,
     /// Copy a local wallpaper into the content-addressable store.
     Import { path: PathBuf },
+    /// List distinct verified store entries in content-ID order.
+    List,
     /// Read and verify a saved SHA-256 content ID.
     Inspect { content_id: String },
     /// Export to a new file without replacing an existing path.
@@ -107,6 +109,11 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
         StoreOperation::Import { path } => {
             let entry = store.import_file(path)?;
             println!("{}", entry.content_id);
+        }
+        StoreOperation::List => {
+            for entry in store.list()? {
+                println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+            }
         }
         StoreOperation::Inspect { content_id } => {
             let entry = store.inspect(content_id)?;
