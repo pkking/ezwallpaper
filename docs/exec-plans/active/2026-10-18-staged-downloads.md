@@ -36,16 +36,16 @@ AGENTS.md, docs/agents/workflow.md, docs/architecture.md, docs/adr/0001-core-cli
 
 ## Acceptance criteria
 
-- [ ] Staging helper writes to temp file in same folder; succeeds only when entire reader finishes.
-- [ ] Failed read leaves old target bytes unchanged, leaves absent target absent, and cleans temp files.
-- [ ] Existing output targets are replaced only after complete copy; original path and normal basename unchanged.
-- [ ] Provider adapters use the helper and retain response error_for_status.
+- [x] Staging helper writes to temp file in same folder; succeeds only when entire reader finishes.
+- [x] Failed read leaves old target bytes unchanged, leaves absent target absent, and cleans temp files.
+- [x] Existing output targets are replaced only after complete copy; original path and normal basename unchanged.
+- [x] Provider adapters use the helper and retain response error_for_status.
 - [ ] All 4 required CI jobs pass at final head, with plan evidence.
 
 ## Implementation slices
 
-- [ ] Add reused tempfile crate + injectable writer with failure tests.
-- [ ] Connect both providers and update limitations.
+- [x] Add reused tempfile crate + injectable writer with failure tests.
+- [x] Connect both providers and update limitations.
 - [ ] Review CI, fix and archive after merge.
 
 ## Verification matrix
@@ -65,13 +65,15 @@ Existing contract overwrites safe regular-file path; staged replacement changes 
 
 - 2026-10-18: inspected actual provider source and docs.rs tempfile persist semantics. Plan created before implementation.
 
+- 2026-10-18: added tempfile staging helper, pure stream failure tests, and wiring in Bing/Pexels. No CI result yet.
+
 ## Deviations and discoveries
 
-None yet.
+Temporaries are created with tempfile in the destination directory. A fixed in-place inode is not preserved. Byte stream failures are simulated with ConnectionReset (not Interrupted, which io::copy may transparently retry).
 
 ## Resume from here
 
-Implement shared stream-to-staging helper and offline tests on branch agent/staged-downloads-22, then wire both providers and create PR #22.
+Open PR for #22 on agent/staged-downloads-22, check four required CI jobs at final head, fix concrete issues before merging.
 
 ## Completion
 
