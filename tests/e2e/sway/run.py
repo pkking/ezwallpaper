@@ -25,7 +25,6 @@ import zlib
 WIDTH = 320
 HEIGHT = 240
 COLORS = {"red": (232, 36, 42), "blue": (35, 78, 216)}
-BLACK = (0, 0, 0)
 
 
 class E2EFailure(RuntimeError):
@@ -227,6 +226,18 @@ def execute(binary: Path, artifact_dir: Path, config: Path) -> dict:
                 doctor = run([str(binary), "doctor"], env=env)
                 if b"adapter: swaybg" not in doctor.stdout or b"available: true" not in doctor.stdout:
                     raise E2EFailure("doctor did not select the real swaybg adapter")
+                # Capture the *actual* empty-compositor background. Sway 1.8's
+                # default is gray (#3f3f3f), not black; never assert an invented
+                # baseline color or spawn another opaque wallpaper surface.
+                initial = artifact_dir / "baseline-before.ppm"
+                run(["grim", "-o", "HEADLESS-1", "-t", "ppm", str(initial)], env=env)
+                width, height, pixels = parse_ppm(initial.read_bytes())
+                offset = ((height // 2) * width + (width // 2)) * 3
+                baseline = tuple(pixels[offset : offset + 3])
+                if color_coverage(initial.read_bytes(), baseline) < 0.97:
+                    raise E2EFailure("uncontrolled compositor background before apply")
+                if any(all(abs(baseline[i] - rgb[i]) <= 9 for i in range(3)) for rgb in COLORS.values()):
+                    raise E2EFailure("baseline unexpectedly matches a fixture color")
                 for name, color in COLORS.items():
                     fixture = root / f"{name}.png"
                     fixture.write_bytes(solid_png(WIDTH, HEIGHT, color))
@@ -238,7 +249,7 @@ def execute(binary: Path, artifact_dir: Path, config: Path) -> dict:
                     # layer-shell wallpaper process from obscuring the next test.
                     stop_group(group)
                     groups.remove(group)
-                    screenshot_until("baseline-after-" + name, BLACK, artifact_dir, env)
+                    screenshot_until("baseline-after-" + name, baseline, artifact_dir, env)
                 result["result"] = "PASS"
             finally:
                 for group in groups:
