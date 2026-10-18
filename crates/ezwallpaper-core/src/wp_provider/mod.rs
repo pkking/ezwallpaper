@@ -220,6 +220,53 @@ mod tests {
     use super::*;
 
     #[test]
+    fn retries_bounded_429_and_rejects_untrusted_image_origins() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("local fixture server");
+        let address = listener.local_addr().expect("local address");
+        let server = thread::spawn(move || {
+            for code in [429, 503, 200] {
+                let (mut socket, _) = listener.accept().expect("test connection");
+                let mut request = [0u8; 2048];
+                let bytes = socket.read(&mut request).expect("read request");
+                assert!(bytes > 0);
+                let answer = format!(
+                    "HTTP/1.1 {} Test\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\\r\\nok",
+                    code
+                );
+                socket.write_all(answer.as_bytes()).expect("fixture reply");
+            }
+        });
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .expect("fixture client");
+        let result = request_with_retry(client.get(format!("http://{}/retry", address)))
+            .expect("third attempt succeeds")
+            .text()
+            .expect("response body");
+        assert_eq!(result, "ok");
+        server.join().expect("fixture server ended");
+
+        assert!(checked_image_url(
+            "https://images.pexels.com/photos/1/photo.jpeg",
+            &["images.pexels.com"]
+        ).is_ok());
+        for url in [
+            "http://images.pexels.com/photo.jpg",
+            "file:///etc/passwd",
+            "https://evil.example/photo.jpg",
+            "https://user:pass@images.pexels.com/photo.jpg",
+        ] {
+            assert!(checked_image_url(url, &["images.pexels.com"]).is_err());
+        }
+    }
+
+    #[test]
     fn staging_replaces_existing_file_after_complete_stream() {
         let temp = tempfile::tempdir().expect("isolated target folder");
         let dest = temp.path().join("wallpaper.png");
