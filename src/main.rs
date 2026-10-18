@@ -1,55 +1,58 @@
-extern crate derivative;
-extern crate dirs;
-extern crate reqwest;
-extern crate serde_json;
-extern crate url;
-extern crate wallpaper;
-
-mod wp_provider;
-mod wp_selector;
-use anyhow::Result;
-use clap::Parser;
+use anyhow::{bail, Result};
+use clap::{Parser, Subcommand};
+use ezwallpaper_core::{BingProvider, GetImgUrl, PexelProvider, WallpaperManager};
 use log::debug;
-use wp_provider::bing::BingProvider;
-use wp_provider::GetImgUrl;
+use std::path::PathBuf;
+
+mod setter;
 
 const DEFAULT_RESOLUTION: &str = "UHD";
 const DEFAULT_LOCALE: &str = "zh-CN";
 const DEFAULT_BACKEND: &str = "bing";
 
-/// Simple program to greet a person
+/// Fetch, manage and apply wallpapers.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// pic resolution
+    /// Picture resolution for Bing.
     #[arg(short, long, default_value_t = DEFAULT_RESOLUTION.to_string())]
     resolution: String,
 
-    /// zone info for searching in bing
+    /// Locale used for image lookup.
     #[arg(short, long, default_value_t = DEFAULT_LOCALE.to_string())]
     locale: String,
 
-    /// dir to store downloaded pictures
-    #[arg(
-        short,
-        long,
-        default_value_t = dirs::picture_dir()
-            .map(|path| path.to_string_lossy().into_owned())
-            .unwrap_or_else(|| ".".to_string())
-    )]
+    /// Directory to store downloaded pictures.
+    #[arg(short, long, default_value_t = dirs::picture_dir()
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| ".".to_string()))]
     dir: String,
 
-    /// backend for wallpaper, can be bing or pexel
+    /// Image source: bing or pexel.
     #[arg(short, long, default_value_t = DEFAULT_BACKEND.to_string())]
     backend: String,
 
-    /// token for pexel, only valid when backend is pexel
+    /// Pexels API token, only used with pexel source.
     #[arg(long, default_value_t = String::from(""))]
     token: String,
 
-    /// download only
+    /// Fetch without modifying the desktop.
     #[arg(long, default_value_t = false)]
     download_only: bool,
+
+    #[command(subcommand)]
+    command: Option<CliCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+enum CliCommand {
+    /// Show OS, desktop session and available wallpaper adapter without side effects.
+    Doctor,
+    /// Apply a pre-existing local file without network requests.
+    Apply {
+        /// Absolute or relative path to an existing wallpaper image.
+        path: PathBuf,
+    },
 }
 
 fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
@@ -62,32 +65,48 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
                 .with_dir(&cli.dir),
         )),
         "pexel" => Ok(Box::new(
-            wp_provider::pexel::PexelProvider::new()
+            PexelProvider::new()
                 .with_dir(&cli.dir)
                 .with_token(&cli.token)?
                 .with_zone(&cli.locale)?,
         )),
-        _ => Err(anyhow::anyhow!("unsupported backend {}", cli.backend)),
+        _ => bail!("unsupported backend {}", cli.backend),
     }
 }
-fn main() {
-    let cli = Args::parse();
 
+fn main() -> Result<()> {
+    let cli = Args::parse();
     env_logger::init();
 
-    let provider = build_provider(&cli);
-    // TODO: using wp selector to get pics
-    let result_vec = provider
-        .expect("build provider failed")
-        .get_img(1)
-        .expect("get image failed");
-    match result_vec.len() {
-        0 => {}
-        _ => {
-            if !cli.download_only {
-                debug!("using wallpaper from {}", result_vec[0].path());
-                wallpaper::set_from_path(result_vec[0].path()).expect("set wallpaper failed");
-            }
+    let manager = WallpaperManager;
+    match &cli.command {
+        Some(CliCommand::Doctor) => {
+            println!("{}", setter::Capability::detect().describe());
+            return Ok(());
+        }
+        Some(CliCommand::Apply { path }) => {
+            let asset = manager.open_local(path)?;
+            return apply_wallpaper(asset.path());
+        }
+        None => {}
+    }
+
+    let provider = build_provider(&cli)?;
+    let assets = manager.fetch(&cli.backend, provider.as_ref(), 1)?;
+    if !cli.download_only {
+        if let Some(asset) = assets.first() {
+            apply_wallpaper(asset.path())?;
         }
     }
+    Ok(())
+}
+
+fn apply_wallpaper(path: &std::path::Path) -> Result<()> {
+    let capability = setter::Capability::detect();
+    debug!("using wallpaper adapter {} for {}", capability.adapter(), path.display());
+    let outcome = capability.apply(path)?;
+    if matches!(outcome, setter::ApplyStatus::LaunchedUnverified) {
+        eprintln!("wallpaper command launched, but desktop application cannot be independently verified");
+    }
+    Ok(())
 }
