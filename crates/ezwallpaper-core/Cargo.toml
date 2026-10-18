@@ -9,6 +9,7 @@ repository = "https://github.com/pkking/ezwallpaper"
 
 [dependencies]
 anyhow = "1.0.90"
+cacache = "13.1.0"
 derivative = "2.2.0"
 log = "0.4.22"
 reqwest = { version = "0.12.8", features = ["blocking", "json"] }

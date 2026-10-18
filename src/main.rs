@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
     BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest,
+    WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
@@ -67,11 +68,56 @@ enum CliCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Explicitly manage an independent, Core-owned content store.
+    Store {
+        /// Separate managed directory, never the legacy --dir output.
+        #[arg(long)]
+        root: PathBuf,
+        #[command(subcommand)]
+        operation: StoreOperation,
+    },
     /// Apply a pre-existing local file without network requests.
     Apply {
         /// Absolute or relative path to an existing wallpaper image.
         path: PathBuf,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum StoreOperation {
+    /// Initialize a new (or empty) managed directory.
+    Init,
+    /// Copy a local wallpaper into the content-addressable store.
+    Import { path: PathBuf },
+    /// Read and verify a saved SHA-256 content ID.
+    Inspect { content_id: String },
+    /// Export to a new file without replacing an existing path.
+    Export { content_id: String, path: PathBuf },
+}
+
+fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
+    if matches!(operation, StoreOperation::Init) {
+        WallpaperStore::init(root)?;
+        println!("initialized {}", root.display());
+        return Ok(());
+    }
+    let store = WallpaperStore::open(root)?;
+    match operation {
+        StoreOperation::Init => unreachable!("handled before store open"),
+        StoreOperation::Import { path } => {
+            let entry = store.import_file(path)?;
+            println!("{}", entry.content_id);
+        }
+        StoreOperation::Inspect { content_id } => {
+            let entry = store.inspect(content_id)?;
+            println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+        }
+        StoreOperation::Export { content_id, path } => {
+            store.export(content_id, path)?;
+            println!("{}", path.display());
+        }
+    }
+    Ok(())
 }
 
 fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
@@ -99,6 +145,9 @@ fn main() -> Result<()> {
 
     let manager = WallpaperManager;
     match &cli.command {
+        Some(CliCommand::Store { root, operation }) => {
+            return run_store(root, operation);
+        }
         Some(CliCommand::Doctor) => {
             println!("{}", setter::Capability::detect().describe());
             return Ok(());
