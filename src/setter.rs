@@ -406,10 +406,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn plasma_script_serializes_untrusted_path_as_data() {
-        let script = plasma_script(Path::new("/tmp/folder/quote\\\"; alert(1);.png"))
-            .expect("absolute path generates valid file URI");
-        assert!(script.contains("desktop.writeConfig"));
-        assert!(!script.contains("alert(1);"));
+        let path = Path::new("/tmp/folder/quote\\\"; alert(1);.png");
+        let encoded = file_uri(path).expect("encode local path");
+        let literal = serde_json::to_string(&encoded).expect("escape JS literal");
+        let script = plasma_script(path).expect("absolute path generates valid file URI");
+        assert!(script.contains(&format!("desktop.writeConfig(\\\"Image\\\", {});", literal)));
     }
 
     #[test]
