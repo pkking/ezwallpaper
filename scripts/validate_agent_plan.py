@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+import xml.etree.ElementTree as ET
 
 ISSUE_LINE = re.compile(r"Issue:\s*#([1-9][0-9]*)")
 PLAN_LINE = re.compile(
@@ -141,13 +142,71 @@ def changed_paths(base_sha: str) -> list[str]:
         raise IntegrityError(f"Unable to inspect PR changed paths: {exc}") from exc
 
 
+ARCHITECTURE_SVG = "docs/architecture.svg"
+ADR_FILE = re.compile(r"^docs/adr/[0-9]{4}-[a-zA-Z0-9][a-zA-Z0-9_-]*\\.md$")
+
+def _specific_reason(value: str) -> bool:
+    reason = value.strip()
+    return len(reason) >= 25 and reason.lower() not in {
+        "n/a", "not applicable", "no impact", "no change", "unchanged",
+        "documentation only", "none", "no architecture impact"
+    }
+
+
+def validate_architecture(root: Path, body: str, changed_files: list[str]) -> None:
+    """Check README diagram validity and ADR/diagram synchronization for the PR."""
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    if "![ezwallpaper Core and CLI architecture](docs/architecture.svg)" not in readme:
+        raise IntegrityError("README must embed canonical docs/architecture.svg")
+
+    try:
+        svg = ET.parse(root / ARCHITECTURE_SVG).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise IntegrityError(f"Cannot parse architecture SVG: {exc}") from exc
+    if svg.tag != "{http://www.w3.org/2000/svg}svg":
+        raise IntegrityError("Architecture diagram must use the SVG namespace")
+    label_text = " ".join(svg.itertext())
+    for marker in ("ezwallpaper-core", "ezwallpaper CLI", "Third-party consumers",
+                   "Bing", "Pexels", "Local files", "WallpaperAsset", "JSON manifest v1",
+                   "Planned"):
+        if marker not in label_text:
+            raise IntegrityError(f"Architecture diagram missing: {marker}")
+
+    changed_adrs = [p for p in changed_files if ADR_FILE.fullmatch(p)]
+    if not changed_adrs:
+        return
+    if ARCHITECTURE_SVG in changed_files:
+        if len(re.findall(r"(?m)^Architecture diagram: updated\\s*$", body)) != 1:
+            raise IntegrityError("ADR change with updated SVG must declare Architecture diagram: updated")
+        return
+
+    matches = re.findall(r"(?m)^Architecture diagram: unchanged - (.+)$", body)
+    if len(matches) != 1 or not _specific_reason(matches[0]):
+        raise IntegrityError(
+            "ADR changed without SVG: update docs/architecture.svg in the same PR, "
+            "or provide an explicit Architecture diagram: unchanged - <specific reason>"
+        )
+    for adr in changed_adrs:
+        file = root / adr
+        if not file.is_file():
+            raise IntegrityError(f"Cannot evaluate removed ADR without diagram update: {adr}")
+        impact = re.findall(r"(?m)^Diagram impact: none - (.+)$", file.read_text(encoding="utf-8"))
+        if len(impact) != 1 or not _specific_reason(impact[0]):
+            raise IntegrityError(
+                f"{adr} must document Diagram impact: none - <specific reason> "
+                "when its ADR changes without the diagram"
+            )
+
+
 def main() -> int:
     try:
         event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+        changes = changed_paths(os.environ["PR_BASE_SHA"])
         message = validate_event(event, Path.cwd(),
                                  os.environ["GITHUB_REPOSITORY"],
                                  os.environ.get("GH_TOKEN", ""),
-                                 changed_files=changed_paths(os.environ["PR_BASE_SHA"]))
+                                 changed_files=changes)
+        validate_architecture(Path.cwd(), event["pull_request"]["body"], changes)
     except (IntegrityError, KeyError, OSError, ValueError) as exc:
         print(f"PLAN INTEGRITY FAILED: {exc}", file=sys.stderr)
         return 1

@@ -44,14 +44,14 @@ Embed a source-controlled visual architecture diagram in README showing Source â
 - [x] README displays source-controlled architecture diagram with core, CLI and third-party consumers.
 - [x] SVG is source-controlled and visually distinguishes implemented paths from future items (XML validation pending).
 - [x] AGENTS, ADR guidelines, workflow and PR template require synchronized updates.
-- [ ] Deterministic CI and tests reject changed ADRs missing updated figure or justified no-impact statement.
+- [x] Deterministic CI and tests reject changed ADRs missing updated figure or justified no-impact statement (CI pending).
 - [ ] Final reviewed PR head passes all required CI checks.
 
 ## Implementation slices
 
 - [x] Add SVG diagram and README embedding, link from architecture documentation.
 - [x] Add governance language in AGENTS/ADR/PR workflow.
-- [ ] Extend validator + offline regression tests, observe CI.
+- [x] Extend validator + offline regression tests, observe CI (CI pending).
 
 ## Verification matrix
 
@@ -68,6 +68,8 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Evidence log
 
+- 2026-10-18: extended existing PR integrity script to parse canonical README/SVG and require same-PR SVG updates for modified architecture ADRs; an explicit no-impact exception must be justified in both ADR and PR.
+- 2026-10-18: added positive/negative offline contract tests for diagram parsing, marker preservation, ADR diff synchronization and exception validation.
 - 2026-10-18: added README-embedded docs/architecture.svg showing implemented Core, CLI and third-party paths, while explicitly marking planned sources/cache.
 - 2026-10-18: established explicit ADR diagram synchronization rules in AGENTS.md, docs/adr/README.md, docs/agents/workflow.md and PR template.
 - 2026-10-18: inspected README, AGENTS.md, accepted ADR 0001, CLI/core implementation map and CI validator.
@@ -79,7 +81,7 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Resume from here
 
-Implement and test machine enforcement in scripts/validate_agent_plan.py and offline contract tests, then create PR and inspect all required checks.
+Create PR with Issue #14 and this plan; inspect Agent plan integrity, contract self-tests and Rust CI; resolve any concrete failures.
 
 ## Completion
 
