@@ -6,7 +6,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 ![ezwallpaper Core and CLI architecture](docs/architecture.svg)
 
-The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. Dashed elements are **planned**, not implemented: additional sources, the approved opt-in Core-owned CAS, tagging and history.
+The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
 **Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
@@ -56,7 +56,7 @@ See [testing and evidence requirements](docs/agents/testing.md) and [branch prot
 
 ## Core library and standalone desktop operations
 
-`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. Durable catalogs and image decoding are not implemented; ephemeral local listing and JSON v1 manifests are available.
+`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. The separate opt-in content store is durable; general-purpose catalog search and image decoding are not implemented. Ephemeral local listing and JSON v1 manifests remain available.
 
 ```sh
 # Diagnose available wallpaper integration, no network/desktop effects
@@ -115,6 +115,19 @@ ezwallpaper hash /absolute/path/to/wallpaper.jpg
 
 The Core API `WallpaperManager::content_id(&asset)` streams SHA-256 over current file bytes and returns `sha256:<hex>`. The CLI never downloads or sets a wallpaper for this command. Equal bytes yield equal IDs regardless of path or source; hashing is not a file snapshot during concurrent modifications, not image format validation, and not a persistent cache. The existing JSON manifest v1 does not acquire any new fields.
 
-## Approved store direction (not yet implemented)
+## Optional persistent content store
 
-[ADR 0003](docs/adr/0003-owned-content-store.md) approves an isolated, explicitly enabled Core-owned CAS root with import, inspect and export operations. Existing `--dir` and JSON manifest v1 stay unchanged. No automatic file cleanup or cache operation has been implemented yet.
+[ADR 0003](docs/adr/0003-owned-content-store.md) defines a separate, explicitly initialized Core-owned content-addressed store. It is **not** the existing `--dir`; do not point the store at a populated Pictures directory. Initialize a new directory, then import existing files by copy:
+
+```sh
+ezwallpaper store --root ./managed-wallpapers init
+ezwallpaper store --root ./managed-wallpapers import /absolute/path/to/picture.jpg
+# sha256:<64 lowercase hexadecimal characters>
+
+ezwallpaper store --root ./managed-wallpapers inspect sha256:<64-hex-digest>
+ezwallpaper store --root ./managed-wallpapers export sha256:<64-hex-digest> ./copy.jpg
+```
+
+`WallpaperStore::init` refuses nonempty unrelated folders. `WallpaperStore::open` refuses missing or unknown version markers. Imported bytes are verified and deduplicated by content key; originals stay in place. Inspect verifies the entire cached entry. Export checks integrity, stages output, and **never overwrites an existing destination**. No CLI store command is invoked during legacy fetch/apply/list flows, and JSON Manifest v1 stays unchanged.
+
+The Core API exposes `WallpaperStore::{init,open,import_file,inspect,export}`. The store has no automatic garbage collection, eviction, migrations or deletion; do not manually edit managed blobs. Headless CI verifies data safety, not race-free isolation from hostile concurrent filesystem actors or full crash durability.
