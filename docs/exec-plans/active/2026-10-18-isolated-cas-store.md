@@ -36,18 +36,18 @@ AGENTS.md, ADR 0003, Issue #31 approval, docs/architecture.svg, core/lib.rs, roo
 
 ## Acceptance criteria
 
-- [ ] Explicit version-marked init/open and misuse tests.
-- [ ] cacache-backed import with duplicate content identity and independent original files.
-- [ ] Integrity-checked inspect and fail-closed no-overwrite export.
-- [ ] Opt-in Core API and CLI store init/import/inspect/export, offline smoke, unchanged JSON v1.
-- [ ] README, architecture.md and architecture.svg mark the store implemented and GC future.
+- [x] Explicit version-marked init/open and misuse tests.
+- [x] cacache-backed import with duplicate content identity and independent original files.
+- [x] Integrity-checked inspect and fail-closed no-overwrite export.
+- [x] Opt-in Core API and CLI store init/import/inspect/export, offline smoke, unchanged JSON v1.
+- [x] README, architecture.md and architecture.svg mark the store implemented and GC future.
 - [ ] All 6 required CI jobs pass at final tested PR head.
 
 ## Implementation slices
 
-- [ ] Add Core isolated store abstraction and unit tests.
-- [ ] Add CLI commands and CI fixture acceptance.
-- [ ] Align docs/architecture SVG and README.
+- [x] Add Core isolated store abstraction and unit tests.
+- [x] Add CLI commands and CI fixture acceptance.
+- [x] Align docs/architecture SVG and README.
 - [ ] Review CI, fix failures, merge and archive in follow-up PR.
 
 ## Verification matrix
@@ -68,13 +68,15 @@ Resolved: Option A approved in Issue #31 and ADR 0003. Future deletion, retentio
 
 - 2026-10-18: inspected code, accepted ADR, cacache documented sync APIs and current 6-job workflow.
 
+- 2026-10-18: created Core store backed by cacache SyncReader/SyncWriter, explicit marker, no-clobber staged exports; added six groups of offline unit tests, CLI entrypoints and offline CI fixture. Six-job CI unassessed until PR runs.
+
 ## Deviations and discoveries
 
 None yet.
 
 ## Resume from here
 
-Implement crates/ezwallpaper-core/src/store.rs on agent/isolated-cas-store-33 and add its tests; then wire CLI and inspect final-head CI.
+Open linked Issue #33 PR on agent/isolated-cas-store-33, review six CI jobs, fix any concrete failures and merge only after final-head green.
 
 ## Completion
 
