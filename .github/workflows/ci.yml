@@ -84,6 +84,17 @@ jobs:
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
           grep -q -- '--backend' artifacts/ci/help.txt
           grep -q -- '--download-only' artifacts/ci/help.txt
+          target/debug/ezwallpaper list --help > artifacts/ci/list-help.txt
+          target/debug/ezwallpaper fetch --help > artifacts/ci/fetch-help.txt
+          catalog_dir="$(mktemp -d)"
+          trap 'rm -rf "$catalog_dir"' EXIT
+          printf 'fixture' > "$catalog_dir/wallpaper.JPG"
+          printf 'irrelevant' > "$catalog_dir/notes.txt"
+          target/debug/ezwallpaper -d "$catalog_dir" list --json > artifacts/ci/catalog.json
+          grep -q '"schema_version": 1' artifacts/ci/catalog.json
+          grep -q '"source": "local"' artifacts/ci/catalog.json
+          grep -q 'wallpaper.JPG' artifacts/ci/catalog.json
+          ! grep -q 'notes.txt' artifacts/ci/catalog.json
           target/debug/ezwallpaper doctor > artifacts/ci/doctor.txt
           grep -q -- 'adapter:' artifacts/ci/doctor.txt
           set +e

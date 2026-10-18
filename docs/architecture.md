@@ -7,7 +7,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). This document describ
 - Root package `ezwallpaper` is the CLI. Its `src/main.rs` handles flags and user flow, and `src/setter.rs` owns runtime OS/DE/WM integration.
 - `crates/ezwallpaper-core` is a reusable Rust library that does not depend on a desktop session or the `wallpaper` crate.
 - `core/src/wp_provider` retains Bing/Pexels adapters, with locale/resolution parsers; `core/src/lib.rs` exports `WallpaperManager` and `WallpaperAsset`.
-- Core returns local absolute paths with source provenance after checking regular-file existence. It does not yet decode the image or provide durable catalogs/caches/metadata/JSON manifests.
+- Core returns local absolute paths with source provenance after checking regular-file existence. It also provides file byte size, a sorted ephemeral nonrecursive local catalog and a versioned JSON manifest. It does not yet decode the image, persist an index or manage cache eviction.
 - `src/setter.rs` selects native / LXQt / Wayland swaybg / X11 feh wallpaper integration, providing `doctor` for side-effect-free discovery and `apply` for local files.
 
 ## Existing user journeys
@@ -37,3 +37,6 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). This document describ
 - External program availability alone is not a guarantee of a valid GUI session, compatible compositor or successful rendered wallpaper.
 - Ubuntu GitHub Actions compile/tests and offline CLI smoke are distinct from Windows/macOS/Linux-desktop integration evidence.
 - Keep old CLI flags functioning. Cargo.lock is not committed yet and dependency resolution is not fully pinned.
+
+5. `ezwallpaper --dir <directory> list [--json]`: enumerate direct regular files matching image-like extensions (no network or wallpaper setter) and optionally emit JSON v1.
+6. `ezwallpaper [source flags] fetch [--json]`: request one source wallpaper and return its local asset manifest without setting desktop. External consumers should prefer this over legacy fetch-and-apply.

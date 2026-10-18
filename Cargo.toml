@@ -20,4 +20,5 @@ dirs = "5.0.1"
 env_logger = "0.11.5"
 ezwallpaper-core = { path = "crates/ezwallpaper-core" }
 log = "0.4.22"
+serde_json = "1.0.87"
 wallpaper = "3.2.0"
