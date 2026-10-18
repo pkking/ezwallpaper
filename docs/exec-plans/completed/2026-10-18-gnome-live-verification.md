@@ -1,7 +1,7 @@
 # 2026-10-18-gnome-live-verification: opt-in reversible desktop observation
 
 Issue: #46
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -43,23 +43,23 @@ No mandatory CI desktop mutation, network source request, wallpaper format decod
 - [x] Interactive visual feedback and sanitized JSON result with honest evidence labels.
 - [x] Deterministic negative/positive mocked tests; CI runs them without desktop, network or privileges.
 - [x] README and desktop evidence protocol describe manual use and limitations; architecture SVG unchanged with rationale.
-- [ ] Six CI jobs pass at final PR head; exact run/artifact evidence documented.
+- [x] Six CI jobs pass at final PR head; exact run/artifact evidence documented.
 
 ## Implementation slices
 
 - [x] 1. Implement a standalone GNOME live verification script with restore guard and sanitization.
 - [x] 2. Test state-machine success, refusal, errors and restoration with injected fake subprocess commands; add offline CI unittest step.
-- [ ] 3. Documented invocation and boundaries; CI verification and repairs pending.
+- [x] 3. Documented invocation and boundaries; verified final PR #47 run and merged implementation.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Helper tests | `python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v` | Mock-only unit results | pending |
-| Existing adapter contracts | Ubuntu `test_desktop_adapter_contract.py` | Fake command path evidence | pending |
-| Rust quality | cargo fmt / strict Clippy | Rust quality CI | pending |
-| Native platforms | Windows/macOS headless workspace tests | OS-specific CI | pending |
-| Governance | Agent plan integrity and contract self-tests | PR CI | pending |
+| Helper tests | `python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v` | Mock-only unit results | PASS — PR #47 run 39118787883 |
+| Existing adapter contracts | Ubuntu `test_desktop_adapter_contract.py` | Fake command path evidence | PASS — PR #47 run 39118787883 |
+| Rust quality | cargo fmt / strict Clippy | Rust quality CI | PASS — PR #47 run 39118787883 |
+| Native platforms | Windows/macOS headless workspace tests | OS-specific CI | PASS — PR #47 run 39118787883 |
+| Governance | Agent plan integrity and contract self-tests | PR CI | PASS — PR #47 run 39118787883 |
 
 ## Decision gates
 
@@ -72,17 +72,19 @@ None. This script requires explicit interactive user action for *existing* wallp
 - 2026-10-18: added `scripts/verify_gnome_live.py` with explicit session/TTY/confirmation gates, GNOME GSettings preflight snapshots and finally-based readback restoration. Real desktop use remains UNASSESSED.
 - 2026-10-18: added in-memory mocked tests in `tests/test_gnome_live_verification.py`; wired Ubuntu CI and documented manual GNOME-only recovery protocol. No verification has been executed yet on this branch.
 
+- 2026-10-18: final PR #47 HEAD `b62ed58067e4b48666b690ae5a0a0ca78c01b1b6` passed all six required checks in https://github.com/pkking/ezwallpaper/actions/runs/39118787883. Linux log recorded 8 new GNOME mock safety tests, 7 existing desktop command-contract tests, 34 Core Rust tests, and 10 CLI Rust tests passed. Offline logs: https://github.com/pkking/ezwallpaper/actions/runs/39118787883/artifacts/12132529247. Merged implementation squash SHA: `dddeae95d733a368b61f3c6b66d6a343445d5aba`.
+
 ## Deviations and discoveries
 
-No unexpected behavior observed yet; quality and test evidence pending GitHub CI.
+No production GNOME environment was exercised. The new script has only mock safety-test evidence, not actual desktop visibility or assured restoration under hostile concurrency.
 
 ## Resume from here
 
-Open Issue #46 PR from this branch with the linked plan metadata; review the initial six GitHub Actions jobs and test log, correct failures, then record tested final head and evidence. No live desktop action may occur in required CI.
+Inspect the completion-only archival PR CI at the new final head, merge when all six checks pass, then close Issue #46. Actual GNOME visual verification requires a separate opt-in interactive run and is not a prerequisite for this helper delivery.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not yet assessed; real GNOME GUI outcome requires an interactive tester
+Final commit: dddeae95d733a368b61f3c6b66d6a343445d5aba
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39118787883 (all six jobs succeeded at PR #47 head b62ed58067e4b48666b690ae5a0a0ca78c01b1b6)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39118787883/artifacts/12132529247 (mock-only CI); real GNOME GUI outcome UNASSESSED
 Remaining unassessed items: actual desktop visibility, non-GNOME OS/DE, hostile concurrent GNOME settings modification.
