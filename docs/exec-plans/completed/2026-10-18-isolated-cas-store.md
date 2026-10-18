@@ -1,7 +1,7 @@
 # 2026-10-18-isolated-cas-store: opt-in persistent Core CAS
 
 Issue: #33
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -41,24 +41,24 @@ AGENTS.md, ADR 0003, Issue #31 approval, docs/architecture.svg, core/lib.rs, roo
 - [x] Integrity-checked inspect and fail-closed no-overwrite export.
 - [x] Opt-in Core API and CLI store init/import/inspect/export, offline smoke, unchanged JSON v1.
 - [x] README, architecture.md and architecture.svg mark the store implemented and GC future.
-- [ ] All 6 required CI jobs pass at final tested PR head.
+- [x] All 6 required CI jobs pass at final tested PR head.
 
 ## Implementation slices
 
 - [x] Add Core isolated store abstraction and unit tests.
 - [x] Add CLI commands and CI fixture acceptance.
 - [x] Align docs/architecture SVG and README.
-- [ ] Review CI, fix failures, merge and archive in follow-up PR.
+- [x] Review CI, fix failures, merge and archive in follow-up PR.
 
 ## Verification matrix
 
 | Scope | Command/check | Evidence | Status |
 |---|---|---|---|
-| Core | cargo test -p ezwallpaper-core | offline import/inspect/export negative and positive | pending |
-| CLI | CI rust-tests offline smoke | explicit root and no overwrite | pending |
-| Rust quality | cargo fmt & strict clippy | Rust quality job | pending |
-| Platforms | windows-latest, macos-latest | native tests and doctor | pending |
-| Governance | plan integrity & contract tests | six job suite | pending |
+| Core | cargo test -p ezwallpaper-core | offline import/inspect/export negative and positive | CI #39112508658: success |
+| CLI | CI rust-tests offline smoke | explicit root and no overwrite | CI #39112508658: success |
+| Rust quality | cargo fmt & strict clippy | Rust quality job | CI #39112508658: success |
+| Platforms | windows-latest, macos-latest | native tests and doctor | CI #39112508658: success |
+| Governance | plan integrity & contract tests | six job suite | CI #39112508658: success |
 
 ## Decision gates
 
@@ -70,17 +70,19 @@ Resolved: Option A approved in Issue #31 and ADR 0003. Future deletion, retentio
 
 - 2026-10-18: created Core store backed by cacache SyncReader/SyncWriter, explicit marker, no-clobber staged exports; added six groups of offline unit tests, CLI entrypoints and offline CI fixture. Six-job CI unassessed until PR runs.
 
+- 2026-10-18: final PR #34 commit 6c5a216c9f8c82fb4ea410302b8d4231e1ef23a4 passed all six CI jobs: https://github.com/pkking/ezwallpaper/actions/runs/39112508658. Squash merged as 6a5469691b2a5a413ba0ad91d3ff73eaa772babe.
+
 ## Deviations and discoveries
 
-None yet.
+Initial no-default-features cacache 13.1.0 failed to build due upstream missing State type; enabled its default features. Fixed the test's prematurely dropped temporary directory and rustfmt failures; final six jobs passed.
 
 ## Resume from here
 
-Open linked Issue #33 PR on agent/isolated-cas-store-33, review six CI jobs, fix any concrete failures and merge only after final-head green.
+Verify completion-only archival PR CI at its final head, merge if green and close Issue #33.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: 6a5469691b2a5a413ba0ad91d3ff73eaa772babe
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39112508658
 E2E artifact: offline Core/CLI only
 Remaining unassessed items: hostile concurrent writers, crash durability, live desktop
