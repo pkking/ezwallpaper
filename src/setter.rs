@@ -410,7 +410,7 @@ mod tests {
         let encoded = file_uri(path).expect("encode local path");
         let literal = serde_json::to_string(&encoded).expect("escape JS literal");
         let script = plasma_script(path).expect("absolute path generates valid file URI");
-        assert!(script.contains(&format!("desktop.writeConfig(\\\"Image\\\", {});", literal)));
+        assert!(script.contains(&format!("desktop.writeConfig(\"Image\", {});", literal)));
     }
 
     #[test]
