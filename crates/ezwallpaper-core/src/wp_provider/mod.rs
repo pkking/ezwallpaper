@@ -234,7 +234,7 @@ mod tests {
                 let bytes = socket.read(&mut request).expect("read request");
                 assert!(bytes > 0);
                 let answer = format!(
-                    "HTTP/1.1 {} Test\\r\\nContent-Length: 2\\r\\nConnection: close\\r\\n\\r\\nok",
+                    "HTTP/1.1 {} Test\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
                     code
                 );
                 socket.write_all(answer.as_bytes()).expect("fixture reply");
