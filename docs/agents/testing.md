@@ -20,6 +20,7 @@ Never describe a command as passing unless its exit code and tested revision are
 - Agent contract self-tests: negative and positive offline unit tests for the plan validator, no GitHub token needed.
 - Rust quality: existing strict fmt and Clippy gates remain enforced; no warning allowlists introduced for convenience.
 - Rust tests and CLI smoke: Rust tests plus offline --help, --version, and invalid backend rejection, without a real network call, Pexels token or wallpaper mutation. These are CLI contract tests, **not** evidence of successful wallpaper setting.
+- Platform tests (windows-latest), Platform tests (macos-latest): GitHub-hosted OS-specific `cargo test --workspace --all-targets` and `cargo run --quiet -- doctor`. Both run headlessly without changing any wallpaper. Their passing results establish native workspace compilation and offline unit/diagnostics only, **not** interactive desktop integration. These matrix jobs consume additional GitHub Actions runner minutes.
 
 Expected logs are uploaded as an artifact on failure as well as success. Uploads are useful for diagnosis; their presence alone is not proof of success.
 
