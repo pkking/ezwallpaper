@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
   <title id="title">ezwallpaper Core and CLI architecture</title>
-  <desc id="desc">Bing, Pexels and local files feed the headless Rust Core; Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Other sources and future garbage collection are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
+  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files feed the headless Rust Core; Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
   <rect width="1060" height="700" fill="#f8fafc"/>
   <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
   <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
@@ -12,19 +12,19 @@
     <rect x="271" y="145" width="201" height="59" rx="9"/>
     <rect x="491" y="145" width="201" height="59" rx="9"/>
   </g>
-  <rect x="711" y="145" width="296" height="59" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.6" stroke-dasharray="7 5"/>
+  <rect x="711" y="145" width="296" height="59" rx="9" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
   <g fill="#14532d" font-family="system-ui, sans-serif" font-size="18" font-weight="600" text-anchor="middle">
     <text x="152" y="180">Bing</text>
     <text x="372" y="180">Pexels</text>
     <text x="592" y="180">Local files</text>
-    <text x="859" y="176">Other sources</text>
+    <text x="859" y="176">Wallhaven (SFW)</text>
   </g>
-  <text x="859" y="192" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">Planned adapters</text>
+  <text x="859" y="192" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">Implemented search provider</text>
   <g stroke="#15803d" stroke-width="2" fill="none">
     <path d="M152 205 V227 H530 V244"/>
     <path d="M372 205 V227"/>
     <path d="M592 205 V227"/>
-    <path d="M859 205 V227 H530" stroke-dasharray="7 5"/>
+    <path d="M859 205 V227 H530"/>
     <path d="M524 237 L530 244 L536 237"/>
   </g>
   <rect x="168" y="245" width="724" height="66" rx="11" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
