@@ -1,6 +1,6 @@
 # Architecture and supported capability boundaries
 
-Baseline: ADR 0001; proposed ADR 0004 documents Noctalia v5 IPC selection (docs/adr/0004-noctalia-v5-ipc.md). (docs/adr/0001-core-cli-boundaries.md). Approved future storage boundary: ADR 0003 (docs/adr/0003-owned-content-store.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
+Baseline: ADR 0001; ADR 0004 documents Noctalia v5 IPC selection (docs/adr/0004-noctalia-v5-ipc.md). (docs/adr/0001-core-cli-boundaries.md). Approved future storage boundary: ADR 0003 (docs/adr/0003-owned-content-store.md). The [README architecture diagram](architecture.svg) is the canonical visual view of the split, with dashed items explicitly planned. This document describes the code currently implemented, not a claim of OS desktop validation. Architecture-affecting ADRs must update the SVG in the same PR.
 
 ## Cargo workspace
 
