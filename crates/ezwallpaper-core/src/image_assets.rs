@@ -147,12 +147,16 @@ fn decode_limited(path: &Path) -> Result<Decoded> {
     let reader = ImageReader::open(path)?
         .with_guessed_format()
         .context("cannot identify image file header")?;
-    let format = reader.format().ok_or_else(|| anyhow!("unrecognized image format"))?;
+    let format = reader
+        .format()
+        .ok_or_else(|| anyhow!("unrecognized image format"))?;
     recognized_format(format)?;
     let mut decoder = reader.into_decoder().context("invalid image decoder")?;
     let (raw_width, raw_height) = decoder.dimensions();
     check_input_geometry(raw_width, raw_height)?;
-    let orientation = decoder.orientation().context("invalid image orientation metadata")?;
+    let orientation = decoder
+        .orientation()
+        .context("invalid image orientation metadata")?;
     let mut limits = Limits::default();
     limits.max_image_width = Some(MAX_INPUT_EDGE);
     limits.max_image_height = Some(MAX_INPUT_EDGE);
@@ -160,8 +164,8 @@ fn decode_limited(path: &Path) -> Result<Decoded> {
     // and pixel-count checks above remain mandatory.
     limits.max_alloc = Some(256 * 1024 * 1024);
     decoder.set_limits(limits)?;
-    let mut image = DynamicImage::from_decoder(decoder)
-        .context("image bytes failed complete decoding")?;
+    let mut image =
+        DynamicImage::from_decoder(decoder).context("image bytes failed complete decoding")?;
     image.apply_orientation(orientation);
     Ok(Decoded {
         image,
@@ -209,7 +213,9 @@ pub fn derive_image(
     let source_content_id = manager.content_id(&source_asset)?;
 
     let converted = match fit {
-        FitMode::Cover => decoded.image.resize_to_fill(width, height, FilterType::Lanczos3),
+        FitMode::Cover => decoded
+            .image
+            .resize_to_fill(width, height, FilterType::Lanczos3),
         FitMode::Contain => {
             let scaled = decoded.image.resize(width, height, FilterType::Lanczos3);
             let mut canvas = DynamicImage::new_rgba8(width, height);
@@ -219,7 +225,9 @@ pub fn derive_image(
             canvas
         }
     };
-    let parent = destination.parent().ok_or_else(|| anyhow!("output has no parent folder"))?;
+    let parent = destination
+        .parent()
+        .ok_or_else(|| anyhow!("output has no parent folder"))?;
     if !parent.is_dir() {
         bail!("output parent is not an existing directory");
     }
@@ -234,7 +242,10 @@ pub fn derive_image(
     // persist_noclobber uses an atomic no-overwrite publish on supported FSs.
     // An existing source/output/symlink pathname is never intentionally replaced.
     staged.persist_noclobber(destination).with_context(|| {
-        format!("output exists or cannot be created: {}", destination.display())
+        format!(
+            "output exists or cannot be created: {}",
+            destination.display()
+        )
     })?;
     let derived_asset = manager.open_local(destination)?;
     Ok(DerivedImage {
@@ -304,8 +315,15 @@ mod tests {
         assert_eq!(fs::read(&input).expect("unchanged source"), original);
 
         let contain = dir.path().join("landscape.jpg");
-        let info = derive_image(&input, &contain, 12, 12, FitMode::Contain, DerivedFormat::Jpeg)
-            .expect("contain JPEG");
+        let info = derive_image(
+            &input,
+            &contain,
+            12,
+            12,
+            FitMode::Contain,
+            DerivedFormat::Jpeg,
+        )
+        .expect("contain JPEG");
         assert_eq!(info.format, "jpeg");
         let image = image::open(&contain).expect("JPEG");
         assert_eq!((image.width(), image.height()), (12, 12));
@@ -322,7 +340,14 @@ mod tests {
         let dir = tempfile::tempdir().expect("sandbox");
         let input = dir.path().join("source.png");
         fixture(&input, 8, 4);
-        assert!(derive_image(&input, &dir.path().join("absent/image.png"),
-            2, 2, FitMode::Contain, DerivedFormat::Png).is_err());
+        assert!(derive_image(
+            &input,
+            &dir.path().join("absent/image.png"),
+            2,
+            2,
+            FitMode::Contain,
+            DerivedFormat::Png
+        )
+        .is_err());
     }
 }
