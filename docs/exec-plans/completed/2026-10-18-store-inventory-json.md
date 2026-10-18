@@ -1,7 +1,7 @@
 # 2026-10-18-store-inventory-json: portable versioned store inventory JSON
 
 Issue: #40
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -43,23 +43,23 @@ No changes to existing WallpaperManifest v1, cache layout, imported bytes, file 
 - [x] StoredWallpaper serialization is tested without external network/desktop; list remains sorted and duplicate-free.
 - [x] Corrupted index causes nonzero exit with zero stdout in JSON mode, as in text mode.
 - [x] README, docs/architecture.md and diagram describe the new implemented interface.
-- [ ] All six final-head CI checks pass, with exact run and log evidence recorded.
+- [x] All six final-head CI checks pass, with exact run and log evidence recorded.
 
 ## Implementation slices
 
 - [x] 1. Define separate JSON inventory contract on verified Core list results, with focused unit tests (unverified until CI).
 - [x] 2. Add optional --json flag to store list and offline CLI CI tests for valid and corrupt inventory (unverified until CI).
-- [ ] 3. Updated architecture diagram/docs/README; validate final PR CI before marking this slice complete.
+- [x] 3. Updated architecture diagram/docs/README; final PR #41 six-job CI verified and merged.
 
 ## Verification matrix
 
 | Scope | Command or gate | Expected evidence | Status |
 |---|---|---|---|
-| Core serialization | `cargo test -p ezwallpaper-core` | schema v1 and stable records | pending |
-| CLI acceptance | GitHub offline CLI smoke | empty, imported, duplicate, fail-closed | pending |
-| Rust quality | `cargo fmt --all -- --check`, strict Clippy | Rust quality CI | pending |
-| Platforms | Windows/macOS headless Rust tests | native offline platform CI | pending |
-| Governance | plan integrity and contract self-tests | Agent plan CI | pending |
+| Core serialization | `cargo test -p ezwallpaper-core` | schema v1 and stable records | PASS — PR #41 CI 39116079350 |
+| CLI acceptance | GitHub offline CLI smoke | empty, imported, duplicate, fail-closed | PASS — PR #41 CI 39116079350 |
+| Rust quality | `cargo fmt --all -- --check`, strict Clippy | Rust quality CI | PASS — PR #41 CI 39116079350 |
+| Platforms | Windows/macOS headless Rust tests | native offline platform CI | PASS — PR #41 CI 39116079350 |
+| Governance | plan integrity and contract self-tests | Agent plan CI | PASS — PR #41 CI 39116079350 |
 
 ## Decision gates
 
@@ -73,17 +73,19 @@ None: an additive `--json` flag on the existing read-only command, within accept
 
 - 2026-10-18: PR #41 first tested HEAD `dcdf58c516b96b1d8c7bd23e5bda9e196a1cf9d8` (run 39115956624) passed Ubuntu Rust tests/CLI smoke, Agent plan integrity and contract self-tests; Rust quality failed solely on `src/main.rs` rustfmt differences. Applied the exact rustfmt layout fix at commit `00fff2001cb83371c8c506d6bf6e0932fd6439ed`. The first run is not final-head evidence and must not be used to merge. New final-head run remains pending.
 
+- 2026-10-18: final PR #41 HEAD `e58433d0fc90819808536765820648f3e2d6bc7a` passed all six jobs (Rust quality, Rust tests and CLI smoke, Agent integrity, Agent contract self-tests, native Windows and macOS): https://github.com/pkking/ezwallpaper/actions/runs/39116079350. Ubuntu logs report 10 CLI tests and 34 Core tests passed. Offline CLI artifact: https://github.com/pkking/ezwallpaper/actions/runs/39116079350/artifacts/12132242778. Squash merged as commit `a26323556441165f996eca6e234a7990281b4e65`.
+
 ## Deviations and discoveries
 
 The first validation attempt revealed two rustfmt changes in the CLI import list and JSON `println!` formatting. No code behavior change was needed.
 
 ## Resume from here
 
-Inspect all six GitHub Actions checks for the PR #41 head including this checkpoint commit; repair actual failures and record final-head evidence. Do not merge pending or failing checks. Rust/Cargo unavailable locally.
+Verify this completion-only archival PR's six CI jobs at the final head, merge only when green, and then mark Issue #40 complete and close it. No source implementation remains.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending (offline CLI only)
+Final commit: a26323556441165f996eca6e234a7990281b4e65
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39116079350 (6/6 passed at PR #41 head e58433d0fc90819808536765820648f3e2d6bc7a)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39116079350/artifacts/12132242778 (offline CLI only; no actual desktop change)
 Remaining unassessed items: real GUI wallpaper integration and concurrent hostile store mutation outside Issue #40.
