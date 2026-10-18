@@ -35,7 +35,7 @@ Expected logs are uploaded as an artifact on failure as well as success. Uploads
 
 ## Real isolated Wayland compositor E2E
 
-The dedicated `Sway headless visual E2E` job installs `sway`, `swaybg` and `grim` on Ubuntu 24.04, starts a fresh compositor with a private XDG runtime directory, uses the actual built CLI to apply deterministic PNG images, and checks pixels in the actual compositor framebuffer. No real user's wallpaper or Wayland session is touched. Screenshot mismatch, missing display/adapter, failure to return to a baseline, and timeouts fail the job. Upload framebuffer PNG/PPM, Sway logs and the JSON verdict whether the job passed or failed.
+The dedicated `Sway headless visual E2E` job installs `sway`, `swaybg` and `grim` on Ubuntu 24.04, starts a fresh compositor with a private XDG runtime directory, uses the actual built CLI to apply deterministic PNG images, and checks pixels in the actual compositor framebuffer. No real user's wallpaper or Wayland session is touched. Screenshot mismatch, missing display/adapter, failure to return to the captured original compositor baseline, and timeouts fail the job. Upload framebuffer PNG/PPM, Sway logs and the JSON verdict whether the job passed or failed.
 
 `python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v` checks fixture PNG and PPM assertion logic without a compositor. It cannot substitute for the real visual CI job. A green headless Sway screenshot confirms only this compositor/backend/output combination, **not** niri, other physical displays or multi-monitor support. See [desktop integration evidence](desktop-integration-evidence.md#automatic-sway-headless-rendered-frame-e2e).
 
