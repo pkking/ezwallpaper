@@ -2,8 +2,8 @@ use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
     derive_image, probe_image, BingProvider, DerivedFormat, FitMode, GetImgUrl, Orientation,
-    PexelProvider, StoreInventory, WallhavenProvider,
-    WallpaperAsset, WallpaperManager, WallpaperManifest, WallpaperStore,
+    PexelProvider, StoreInventory, WallhavenProvider, WallpaperAsset, WallpaperManager,
+    WallpaperManifest, WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
