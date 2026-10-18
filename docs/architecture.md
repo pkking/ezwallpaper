@@ -7,7 +7,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future stora
 - Root package `ezwallpaper` is the CLI. Its `src/main.rs` handles flags and user flow, and `src/setter.rs` owns runtime OS/DE/WM integration.
 - `crates/ezwallpaper-core` is a reusable Rust library that does not depend on a desktop session or the `wallpaper` crate.
 - `core/src/wp_provider` retains Bing/Pexels adapters, with locale/resolution parsers; `core/src/lib.rs` exports `WallpaperManager` and `WallpaperAsset`.
-- Core returns local absolute paths with source provenance after checking regular-file existence. It also provides file byte size, a sorted ephemeral nonrecursive local catalog, a versioned JSON manifest, and on-demand streaming SHA-256 content IDs for comparison across paths/sources. It does not yet decode the image, persist an index or manage cache eviction. IDs hash current file bytes and are not atomic snapshots when other processes modify files.
+- Core returns local absolute paths with source provenance after checking regular-file existence. It also provides file byte size, a sorted ephemeral nonrecursive local catalog, a versioned JSON manifest, and on-demand streaming SHA-256 content IDs for comparison across paths/sources. It now also supports an **opt-in independently version-marked content-addressed store** (`store.rs`) backed by `cacache`, with import/verified inspect/no-overwrite export. It does not decode images, auto-import legacy downloads, or manage cache eviction. IDs hash current file bytes and are not atomic snapshots when other processes modify files.
 - `src/setter.rs` selects native / LXQt / Wayland swaybg / X11 feh wallpaper integration, providing `doctor` for side-effect-free discovery and `apply` for local files.
 
 ## Existing user journeys
@@ -42,6 +42,6 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). Approved future stora
 5. `ezwallpaper --dir <directory> list [--json]`: enumerate direct regular files matching image-like extensions (no network or wallpaper setter) and optionally emit JSON v1.
 6. `ezwallpaper [source flags] fetch [--json]`: request one source wallpaper and return its local asset manifest without setting desktop. External consumers should prefer this over legacy fetch-and-apply.
 
-## Planned Core-owned store (not implemented yet)
+## Opt-in Core-owned store (implemented)
 
-ADR 0003 approves an isolated, opt-in, version-marked content-addressed store using `cacache`. The existing `--dir` and manifest v1 are not changed. Import copies files; inspect and safe export are explicitly requested. Deletion and automatic eviction are deferred.
+ADR 0003 governs `crates/ezwallpaper-core/src/store.rs`. `WallpaperStore::init(root)` creates a version-marked, isolated directory; `open(root)` refuses unknown markers. A `cacache`-backed synchronous, streaming store accepts copies of local files under verified `sha256:<hex>` keys; inspect checks bytes and internal CAS integrity; export uses no-clobber staged publishing. The existing `--dir`, legacy command paths and JSON manifest v1 are unchanged. Deletion, auto-import, GC/eviction, migrations and metadata search are not implemented. Existing files' ownership and global power-loss durability are not guaranteed for hostile concurrent filesystem actors.
