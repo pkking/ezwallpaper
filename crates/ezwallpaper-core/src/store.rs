@@ -16,10 +16,27 @@ const CACHE: &str = "cache";
 // cacache 13.x index layout. Used only to reject rows its list_sync silently skips.
 const CACHE_INDEX: &str = "index-v5";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct StoredWallpaper {
     pub content_id: String,
     pub size_bytes: u64,
+}
+
+/// Separately versioned machine-readable contract for the owned store.
+/// It contains verified content IDs, unlike the path-based WallpaperManifest v1.
+#[derive(Debug, serde::Serialize)]
+pub struct StoreInventory<'a> {
+    pub schema_version: u32,
+    pub entries: &'a [StoredWallpaper],
+}
+
+impl<'a> StoreInventory<'a> {
+    pub fn new(entries: &'a [StoredWallpaper]) -> Self {
+        Self {
+            schema_version: 1,
+            entries,
+        }
+    }
 }
 
 /// Independent, explicitly initialized Core-owned storage; no automatic GC.
@@ -312,6 +329,34 @@ mod tests {
         let store =
             WallpaperStore::init(temp.path().join("managed")).expect("initialize fresh store");
         (temp, store)
+    }
+
+    #[test]
+    fn store_inventory_json_v1_has_stable_fields_and_deduplicates() {
+        let (temp, store) = fixture();
+        let empty = store.list().expect("empty verified inventory");
+        assert_eq!(
+            serde_json::to_value(StoreInventory::new(&empty)).expect("serialize empty"),
+            serde_json::json!({"schema_version": 1, "entries": []})
+        );
+
+        let first = temp.path().join("first.jpg");
+        let second = temp.path().join("second.png");
+        fs::write(&first, b"abc").expect("first");
+        fs::write(&second, b"abc").expect("duplicate");
+        let original = store.import_file(&first).expect("import");
+        store.import_file(&second).expect("deduplicate");
+        let listed = store.list().expect("fully verified");
+        assert_eq!(
+            serde_json::to_value(StoreInventory::new(&listed)).expect("serialize stored"),
+            serde_json::json!({
+                "schema_version": 1,
+                "entries": [{
+                    "content_id": original.content_id,
+                    "size_bytes": 3
+                }]
+            })
+        );
     }
 
     #[test]
