@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
   <title id="title">ezwallpaper Core and CLI architecture</title>
-  <desc id="desc">Bing, Pexels and local files feed the headless Rust Core; Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Other sources and future garbage collection are planned. The opt-in, isolated Core-owned CAS now implements import, inspect and export.</desc>
+  <desc id="desc">Bing, Pexels and local files feed the headless Rust Core; Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Other sources and future garbage collection are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
   <rect width="1060" height="700" fill="#f8fafc"/>
   <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
   <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
@@ -34,8 +34,8 @@
   <path d="M524 329 L530 336 L536 329" fill="none" stroke="#15803d" stroke-width="2"/>
   <rect x="182" y="337" width="696" height="57" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.7"/>
   <text x="530" y="363" fill="#14532d" font-family="system-ui, sans-serif" font-size="18" font-weight="700" text-anchor="middle">WallpaperAsset · local file path · JSON manifest v1</text>
-  <text x="530" y="383" fill="#166534" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Rust API / local file / JSON · optional SHA-256 ID</text>
-  <text x="530" y="427" fill="#166534" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Opt-in owned CAS: import · inspect · export</text>
+  <text x="530" y="383" fill="#166534" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Rust API / local file / JSON · SHA-256 IDs · store inventory JSON v1</text>
+  <text x="530" y="427" fill="#166534" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Opt-in owned CAS: import · inspect · export · verified list</text>
   <g stroke="#64748b" stroke-width="2" fill="none">
     <path d="M530 445 V471 H277 V502"/>
     <path d="M530 471 H794 V502"/>
