@@ -1,5 +1,6 @@
 //! Headless wallpaper acquisition and local asset management.
 //! This crate does not inspect desktop sessions or apply wallpaper to the OS.
+pub mod store;
 pub mod wp_provider;
 mod wp_selector;
 
@@ -10,6 +11,7 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+pub use store::{StoredWallpaper, WallpaperStore};
 pub use wp_provider::{bing::BingProvider, pexel::PexelProvider, GetImgUrl};
 
 /// A local file that a consumer can read. File content is not image-decoded yet.
