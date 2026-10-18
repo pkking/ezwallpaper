@@ -24,24 +24,51 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
         || name.trim() != name
         || name.ends_with('.')
         || name.chars().any(|ch| {
-            ch.is_control()
-                || matches!(ch, '/' | '\\' | ':' | '<' | '>' | '|' | '?' | '*' | '"')
+            ch.is_control() || matches!(ch, '/' | '\\' | ':' | '<' | '>' | '|' | '?' | '*' | '"')
         });
     if invalid {
-        bail!("provider returned an invalid wallpaper filename: {:?}", name);
+        bail!(
+            "provider returned an invalid wallpaper filename: {:?}",
+            name
+        );
     }
 
     // Windows device names are reserved even with extensions. Check on all
     // hosts so Linux CI protects output consumed by Windows CLI users.
-    let stem = name.split('.').next().unwrap_or_default().to_ascii_uppercase();
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
     if matches!(
         stem.as_str(),
-        "CON" | "PRN" | "AUX" | "NUL" | "COM1" | "COM2" | "COM3" | "COM4"
-            | "COM5" | "COM6" | "COM7" | "COM8" | "COM9"
-            | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5" | "LPT6"
-            | "LPT7" | "LPT8" | "LPT9"
+        "CON"
+            | "PRN"
+            | "AUX"
+            | "NUL"
+            | "COM1"
+            | "COM2"
+            | "COM3"
+            | "COM4"
+            | "COM5"
+            | "COM6"
+            | "COM7"
+            | "COM8"
+            | "COM9"
+            | "LPT1"
+            | "LPT2"
+            | "LPT3"
+            | "LPT4"
+            | "LPT5"
+            | "LPT6"
+            | "LPT7"
+            | "LPT8"
+            | "LPT9"
     ) {
-        bail!("provider returned a reserved wallpaper filename: {:?}", name);
+        bail!(
+            "provider returned a reserved wallpaper filename: {:?}",
+            name
+        );
     }
 
     let dest = Path::new(dir).join(name);
@@ -68,17 +95,38 @@ mod tests {
 
     #[test]
     fn url_filenames_are_single_portable_components() {
-        for name in ["OHR.Spring_EN-US123", "photo.jpeg", "image 2026.png", "a_b-c.webp"] {
+        for name in [
+            "OHR.Spring_EN-US123",
+            "photo.jpeg",
+            "image 2026.png",
+            "a_b-c.webp",
+        ] {
             let path = safe_download_path(".", name).expect("ordinary filenames remain valid");
             assert_eq!(path.file_name().and_then(|p| p.to_str()), Some(name));
         }
         for name in [
-            "", ".", "..", "../escape", "/tmp/escape", "folder/file.jpg",
-            "folder\\file.jpg", "C:\\escape.jpg", "evil:ads.jpg", "CON",
-            "NUL.jpg", "LPT9.png", "photo?", "trailing.", " space.jpg",
-            "space.jpg ", "newline\nfile.jpg",
+            "",
+            ".",
+            "..",
+            "../escape",
+            "/tmp/escape",
+            "folder/file.jpg",
+            "folder\\file.jpg",
+            "C:\\escape.jpg",
+            "evil:ads.jpg",
+            "CON",
+            "NUL.jpg",
+            "LPT9.png",
+            "photo?",
+            "trailing.",
+            " space.jpg",
+            "space.jpg ",
+            "newline\nfile.jpg",
         ] {
-            assert!(safe_download_path(".", name).is_err(), "accepted unsafe name: {name:?}");
+            assert!(
+                safe_download_path(".", name).is_err(),
+                "accepted unsafe name: {name:?}"
+            );
         }
     }
 
