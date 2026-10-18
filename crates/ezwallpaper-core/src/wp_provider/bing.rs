@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 use log::debug;
 use std::fs::File;
 use std::vec::Vec;
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 use url::Url;
 
 #[derive(Debug, Default)]
@@ -80,21 +80,22 @@ impl GetImgUrl for BingProvider {
 }
 
 fn download_image(url: &Url, dir: &str) -> Result<String> {
-    let (_, mut file_name) = url
+    let file_name = url
         .query_pairs()
-        .into_owned()
-        .next()
-        .ok_or(anyhow!("no file name found in url: {}", url.as_str()))?;
-    if file_name.is_empty() {
-        file_name = "wallpaper".to_string();
-    }
-    let file_path = Path::new(dir).join(&file_name);
+        .find(|(key, _)| key == "id")
+        .map(|(_, value)| value.into_owned())
+        .ok_or_else(|| anyhow!("Bing image URL has no id filename: {}", url.as_str()))?;
+    let file_path = super::safe_download_path(dir, &file_name)?;
+    // An unsuccessful HTTP response must not truncate an existing wallpaper.
+    let mut response = reqwest::blocking::get(url.as_str())?.error_for_status()?;
     debug!("download dest {:?} ", file_path);
     let mut file = File::create(&file_path)?;
-    debug!("file created");
-    reqwest::blocking::get(url.as_str())?.copy_to(&mut file)?;
-    debug!("download {:?} pic to {:?}", url, file_path.to_str());
-    Ok(file_path.to_str().to_owned().expect("get file path").into())
+    response.copy_to(&mut file)?;
+    debug!("download {:?} pic to {:?}", url, file_path);
+    Ok(file_path
+        .to_str()
+        .ok_or_else(|| anyhow!("download output path is not UTF-8"))?
+        .to_owned())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -119,4 +120,19 @@ struct Image {
     top: i32,
     bot: i32,
     hs: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bing_query_id_cannot_traverse_download_directory() {
+        let url = Url::parse("https://www.bing.com/th?id=..%2Fescape.jpg")
+            .expect("valid URL fixture");
+        let name = url.query_pairs()
+            .find(|(key, _)| key == "id")
+            .expect("id parameter").1.into_owned();
+        assert!(super::super::safe_download_path(".", &name).is_err());
+    }
 }
