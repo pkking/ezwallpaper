@@ -336,12 +336,19 @@ fn noctalia_ipc(args: &[&str]) -> Result<String> {
         .context("failed to launch Noctalia v5 IPC")?;
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if child.try_wait().context("failed to poll Noctalia IPC")?.is_some() {
-            let result = child.wait_with_output().context("failed to read Noctalia IPC")?;
+        if child
+            .try_wait()
+            .context("failed to poll Noctalia IPC")?
+            .is_some()
+        {
+            let result = child
+                .wait_with_output()
+                .context("failed to read Noctalia IPC")?;
             if !result.status.success() {
                 bail!("Noctalia IPC exited with status {}", result.status);
             }
-            return String::from_utf8(result.stdout).context("Noctalia IPC returned non-UTF8 output");
+            return String::from_utf8(result.stdout)
+                .context("Noctalia IPC returned non-UTF8 output");
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
