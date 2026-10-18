@@ -1,7 +1,7 @@
 # 2026-10-18-image-probe-derive-53: strict local image inspection and optional derivation
 
 Issue: #53
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -44,9 +44,9 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0001-core-c
 
 ## Implementation slices
 
-- [ ] 1. Add image-rs subset and bounded Core decode/probe.
-- [ ] 2. Derive API (cover/contain, PNG/JPEG) and fixture tests.
-- [ ] 3. CLI probe/derive, docs/ADR/diagram, CI verification.
+- [x] 1. Add image-rs subset and bounded Core decode/probe.
+- [x] 2. Derive API (cover/contain, PNG/JPEG) and fixture tests.
+- [x] 3. CLI probe/derive, docs/ADR/diagram, CI verification pending.
 
 ## Verification matrix
 
@@ -65,6 +65,7 @@ Pure Rust image codec dependency is intentionally scoped to four common image fo
 ## Evidence log
 
 - 2026-10-18: inspected issue and upstream ImageReader/Limits/EXIF docs; base #62 CI seven checks success. Local cargo unavailable; CI is primary verification.
+- 2026-10-18: added image-rs feature-scoped dependency, image_assets.rs, Core exports, CLI probe/derive, offline binary fixtures, ADR 0006 and diagram/README changes. New code not yet CI-tested.
 
 ## Deviations and discoveries
 
@@ -72,7 +73,7 @@ Image-rs docs say max_alloc is best-effort, but width and height caps are strict
 
 ## Resume from here
 
-Implement and test image probe/derive on agent/issue-53-image-probe-derive; submit PR and fix CI failures before merge.
+Open linked PR from agent/issue-53-image-probe-derive and inspect final-head CI; correct errors before merge, keeping cache/allowed-root features as remaining Issue #53 work.
 
 ## Completion
 
