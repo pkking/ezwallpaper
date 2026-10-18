@@ -124,10 +124,13 @@ ezwallpaper store --root ./managed-wallpapers init
 ezwallpaper store --root ./managed-wallpapers import /absolute/path/to/picture.jpg
 # sha256:<64 lowercase hexadecimal characters>
 
+# List unique content IDs (verifying each stored blob)
+ezwallpaper store --root ./managed-wallpapers list
+
 ezwallpaper store --root ./managed-wallpapers inspect sha256:<64-hex-digest>
 ezwallpaper store --root ./managed-wallpapers export sha256:<64-hex-digest> ./copy.jpg
 ```
 
-`WallpaperStore::init` refuses nonempty unrelated folders. `WallpaperStore::open` refuses missing or unknown version markers. Imported bytes are verified and deduplicated by content key; originals stay in place. Inspect verifies the entire cached entry. Export checks integrity, stages output, and **never overwrites an existing destination**. No CLI store command is invoked during legacy fetch/apply/list flows, and JSON Manifest v1 stays unchanged.
+`WallpaperStore::init` refuses nonempty unrelated folders. `WallpaperStore::open` refuses missing or unknown version markers. Imported bytes are verified and deduplicated by content key; originals stay in place. `store list` displays sorted, distinct `sha256:<digest><TAB>size bytes` entries and verifies each stored blob, so it may read the full cache on large stores. Inspect verifies the entire cached entry. Export checks integrity, stages output, and **never overwrites an existing destination**. No CLI store command is invoked during legacy fetch/apply/list flows, and JSON Manifest v1 stays unchanged.
 
 The Core API exposes `WallpaperStore::{init,open,import_file,inspect,export}`. The store has no automatic garbage collection, eviction, migrations or deletion; do not manually edit managed blobs. Headless CI verifies data safety, not race-free isolation from hostile concurrent filesystem actors or full crash durability.
