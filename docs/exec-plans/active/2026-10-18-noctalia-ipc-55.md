@@ -1,7 +1,7 @@
 # 2026-10-18-noctalia-ipc-55: explicit Noctalia v5 wallpaper adapter
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -35,16 +35,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0001-core-c
 
 ## Acceptance criteria
 
-- [ ] Explicit Noctalia v5 backend sets all or selected monitor with safe paths, bounded IPC, zero side effects outside requested shell IPC, and no swaybg fallback.
-- [ ] Doctor distinguishes binary availability, live IPC status and actual rendered outcome (unassessed).
-- [ ] Test offline Core-manifest-to-Noctalia invocation, per-output, path with whitespace, nonzero/missing binary, invalid output, disconnected shell and readback mismatch.
-- [ ] Document exact supported commands and scope, update ADR, architecture text/SVG and README.
+- [x] Implementation added for explicit all/selected-output IPC and no swaybg fallback; CI result not yet available.
+- [x] Doctor reports distinct binary / status reachability and explicitly unverified desktop changes.
+- [x] Offline stub cases added for Core manifest, output/path, no fallback, bad IPC, mismatch and timeouts; execution pending.
+- [x] ADR 0004 (proposed), architecture text/SVG and README updated.
 - [ ] Final required CI passed at PR head.
 
 ## Implementation slices
 
-- [ ] 1. Flag plumbing and explicit Noctalia adapter with readback/status, pure output validation.
-- [ ] 2. Offline stub tests and documentation/ADR/diagram reconciliation.
+- [x] 1. Flag plumbing and explicit Noctalia adapter with readback/status, pure output validation (commits 7bebff0, 1c03a5e).
+- [x] 2. Offline stub tests authored; proposed ADR 0004, README and diagram reconciled (CI execution pending).
 - [ ] 3. Review PR CI and finish evidence; archive only after final passing revision.
 
 ## Verification matrix
@@ -66,6 +66,7 @@ No new user decision required for this additive opt-in adapter under existing us
 
 - 2026-10-18: master 04924f0 and https://github.com/pkking/ezwallpaper/actions/runs/39135521617 observed success. Issues #52–#60 open; PR list empty. Official Noctalia v5 IPC documented. Created agent/issue-55-noctalia-ipc.
 - 2026-10-18: environment has no GitHub DNS and no local cargo; new code remains untested until GitHub Actions.
+- 2026-10-18: new CLI/setter/stub tests and ADR + architecture/README changes committed on issue branch. No rustfmt, Clippy, Rust tests or GUI tests executed locally; all pending GitHub CI.
 
 ## Deviations and discoveries
 
@@ -73,7 +74,7 @@ Noctalia v5 native `noctalia msg` differs from the older Quickshell `qs -c nocta
 
 ## Resume from here
 
-Implement the isolated Noctalia CLI setter on agent/issue-55-noctalia-ipc, then inspect its diff and PR CI; if final-head CI fails, fix before merge.
+Open PR from agent/issue-55-noctalia-ipc to master, inspect PR head CI and correct any rustfmt/Clippy/test failures before merging.
 
 ## Completion
 
