@@ -1,7 +1,7 @@
 # 2026-10-18-core-cli-workspace: split wallpaper management from desktop integration
 
 Issue: #6
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -67,6 +67,8 @@ User approved the two-part core/CLI model and widened OS support definition; rou
 
 ## Evidence log
 
+- 2026-10-18: PR #7 final head `1a9628bed9ae6ec5a1cdb917fb1700e40b801035`: 4/4 required CI checks passed, https://github.com/pkking/ezwallpaper/actions/runs/39093698789 ; offline CLI artifact https://github.com/pkking/ezwallpaper/actions/runs/39093698789/artifacts/12123572925 .
+- 2026-10-18: PR #7 squash-merged into protected master as `4a88cf588f6fd7b68e8740e81013c54fabc8034c`: https://github.com/pkking/ezwallpaper/pull/7 .
 - 2026-10-18: final implementation revision `211527a27a5b82bc0f13ae3b107225d2d94843ea`: all four required PR checks PASS in https://github.com/pkking/ezwallpaper/actions/runs/39093617470 ; workspace tests, headless core check, doctor and invalid apply-path smoke succeeded. This checklist-only plan update will itself require fresh CI evidence before merge.
 - 2026-10-18: earlier CI identified Rustfmt differences, `wallpaper-rs` non-Send/Sync boxed error incompatible with anyhow Context, and strict Clippy naming issues (`wrong_self_convention`, `enum_variant_names`); fixed causes without relaxing checks. Earlier failing runs 39093409417, 39093502003, 39093561793 retained as evidence.
 - 2026-10-18: workspace/core extraction and CLI detection committed as `f074e8fedc13af54e689a0edd8138bac8c7b90d9`; tests remain UNASSESSED pending GitHub Actions.
@@ -79,11 +81,11 @@ Initial architecture can preserve providers' old GetImgUrl and WallPaper shapes 
 
 ## Resume from here
 
-Check latest GitHub Actions run for this plan-only checkpoint commit, verify four required checks completed success on PR #7 head; then squash-merge protected PR #7. Archive plan in completion-only PR and close Issue #6 after merge.
+Review and merge archival-only PR containing this completed plan, then close Issue #6. Further OS integration or core catalog work should use new Issues.
 
 ## Completion
 
-Final commit: pending
-CI run: https://github.com/pkking/ezwallpaper/actions/runs/39093617470 (tested implementation before plan checkpoint; verify latest head as well)
-E2E artifact: pending (offline CLI evidence)
+Final commit: 4a88cf588f6fd7b68e8740e81013c54fabc8034c (implementation PR #7 squash merge)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39093698789 (4/4 passed at final reviewed PR head)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39093698789/artifacts/12123572925 (offline CLI; not desktop integration)
 Remaining unassessed items: real Windows/macOS/Wayland desktop integrations, online API integration and durable cache/retention
