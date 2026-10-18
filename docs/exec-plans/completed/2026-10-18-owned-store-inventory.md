@@ -1,7 +1,7 @@
 # 2026-10-18-owned-store-inventory: verified read-only CAS listing
 
 Issue: #37
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -41,29 +41,29 @@ No provider access, wallpaper change, metadata search/filtering, new DB, GC, mig
 
 ## Acceptance criteria
 
-- [ ] `WallpaperStore::list() -> Result<Vec<StoredWallpaper>>` returns verified unique SHA-256 records sorted by content ID, including empty stores.
-- [ ] Invalid keys, malformed index rows and missing/damaged blobs fail without incomplete results or store mutation.
-- [ ] `ezwallpaper store --root DIR list` prints one `<content_id>\t<size> bytes` line per record; nonzero status on failure, no partial stdout.
-- [ ] Unit tests cover empty, duplicate, multi-entry ordering, cross-reopen, corruption and non-destructive errors.
-- [ ] CI offline CLI smoke and README cover the new operation, with no changes to `--dir`/manifest v1 or desktop integration.
-- [ ] Required final-head six CI checks pass and exact run URL is recorded.
+- [x] `WallpaperStore::list() -> Result<Vec<StoredWallpaper>>` returns verified unique SHA-256 records sorted by content ID, including empty stores.
+- [x] Invalid keys, malformed index rows and missing/damaged blobs fail without incomplete results or store mutation.
+- [x] `ezwallpaper store --root DIR list` prints one `<content_id>\t<size> bytes` line per record; nonzero status on failure, no partial stdout.
+- [x] Unit tests cover empty, duplicate, multi-entry ordering, cross-reopen, corruption and non-destructive errors.
+- [x] CI offline CLI smoke and README cover the new operation, with no changes to `--dir`/manifest v1 or desktop integration.
+- [x] Required final-head six CI checks pass and exact run URL is recorded.
 
 ## Implementation slices
 
-- [x] 1. Read-only index validation and Core list method with deterministic regression tests (implemented; CI not yet run).
+- [x] 1. Read-only index validation and Core list method with deterministic regression tests (implemented and CI-verified).
 - [x] 2. CLI list subcommand, offline acceptance smoke and user-facing documentation (implemented; CI not yet run).
-- [ ] 3. Inspect final PR diff/checks, repair failures and record final CI evidence.
+- [x] 3. Inspect final PR diff/checks, repair failures and record final CI evidence.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Plan contract | `python3 -m unittest discover -s tests -p test_agent_plan.py -v` | Agent contract self-tests CI | pending |
-| Core/unit | `cargo test --workspace --all-targets --verbose` | Rust tests and CLI smoke CI | pending |
-| Rust quality | `cargo fmt --all -- --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used` | Rust quality CI | pending |
-| CLI acceptance | `ezwallpaper store --root <temp> list`, corrupt index negative | Offline CLI artifact | pending |
-| Cross-platform | `cargo test --workspace --all-targets` | Windows/macOS matrix | pending |
-| PR governance | `scripts/validate_agent_plan.py` | Agent plan integrity CI | pending |
+| Plan contract | `python3 -m unittest discover -s tests -p test_agent_plan.py -v` | Agent contract self-tests CI | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
+| Core/unit | `cargo test --workspace --all-targets --verbose` | Rust tests and CLI smoke CI | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
+| Rust quality | `cargo fmt --all -- --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used` | Rust quality CI | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
+| CLI acceptance | `ezwallpaper store --root <temp> list`, corrupt index negative | Offline CLI artifact | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
+| Cross-platform | `cargo test --workspace --all-targets` | Windows/macOS matrix | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
+| PR governance | `scripts/validate_agent_plan.py` | Agent plan integrity CI | PASS — [PR #38 run 39114978707](https://github.com/pkking/ezwallpaper/actions/runs/39114978707) |
 
 ## Decision gates
 
@@ -73,7 +73,11 @@ None: additive read-only behavior within ADR 0003 and approved Issue #37. New cl
 
 - 2026-10-18: inspected master SHA `6fc78d8`, Issue #37 and prior successful push run 39112946213; no checks have run for this branch yet.
 - 2026-10-18: upstream `cacache` source confirms `list_sync` iterator and silent invalid row skipping in `bucket_entries`, motivating preflight.
-- 2026-10-18: branch implementation commits `ec216db` (Core + Rust tests), `9267323` (CLI), `7ba4c2e` (offline CI), `20a464b` (README). These are **unverified** until final-head CI succeeds. Filesystem index preflight is a read-only dependency on cacache 13.x `index-v5` format.
+- 2026-10-18: branch implementation commits `ec216db` (Core + Rust tests), `9267323` (CLI), `7ba4c2e` (offline CI), `20a464b` (README). Filesystem index preflight is a read-only dependency on cacache 13.x `index-v5` format.
+- 2026-10-18: initial PR #38 run 39114756862 failed Rust quality rustfmt; corrected in `70584b6`. Second run 39114817577 failed Clippy `map_entry`; corrected and extended typed-index validation in `7094cd0`.
+- 2026-10-18: final PR #38 HEAD `7094cd05654510676f7e0c7c15a2956dab50a6d3` passed **all six** jobs: Agent plan integrity, Agent contract self-tests, Rust quality, Rust tests and CLI smoke, Windows and macOS platform tests. Evidence: https://github.com/pkking/ezwallpaper/actions/runs/39114978707
+- 2026-10-18: saved offline smoke artifact (contains store listing and corrupt-index failure evidence): https://github.com/pkking/ezwallpaper/actions/runs/39114978707/artifacts/12131918352
+- 2026-10-18: implementation PR #38 merged to master as squash commit `9c9ecc182d0ca8d895ab2d0ea79d3f062a04b044`.
 
 ## Deviations and discoveries
 
@@ -81,11 +85,12 @@ None: additive read-only behavior within ADR 0003 and approved Issue #37. New cl
 
 ## Resume from here
 
-Create the linked PR from `agent/owned-store-inventory-37` to `master` with `Issue: #37` and the canonical Plan line; inspect all six CI jobs for the PR head, then fix failures without bypassing checks. Blocker: Rust build cannot run locally; GitHub CI will provide executable verification.
+Review and merge the completion-only archive PR after its own required CI passes, then close Issue #37 as completed; source and CLI implementation is already merged under PR #38. There is no known implementation blocker.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending (offline CLI evidence required; real desktop E2E not applicable)
+Final implementation PR head: `7094cd05654510676f7e0c7c15a2956dab50a6d3`
+Final commit: `9c9ecc182d0ca8d895ab2d0ea79d3f062a04b044`
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39114978707 (6/6 passed)
+Offline CLI evidence: https://github.com/pkking/ezwallpaper/actions/runs/39114978707/artifacts/12131918352 (live desktop E2E not applicable)
 Remaining unassessed items: actual GUI wallpaper integration and concurrent hostile cache mutation, both outside Issue #37.
