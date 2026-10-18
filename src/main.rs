@@ -204,7 +204,9 @@ fn read_pexels_token(cli: &Args) -> Result<String> {
 }
 
 fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
-    let orientation = cli.orientation.as_deref()
+    let orientation = cli
+        .orientation
+        .as_deref()
         .map(Orientation::from_str)
         .transpose()?;
     let min_size = cli.min_width.zip(cli.min_height);
@@ -213,9 +215,7 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
     }
     match cli.backend.as_str() {
         "bing" => {
-            if orientation.is_some() || cli.query.is_some() || min_size.is_some()
-                || cli.page != 1
-            {
+            if orientation.is_some() || cli.query.is_some() || min_size.is_some() || cli.page != 1 {
                 bail!("Bing does not support --orientation, --query, --page or minimum dimensions");
             }
             if cli.token_file.is_some() {
