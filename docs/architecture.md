@@ -23,12 +23,12 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). This document describ
 
 - Windows: Win32 via wallpaper-rs.
 - macOS: AppleScript via wallpaper-rs.
-- Named Linux DE: GNOME/Unity/Pantheon, KDE, Cinnamon, MATE, XFCE, LXDE, Deepin when the exact wallpaper-rs 3.2.0 identifier and expected command match.
+- Named Linux DE: GNOME/Unity/Pantheon/Budgie via gsettings (GNOME dark variant where writable); KDE/Plasma including multi-ID XDG via qdbus6 or qdbus scripted DBus. Older wallpaper-rs adapters remain for exact Cinnamon/MATE/XFCE/LXDE/Deepin identifiers.
 - LXQt: pcmanfm-qt -w.
 - Unknown Wayland compositor: swaybg fallback, **launch does not prove application**.
 - Unknown X11 window manager: feh --bg-fill fallback.
 - No session: desktop adapter intentionally unavailable; core still works.
-- Plasma 6, multi-value XDG identifiers, Wayland process lifecycle and third-party tools need real integration validation. Other Unix OSs are unassessed.
+- Plasma 6 and GNOME light/dark have explicit code paths but still require real desktop outcome validation. XDG multi-value KDE/GNOME IDs are detected; other DE ID variants, Wayland process lifecycle and third-party tools need real integration validation. Other Unix OSs are unassessed.
 
 ## Operational and test boundaries
 
