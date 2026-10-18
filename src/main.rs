@@ -1,8 +1,9 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
-    BingProvider, GetImgUrl, Orientation, PexelProvider, StoreInventory, WallhavenProvider,
-    WallpaperAsset, WallpaperManager, WallpaperManifest, WallpaperStore,
+    derive_image, probe_image, BingProvider, DerivedFormat, FitMode, GetImgUrl, Orientation,
+    PexelProvider, StoreInventory, WallhavenProvider, WallpaperAsset, WallpaperManager,
+    WallpaperManifest, WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
@@ -106,6 +107,33 @@ enum CliCommand {
     /// Fetch from Bing/Pexels but do not apply; useful for other OS consumers.
     Fetch {
         /// Emit a machine-readable JSON v1 asset manifest.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Decode a local image and print actual pixel geometry/format without changing it.
+    Probe {
+        path: PathBuf,
+        /// Emit versioned JSON metadata (separate from WallpaperManifest v1).
+        #[arg(long)]
+        json: bool,
+    },
+    /// Convert a local image to a NEW output with EXIF orientation normalization.
+    Derive {
+        source: PathBuf,
+        destination: PathBuf,
+        /// Target physical pixel width.
+        #[arg(long)]
+        width: u32,
+        /// Target physical pixel height.
+        #[arg(long)]
+        height: u32,
+        /// Cover crops; contain letterboxes without stretching.
+        #[arg(long, default_value = "cover")]
+        fit: String,
+        /// Output format: png or jpeg.
+        #[arg(long, default_value = "png")]
+        format: String,
+        /// Emit versioned JSON metadata.
         #[arg(long)]
         json: bool,
     },
@@ -296,6 +324,46 @@ fn main() -> Result<()> {
         Some(CliCommand::Apply { path }) => {
             let asset = manager.open_local(path)?;
             return apply_wallpaper(asset.path(), cli.setter, cli.output.as_deref());
+        }
+        Some(CliCommand::Probe { path, json }) => {
+            let result = probe_image(path)?;
+            if *json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!(
+                    "{}: {}x{} {} orientation={}",
+                    result.path.display(),
+                    result.width,
+                    result.height,
+                    result.format,
+                    result.orientation
+                );
+            }
+            return Ok(());
+        }
+        Some(CliCommand::Derive {
+            source,
+            destination,
+            width,
+            height,
+            fit,
+            format,
+            json,
+        }) => {
+            let result = derive_image(
+                source,
+                destination,
+                *width,
+                *height,
+                FitMode::from_str(fit)?,
+                DerivedFormat::from_str(format)?,
+            )?;
+            if *json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!("{}", result.path.display());
+            }
+            return Ok(());
         }
         Some(CliCommand::List { json }) => {
             let assets = manager.list_local(&cli.dir)?;

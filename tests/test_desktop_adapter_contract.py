@@ -319,6 +319,63 @@ class DesktopAdapterContractTests(unittest.TestCase):
                 self.assertIn(expected, result.stderr)
         self.assertEqual(self.calls(), [], "reject invalid provider requests before invoking any setters")
 
+    def test_image_probe_and_derive_are_headless_and_non_destructive(self) -> None:
+        import struct
+        import zlib
+
+        # PNG fixture built with Python stdlib: actual decoded RGBA pixels.
+        def chunk(kind: bytes, payload: bytes) -> bytes:
+            return (struct.pack(">I", len(payload)) + kind + payload +
+                    struct.pack(">I", zlib.crc32(kind + payload) & 0xffffffff))
+
+        width, height = 4, 2
+        raw = b"".join(b"\x00" + bytes([255, 20, 30, 255]) * width
+                       for _ in range(height))
+        png = (b"\x89PNG\r\n\x1a\n" +
+               chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)) +
+               chunk(b"IDAT", zlib.compress(raw)) +
+               chunk(b"IEND", b""))
+        self.wallpaper.write_bytes(png)
+        original = self.wallpaper.read_bytes()
+        path = self.core_asset_path(desktop="niri", session="unknown")
+        probe = self.cli("probe", path, "--json", desktop="niri", session="unknown")
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        metadata = json.loads(probe.stdout)
+        self.assertEqual((metadata["width"], metadata["height"]), (width, height))
+        self.assertEqual(metadata["mime_type"], "image/png")
+        self.assertEqual(metadata["orientation"], "NoTransforms")
+        self.assertEqual(metadata["schema_version"], 1)
+
+        destination = self.root / "portrait-derived.png"
+        derive = self.cli("derive", path, str(destination), "--width", "2",
+                          "--height", "4", "--fit", "cover", "--format", "png",
+                          "--json", desktop="niri", session="unknown")
+        self.assertEqual(derive.returncode, 0, derive.stderr)
+        derived = json.loads(derive.stdout)
+        self.assertEqual((derived["width"], derived["height"]), (2, 4))
+        self.assertEqual(derived["source_content_id"], metadata["content_id"])
+        self.assertEqual(struct.unpack(">II", destination.read_bytes()[16:24]), (2, 4))
+        self.assertEqual(self.wallpaper.read_bytes(), original)
+        repeat = self.cli("derive", path, str(destination), "--width", "2",
+                          "--height", "4", desktop="niri", session="unknown")
+        self.assertNotEqual(repeat.returncode, 0)
+        self.assertEqual(destination.read_bytes()[16:24], struct.pack(">II", 2, 4))
+        self.assertEqual(self.calls(), [], "probe/derive must never run GUI setters")
+
+    def test_image_probe_rejects_fake_image_and_oversize_output(self) -> None:
+        self.install_stubs("swaybg", "noctalia")
+        fake = self.core_asset_path(desktop="niri", session="unknown")
+        invalid = self.cli("probe", fake, "--json", desktop="niri", session="unknown")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertEqual(invalid.stdout.strip(), "")
+        oversized = self.cli("derive", fake, str(self.root / "bad.png"),
+                             "--width", "9000", "--height", "100",
+                             desktop="niri", session="unknown")
+        self.assertNotEqual(oversized.returncode, 0)
+        self.assertIn("safe geometry limits", oversized.stderr)
+        self.assertFalse((self.root / "bad.png").exists())
+        self.assertEqual(self.calls(), [])
+
     def test_headless_does_not_invoke_stubs_or_select_host_commands(self) -> None:
         self.install_stubs("gsettings", "qdbus6", "swaybg", "feh")
         path = self.core_asset_path(desktop="GNOME", session="unknown")
