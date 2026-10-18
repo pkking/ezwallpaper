@@ -83,6 +83,8 @@ jobs:
           # End-to-end Core manifest -> CLI apply -> isolated fake desktop commands.
           # Stub-only PATH guarantees this test cannot invoke host GUI setters.
           python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v 2>&1 | tee artifacts/ci/desktop-adapter-contract.log
+          # State-machine safety tests only; no real desktop commands or effects.
+          python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v 2>&1 | tee artifacts/ci/gnome-live-safety.log
           target/debug/ezwallpaper --help > artifacts/ci/help.txt
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
           grep -q -- '--backend' artifacts/ci/help.txt
