@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use ezwallpaper_core::{
-    BingProvider, GetImgUrl, PexelProvider, WallpaperAsset, WallpaperManager, WallpaperManifest,
-    WallpaperStore,
+    BingProvider, GetImgUrl, PexelProvider, StoreInventory, WallpaperAsset, WallpaperManager,
+    WallpaperManifest, WallpaperStore,
 };
 use log::debug;
 use std::path::PathBuf;
@@ -88,7 +88,11 @@ enum StoreOperation {
     /// Initialize a new (or empty) managed directory.
     Init,
     /// List verified unique content IDs and sizes without modifying storage.
-    List,
+    List {
+        /// Emit a separately versioned machine-readable store inventory.
+        #[arg(long)]
+        json: bool,
+    },
     /// Copy a local wallpaper into the content-addressable store.
     Import { path: PathBuf },
     /// Read and verify a saved SHA-256 content ID.
@@ -106,10 +110,18 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
     let store = WallpaperStore::open(root)?;
     match operation {
         StoreOperation::Init => unreachable!("handled before store open"),
-        StoreOperation::List => {
+        StoreOperation::List { json } => {
             // Verify the whole inventory before printing any results.
-            for entry in store.list()? {
-                println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+            let entries = store.list()?;
+            if *json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&StoreInventory::new(&entries))?
+                );
+            } else {
+                for entry in entries {
+                    println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+                }
             }
         }
         StoreOperation::Import { path } => {

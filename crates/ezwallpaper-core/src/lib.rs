@@ -11,7 +11,7 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-pub use store::{StoredWallpaper, WallpaperStore};
+pub use store::{StoreInventory, StoredWallpaper, WallpaperStore};
 pub use wp_provider::{bing::BingProvider, pexel::PexelProvider, GetImgUrl};
 
 /// A local file that a consumer can read. File content is not image-decoded yet.

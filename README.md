@@ -125,6 +125,8 @@ ezwallpaper store --root ./managed-wallpapers import /absolute/path/to/picture.j
 # sha256:<64 lowercase hexadecimal characters>
 
 ezwallpaper store --root ./managed-wallpapers list
+# Return machine-readable content IDs for scripts or other OS consumers:
+ezwallpaper store --root ./managed-wallpapers list --json
 # sha256:<64-hex-digest><TAB>12345 bytes
 ezwallpaper store --root ./managed-wallpapers inspect sha256:<64-hex-digest>
 ezwallpaper store --root ./managed-wallpapers export sha256:<64-hex-digest> ./copy.jpg
@@ -134,4 +136,6 @@ ezwallpaper store --root ./managed-wallpapers export sha256:<64-hex-digest> ./co
 
 The new `list` command enumerates verified, unique content IDs in sorted order and prints one `<content ID><TAB><byte count> bytes` line per entry. An empty initialized store produces no lines. It reads and verifies every cached blob and fails without partial output if it encounters a bad index entry or missing/damaged content; it is therefore **O(total stored data)**, not a cheap metadata-only search. It never modifies managed files. `cacache` 13.x index enumeration can silently ignore malformed rows, so Core performs a read-only integrity preflight of its v5 index before using the canonical index iterator. Concurrent hostile changes are not an atomic snapshot.
 
-The Core API exposes `WallpaperStore::{init,open,import_file,list,inspect,export}`. The store has no automatic garbage collection, eviction, migrations or deletion; do not manually edit managed blobs. Headless CI verifies data safety, not race-free isolation from hostile concurrent filesystem actors or full crash durability.
+The optional `list --json` produces a separately versioned inventory (not WallpaperManifest v1): `{"schema_version":1,"entries":[{"content_id":"sha256:<64-hex>","size_bytes":3}]}`. An empty initialized store yields `"entries":[]`. Corrupt entries cause a nonzero exit and no partial JSON output. The existing default text format remains unchanged.
+
+The Core API exposes `WallpaperStore::{init,open,import_file,list,inspect,export}` and `StoreInventory::new(&entries)`. The store has no automatic garbage collection, eviction, migrations or deletion; do not manually edit managed blobs. Headless CI verifies data safety, not race-free isolation from hostile concurrent filesystem actors or full crash durability.

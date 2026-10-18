@@ -104,6 +104,8 @@ jobs:
           target/debug/ezwallpaper store --root "$store_root" init > artifacts/ci/store-init.txt
           target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-empty-list.txt
           test ! -s artifacts/ci/store-empty-list.txt
+          target/debug/ezwallpaper store --root "$store_root" list --json > artifacts/ci/store-empty-list.json
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1])) == {"schema_version":1,"entries":[]}' artifacts/ci/store-empty-list.json
           target/debug/ezwallpaper store --root "$store_root" import "$catalog_dir/hash-fixture.png" > artifacts/ci/store-import.txt
           grep -Fxq 'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' artifacts/ci/store-import.txt
           content_id="$(cat artifacts/ci/store-import.txt)"
@@ -113,6 +115,8 @@ jobs:
           target/debug/ezwallpaper store --root "$store_root" list > artifacts/ci/store-list.txt
           printf '%s\t3 bytes\n' "$content_id" > artifacts/ci/store-list.expected
           cmp artifacts/ci/store-list.expected artifacts/ci/store-list.txt
+          target/debug/ezwallpaper store --root "$store_root" list --json > artifacts/ci/store-list.json
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1])) == {"schema_version":1,"entries":[{"content_id":sys.argv[2],"size_bytes":3}]}' artifacts/ci/store-list.json "$content_id"
           target/debug/ezwallpaper store --root "$store_root" inspect "$content_id" > artifacts/ci/store-inspect.txt
           grep -Fq "$content_id" artifacts/ci/store-inspect.txt
           target/debug/ezwallpaper store --root "$store_root" export "$content_id" "$catalog_dir/exported.jpg" > artifacts/ci/store-export.txt
@@ -129,6 +133,13 @@ jobs:
           test "$list_status" -ne 0
           test ! -s artifacts/ci/store-broken.stdout
           test -s artifacts/ci/store-broken.stderr
+          set +e
+          target/debug/ezwallpaper store --root "$store_root" list --json > artifacts/ci/store-broken-json.stdout 2> artifacts/ci/store-broken-json.stderr
+          json_status=$?
+          set -e
+          test "$json_status" -ne 0
+          test ! -s artifacts/ci/store-broken-json.stdout
+          test -s artifacts/ci/store-broken-json.stderr
           target/debug/ezwallpaper doctor > artifacts/ci/doctor.txt
           grep -q -- 'adapter:' artifacts/ci/doctor.txt
           set +e
