@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use anyhow::{anyhow, Result};
 use log::debug;
-use std::fs::File;
 use std::str::FromStr;
 use std::vec::Vec;
 use url::Url;
@@ -89,8 +88,7 @@ fn download_image(url: &Url, dir: &str) -> Result<String> {
     // An unsuccessful HTTP response must not truncate an existing wallpaper.
     let mut response = reqwest::blocking::get(url.as_str())?.error_for_status()?;
     debug!("download dest {:?} ", file_path);
-    let mut file = File::create(&file_path)?;
-    response.copy_to(&mut file)?;
+    super::write_complete_download(&file_path, &mut response)?;
     debug!("download {:?} pic to {:?}", url, file_path);
     Ok(file_path
         .to_str()
