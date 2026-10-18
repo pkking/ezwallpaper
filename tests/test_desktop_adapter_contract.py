@@ -1,0 +1,198 @@
+"""Offline Core -> CLI -> Linux desktop adapter contract tests.
+
+Runs against the *real* ezwallpaper executable but only disposable fake GUI
+commands. PATH contains no host tools, so tests cannot touch a real desktop.
+This is command invocation evidence, NOT rendered-wallpaper verification.
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from urllib.parse import unquote, urlsplit
+
+
+# The Ubuntu CI builds this binary before invoking these tests.
+BINARY = Path(os.environ.get("EZ_WALLPAPER_TEST_BINARY", "target/debug/ezwallpaper")).resolve()
+
+STUB_BODY = """
+import json
+import os
+from pathlib import Path
+import sys
+import time
+
+name = Path(sys.argv[0]).name
+with open(os.environ["EZW_TEST_TRACE"], "a", encoding="utf-8") as trace:
+    trace.write(json.dumps({"command": name, "args": sys.argv[1:]}) + "\\n")
+if name == "gsettings" and sys.argv[1:3] == ["writable", "org.gnome.desktop.background"]:
+    print(os.environ.get("EZW_TEST_DARK_WRITABLE", "true"))
+elif name == "swaybg":
+    if os.environ.get("EZW_TEST_SWAYBG_EARLY_EXIT") == "1":
+        sys.exit(13)
+    # Mimic the long-running compositor helper without interacting with a GUI.
+    time.sleep(0.7)
+"""
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "Linux adapter contracts only")
+class DesktopAdapterContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        if not BINARY.is_file():
+            self.fail(f"build the CLI before running adapter contracts: {BINARY}")
+        self.temporary = tempfile.TemporaryDirectory(prefix="ezwallpaper-adapters-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.bin_dir = self.root / "only-stubs-on-path"
+        self.bin_dir.mkdir()
+        self.trace = self.root / "calls.jsonl"
+        self.wallpaper = self.root / "wallpaper.png"
+        self.wallpaper.write_bytes(b"synthetic image fixture: not decoded by the core")
+
+    def install_stubs(self, *names: str) -> None:
+        for name in names:
+            stub = self.bin_dir / name
+            stub.write_text(f"#!{sys.executable}\n" + STUB_BODY, encoding="utf-8")
+            stub.chmod(0o755)
+
+    def cli(self, *args: str, desktop: str, session: str, **extra_env: str) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        # Prevent ambient desktop discovery and accidental host executable use.
+        for name in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE"):
+            env.pop(name, None)
+        env.update({
+            "PATH": str(self.bin_dir),
+            "XDG_CURRENT_DESKTOP": desktop,
+            "XDG_SESSION_TYPE": session,
+            "EZW_TEST_TRACE": str(self.trace),
+            **extra_env,
+        })
+        return subprocess.run(
+            [str(BINARY), *args],
+            cwd=self.root,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+
+    def calls(self) -> list[dict]:
+        if not self.trace.exists():
+            return []
+        return [json.loads(line) for line in self.trace.read_text(encoding="utf-8").splitlines()]
+
+    def core_asset_path(self, *, desktop: str, session: str) -> str:
+        """A genuine Core JSON v1 manifest must supply the path passed to apply."""
+        result = self.cli("-d", str(self.root), "list", "--json", desktop=desktop, session=session)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads(result.stdout)
+        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(len(manifest["assets"]), 1)
+        asset = manifest["assets"][0]
+        self.assertEqual(asset["source"], "local")
+        self.assertEqual(asset["size_bytes"], self.wallpaper.stat().st_size)
+        self.assertEqual(asset["path"], str(self.wallpaper.resolve()))
+        self.assertEqual(self.calls(), [], "listing must not invoke a desktop command")
+        return asset["path"]
+
+    def test_gnome_applies_both_writable_light_and_dark_keys(self) -> None:
+        self.install_stubs("gsettings")
+        path = self.core_asset_path(desktop="GNOME", session="wayland")
+        doctor = self.cli("doctor", desktop="GNOME", session="wayland")
+        self.assertEqual(doctor.returncode, 0, doctor.stderr)
+        self.assertIn("adapter: gsettings", doctor.stdout)
+        self.assertIn("verified_desktop_change: false", doctor.stdout)
+        result = self.cli("apply", path, desktop="GNOME", session="wayland")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.calls()
+        self.assertEqual([call["command"] for call in calls], ["gsettings"] * 3)
+        schema = "org.gnome.desktop.background"
+        expected_value = json.dumps(self.wallpaper.as_uri())
+        self.assertEqual(calls[0]["args"], ["set", schema, "picture-uri", expected_value])
+        self.assertEqual(calls[1]["args"], ["writable", schema, "picture-uri-dark"])
+        self.assertEqual(calls[2]["args"], ["set", schema, "picture-uri-dark", expected_value])
+
+    def test_gnome_skips_unwritable_dark_key(self) -> None:
+        self.install_stubs("gsettings")
+        path = self.core_asset_path(desktop="GNOME", session="x11")
+        result = self.cli(
+            "apply", path, desktop="GNOME", session="x11", EZW_TEST_DARK_WRITABLE="false"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            [call["args"][0] for call in self.calls()], ["set", "writable"]
+        )
+
+    def test_plasma_prefers_qdbus6_and_escapes_path_as_data(self) -> None:
+        self.install_stubs("qdbus6", "qdbus")
+        # A hostile-looking path must be serialized, never evaluated as JS.
+        self.wallpaper.rename(self.root / 'quote";throw new Error(1);.png')
+        self.wallpaper = self.root / 'quote";throw new Error(1);.png'
+        path = self.core_asset_path(desktop="KDE:Plasma", session="wayland")
+        doctor = self.cli("doctor", desktop="KDE:Plasma", session="wayland")
+        self.assertIn("adapter: qdbus6", doctor.stdout)
+        result = self.cli("apply", path, desktop="KDE:Plasma", session="wayland")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.calls()
+        self.assertEqual(len(calls), 1, calls)
+        self.assertEqual(calls[0]["command"], "qdbus6")
+        args = calls[0]["args"]
+        self.assertEqual(args[:3], [
+            "org.kde.plasmashell",
+            "/PlasmaShell",
+            "org.kde.PlasmaShell.evaluateScript",
+        ])
+        script = args[3]
+        marker = 'desktop.writeConfig("Image", '
+        self.assertEqual(script.count(marker), 1)
+        remainder = script.split(marker, 1)[1]
+        uri, end = json.JSONDecoder().raw_decode(remainder)
+        self.assertTrue(remainder[end:].startswith(");"))
+        self.assertEqual(unquote(urlsplit(uri).path), path)
+
+    def test_niri_swaybg_launch_is_explicitly_unverified(self) -> None:
+        self.install_stubs("swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        result = self.cli("apply", path, desktop="niri", session="wayland")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("cannot be independently verified", result.stderr)
+        self.assertEqual(self.calls(), [{"command": "swaybg", "args": ["-i", path]}])
+
+    def test_niri_early_process_exit_fails_instead_of_claiming_success(self) -> None:
+        self.install_stubs("swaybg")
+        path = self.core_asset_path(desktop="sway", session="wayland")
+        result = self.cli(
+            "apply", path, desktop="sway", session="wayland", EZW_TEST_SWAYBG_EARLY_EXIT="1"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exited before the wallpaper was established", result.stderr)
+        self.assertEqual(self.calls()[0]["command"], "swaybg")
+
+    def test_x11_feh_receives_local_asset(self) -> None:
+        self.install_stubs("feh")
+        path = self.core_asset_path(desktop="i3", session="x11")
+        result = self.cli("apply", path, desktop="i3", session="x11")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [
+            {"command": "feh", "args": ["--bg-fill", path]}
+        ])
+
+    def test_headless_does_not_invoke_stubs_or_select_host_commands(self) -> None:
+        self.install_stubs("gsettings", "qdbus6", "swaybg", "feh")
+        path = self.core_asset_path(desktop="GNOME", session="unknown")
+        doctor = self.cli("doctor", desktop="GNOME", session="unknown")
+        self.assertEqual(doctor.returncode, 0, doctor.stderr)
+        self.assertIn("available: false", doctor.stdout)
+        result = self.cli("apply", path, desktop="GNOME", session="unknown")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no wallpaper setter available", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -80,6 +80,9 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/ci
           cargo build --bin ezwallpaper
+          # End-to-end Core manifest -> CLI apply -> isolated fake desktop commands.
+          # Stub-only PATH guarantees this test cannot invoke host GUI setters.
+          python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v 2>&1 | tee artifacts/ci/desktop-adapter-contract.log
           target/debug/ezwallpaper --help > artifacts/ci/help.txt
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
           grep -q -- '--backend' artifacts/ci/help.txt
