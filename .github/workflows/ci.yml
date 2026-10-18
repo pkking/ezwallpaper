@@ -95,6 +95,10 @@ jobs:
           grep -q '"source": "local"' artifacts/ci/catalog.json
           grep -q 'wallpaper.JPG' artifacts/ci/catalog.json
           ! grep -q 'notes.txt' artifacts/ci/catalog.json
+          # Fingerprinting is an offline, side-effect-free Core/CLI contract.
+          printf 'abc' > "$catalog_dir/hash-fixture.png"
+          target/debug/ezwallpaper hash "$catalog_dir/hash-fixture.png" > artifacts/ci/hash.txt
+          grep -Fxq 'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' artifacts/ci/hash.txt
           target/debug/ezwallpaper doctor > artifacts/ci/doctor.txt
           grep -q -- 'adapter:' artifacts/ci/doctor.txt
           set +e

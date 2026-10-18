@@ -7,7 +7,7 @@ Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). The [README architect
 - Root package `ezwallpaper` is the CLI. Its `src/main.rs` handles flags and user flow, and `src/setter.rs` owns runtime OS/DE/WM integration.
 - `crates/ezwallpaper-core` is a reusable Rust library that does not depend on a desktop session or the `wallpaper` crate.
 - `core/src/wp_provider` retains Bing/Pexels adapters, with locale/resolution parsers; `core/src/lib.rs` exports `WallpaperManager` and `WallpaperAsset`.
-- Core returns local absolute paths with source provenance after checking regular-file existence. It also provides file byte size, a sorted ephemeral nonrecursive local catalog and a versioned JSON manifest. It does not yet decode the image, persist an index or manage cache eviction.
+- Core returns local absolute paths with source provenance after checking regular-file existence. It also provides file byte size, a sorted ephemeral nonrecursive local catalog, a versioned JSON manifest, and on-demand streaming SHA-256 content IDs for comparison across paths/sources. It does not yet decode the image, persist an index or manage cache eviction. IDs hash current file bytes and are not atomic snapshots when other processes modify files.
 - `src/setter.rs` selects native / LXQt / Wayland swaybg / X11 feh wallpaper integration, providing `doctor` for side-effect-free discovery and `apply` for local files.
 
 ## Existing user journeys

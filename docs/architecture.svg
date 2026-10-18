@@ -34,7 +34,7 @@
   <path d="M524 329 L530 336 L536 329" fill="none" stroke="#15803d" stroke-width="2"/>
   <rect x="182" y="337" width="696" height="57" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.7"/>
   <text x="530" y="363" fill="#14532d" font-family="system-ui, sans-serif" font-size="18" font-weight="700" text-anchor="middle">WallpaperAsset · local file path · JSON manifest v1</text>
-  <text x="530" y="383" fill="#166534" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Shared consumer contract (Rust API / local file / JSON)</text>
+  <text x="530" y="383" fill="#166534" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Rust API / local file / JSON · optional SHA-256 ID</text>
   <text x="530" y="427" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" font-style="italic" text-anchor="middle">Planned: durable cache · deduplication · tags · history</text>
   <g stroke="#64748b" stroke-width="2" fill="none">
     <path d="M530 445 V471 H277 V502"/>

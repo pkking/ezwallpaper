@@ -56,6 +56,11 @@ enum CliCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Print the SHA-256 identity of an existing local file without modifying it.
+    Hash {
+        /// Path to the existing local file.
+        path: PathBuf,
+    },
     /// Fetch from Bing/Pexels but do not apply; useful for other OS consumers.
     Fetch {
         /// Emit a machine-readable JSON v1 asset manifest.
@@ -105,6 +110,11 @@ fn main() -> Result<()> {
         Some(CliCommand::List { json }) => {
             let assets = manager.list_local(&cli.dir)?;
             return print_assets(&assets, *json);
+        }
+        Some(CliCommand::Hash { path }) => {
+            let asset = manager.open_local(path)?;
+            println!("{}", manager.content_id(&asset)?);
+            return Ok(());
         }
         Some(CliCommand::Fetch { json }) => {
             let provider = build_provider(&cli)?;
