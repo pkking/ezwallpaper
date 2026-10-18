@@ -4,7 +4,13 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Setter {
+    Auto,
+    Noctalia,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Platform {
@@ -79,6 +85,7 @@ enum Adapter {
     PlasmaQdbus,
     PcmanfmQt,
     Swaybg,
+    Noctalia,
     Feh,
     Unavailable,
 }
@@ -92,6 +99,7 @@ impl Adapter {
             Self::PlasmaQdbus => "qdbus (Plasma scripting)",
             Self::PcmanfmQt => "pcmanfm-qt (LXQt)",
             Self::Swaybg => "swaybg (Wayland external adapter)",
+            Self::Noctalia => "Noctalia v5 IPC (requested, not visually verified)",
             Self::Feh => "feh (X11 external adapter)",
             Self::Unavailable => "unavailable",
         }
@@ -102,17 +110,49 @@ impl Adapter {
 pub enum ApplyStatus {
     Submitted,
     LaunchedUnverified,
+    /// Readback matches the requested path; actual compositor pixels are unassessed.
+    PathObserved,
 }
 
 /// The result describes *available integration paths*, not a proven wallpaper change.
 pub struct Capability {
     runtime: Runtime,
     adapter: Adapter,
+    requested: Setter,
+    output: Option<String>,
 }
 
 impl Capability {
     pub fn detect() -> Self {
         Self::resolve(Runtime::current(), command_available)
+    }
+
+    /// Explicit Noctalia never falls back to swaybg, even when the shell is unavailable.
+    pub fn detect_with(requested: Setter, output: Option<&str>) -> Result<Self> {
+        if requested == Setter::Auto {
+            if output.is_some() {
+                bail!("--output requires --setter noctalia");
+            }
+            return Ok(Self::detect());
+        }
+        if let Some(connector) = output {
+            validate_connector(connector)?;
+        }
+        let runtime = Runtime::current();
+        let adapter = if runtime.os == Platform::Linux
+            && runtime.session == Session::Wayland
+            && command_available("noctalia")
+        {
+            Adapter::Noctalia
+        } else {
+            Adapter::Unavailable
+        };
+        Ok(Self {
+            runtime,
+            adapter,
+            requested,
+            output: output.map(str::to_owned),
+        })
     }
 
     fn resolve(runtime: Runtime, has: impl Fn(&str) -> bool) -> Self {
@@ -171,7 +211,12 @@ impl Capability {
                 })
             }
         };
-        Self { runtime, adapter }
+        Self {
+            runtime,
+            adapter,
+            requested: Setter::Auto,
+            output: None,
+        }
     }
 
     pub fn adapter(&self) -> &'static str {
@@ -179,18 +224,33 @@ impl Capability {
     }
 
     pub fn describe(&self) -> String {
-        format!(
+        let mut details = format!(
             "os: {:?}\ndesktop: {}\nsession: {:?}\nadapter: {}\navailable: {}\nverified_desktop_change: false",
             self.runtime.os,
             if self.runtime.desktop.is_empty() { "(unreported)" } else { &self.runtime.desktop },
             self.runtime.session,
             self.adapter(),
             self.adapter != Adapter::Unavailable,
-        )
+        );
+        if self.requested == Setter::Noctalia {
+            details.push_str(&format!(
+                "\nrequested_setter: noctalia\nnoctalia_binary_available: {}\nnoctalia_ipc_reachable: {}",
+                command_available("noctalia"),
+                self.adapter == Adapter::Noctalia
+                    && noctalia_ipc(&["msg", "status"]).is_ok(),
+            ));
+            if let Some(connector) = &self.output {
+                details.push_str(&format!("\nrequested_output: {}", connector));
+            }
+        }
+        details
     }
 
     pub fn apply(&self, path: &Path) -> Result<ApplyStatus> {
         if self.adapter == Adapter::Unavailable {
+            if self.requested == Setter::Noctalia {
+                bail!("Noctalia v5 setter unavailable; requires Linux Wayland session and noctalia executable (no swaybg fallback)");
+            }
             bail!("no wallpaper setter available for this OS/desktop; run ezwallpaper doctor");
         }
         if !path.is_file() {
@@ -225,6 +285,10 @@ impl Capability {
                 checked_command("feh", &["--bg-fill", &path.to_string_lossy()])?;
                 Ok(ApplyStatus::Submitted)
             }
+            Adapter::Noctalia => {
+                apply_noctalia(path, self.output.as_deref())?;
+                Ok(ApplyStatus::PathObserved)
+            }
             Adapter::Swaybg => {
                 let mut child = Command::new("swaybg")
                     .arg("-i")
@@ -247,6 +311,77 @@ impl Capability {
             Adapter::Unavailable => bail!("wallpaper adapter unavailable"),
         }
     }
+}
+
+/// Output identifiers must be a single IPC token, not arbitrary command fragments.
+fn validate_connector(connector: &str) -> Result<()> {
+    if connector.is_empty()
+        || !connector
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+    {
+        bail!("invalid Noctalia output connector: expected a single alphanumeric/.-_ token");
+    }
+    Ok(())
+}
+
+/// Bounded execution; a v5 CLI must be reachable, not merely installed.
+fn noctalia_ipc(args: &[&str]) -> Result<String> {
+    let mut child = Command::new("noctalia")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .context("failed to launch Noctalia v5 IPC")?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if child
+            .try_wait()
+            .context("failed to poll Noctalia IPC")?
+            .is_some()
+        {
+            let result = child
+                .wait_with_output()
+                .context("failed to read Noctalia IPC")?;
+            if !result.status.success() {
+                bail!("Noctalia IPC exited with status {}", result.status);
+            }
+            return String::from_utf8(result.stdout)
+                .context("Noctalia IPC returned non-UTF8 output");
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            bail!("Noctalia IPC timed out after 5 seconds");
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
+fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
+    // v5 IPC joins argv tokens into a string; line endings cannot be compared
+    // safely against the wallpaper-get single-line response.
+    if path_str.contains('\n') || path_str.contains('\r') {
+        bail!("Noctalia wallpaper paths cannot contain newlines");
+    }
+    let mut set_args = vec!["msg", "wallpaper-set"];
+    let mut get_args = vec!["msg", "wallpaper-get"];
+    if let Some(connector) = output {
+        validate_connector(connector)?;
+        set_args.push(connector);
+        get_args.push(connector);
+    }
+    set_args.push(path_str);
+    noctalia_ipc(&set_args)?;
+    let observed = noctalia_ipc(&get_args)?;
+    if observed.trim_end_matches(&['\r', '\n'][..]) != path_str {
+        bail!("Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)");
+    }
+    Ok(())
 }
 
 fn file_uri(path: &Path) -> Result<String> {
@@ -388,6 +523,16 @@ mod tests {
             Capability::resolve(linux("i3", Session::X11), |cmd| cmd == "feh").adapter,
             Adapter::Feh
         );
+    }
+
+    #[test]
+    fn invalid_noctalia_connectors_are_rejected() {
+        for invalid in ["", "DP 1", "DP-1/other", "DP-1\n", "DP-1;touch"] {
+            assert!(validate_connector(invalid).is_err());
+        }
+        for valid in ["DP-1", "eDP-1", "HDMI-A-1", "WL_1"] {
+            assert!(validate_connector(valid).is_ok());
+        }
     }
 
     #[test]

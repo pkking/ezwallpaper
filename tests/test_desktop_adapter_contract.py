@@ -36,6 +36,20 @@ elif name == "swaybg":
         sys.exit(13)
     # Mimic the long-running compositor helper without interacting with a GUI.
     time.sleep(0.7)
+elif name == "noctalia":
+    if os.environ.get("EZW_TEST_IPC_FAIL") == "1":
+        sys.exit(17)
+    if os.environ.get("EZW_TEST_IPC_SLEEP") == "1" and sys.argv[1:3] == ["msg", "wallpaper-set"]:
+        time.sleep(6)
+    if sys.argv[1:3] == ["msg", "status"]:
+        print('{"running":true}')
+    elif sys.argv[1:3] == ["msg", "wallpaper-set"]:
+        Path(os.environ["EZW_TEST_WALLPAPER_STATE"]).write_text(sys.argv[-1], encoding="utf-8")
+    elif sys.argv[1:3] == ["msg", "wallpaper-get"]:
+        state = Path(os.environ["EZW_TEST_WALLPAPER_STATE"])
+        print(os.environ.get("EZW_TEST_GET_OVERRIDE", state.read_text(encoding="utf-8")))
+    else:
+        sys.exit(9)
 """
 
 
@@ -69,6 +83,7 @@ class DesktopAdapterContractTests(unittest.TestCase):
             "XDG_CURRENT_DESKTOP": desktop,
             "XDG_SESSION_TYPE": session,
             "EZW_TEST_TRACE": str(self.trace),
+            "EZW_TEST_WALLPAPER_STATE": str(self.root / "noctalia-state.txt"),
             **extra_env,
         })
         return subprocess.run(
@@ -154,6 +169,109 @@ class DesktopAdapterContractTests(unittest.TestCase):
         uri, end = json.JSONDecoder().raw_decode(remainder)
         self.assertTrue(remainder[end:].startswith(");"))
         self.assertEqual(unquote(urlsplit(uri).path), path)
+
+    def test_noctalia_targeted_output_from_core_manifest(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        self.wallpaper.rename(self.root / 'my "wallpaper" with spaces.png')
+        self.wallpaper = self.root / 'my "wallpaper" with spaces.png'
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        doctor = self.cli("--setter", "noctalia", "--output", "DP-1", "doctor",
+                          desktop="niri", session="wayland")
+        self.assertEqual(doctor.returncode, 0, doctor.stderr)
+        self.assertIn("noctalia_binary_available: true", doctor.stdout)
+        self.assertIn("noctalia_ipc_reachable: true", doctor.stdout)
+        self.assertIn("verified_desktop_change: false", doctor.stdout)
+        result = self.cli("--setter", "noctalia", "--output", "DP-1",
+                          "apply", path, desktop="niri", session="wayland")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("rendered pixels not verified", result.stderr)
+        self.assertEqual(self.calls(), [
+            {"command": "noctalia", "args": ["msg", "status"]},
+            {"command": "noctalia", "args": ["msg", "wallpaper-set", "DP-1", path]},
+            {"command": "noctalia", "args": ["msg", "wallpaper-get", "DP-1"]},
+        ])
+
+    def test_noctalia_all_outputs_without_connector(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="niri", session="wayland")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [
+            {"command": "noctalia", "args": ["msg", "wallpaper-set", path]},
+            {"command": "noctalia", "args": ["msg", "wallpaper-get"]},
+        ])
+
+    def test_noctalia_missing_binary_never_falls_back(self) -> None:
+        self.install_stubs("swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        doctor = self.cli("--setter", "noctalia", "doctor",
+                          desktop="niri", session="wayland")
+        self.assertIn("noctalia_binary_available: false", doctor.stdout)
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="niri", session="wayland")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Noctalia v5 setter unavailable", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_noctalia_ipc_nonzero_is_not_success(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        doctor = self.cli("--setter", "noctalia", "doctor",
+                          desktop="niri", session="wayland", EZW_TEST_IPC_FAIL="1")
+        self.assertIn("noctalia_ipc_reachable: false", doctor.stdout)
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="niri", session="wayland", EZW_TEST_IPC_FAIL="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Noctalia IPC exited", result.stderr)
+        self.assertEqual([c["command"] for c in self.calls()], ["noctalia"] * 2)
+
+    def test_noctalia_readback_mismatch_is_failure(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="niri", session="wayland",
+                          EZW_TEST_GET_OVERRIDE="/tmp/other-wallpaper.jpg")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("did not confirm the requested path", result.stderr)
+        self.assertEqual([c["command"] for c in self.calls()], ["noctalia"] * 2)
+
+    def test_noctalia_rejects_invalid_connector_without_side_effects(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        for connector in ("DP 1", "DP-1;rm", "../DP-1"):
+            result = self.cli("--setter", "noctalia", "--output", connector,
+                              "apply", path, desktop="niri", session="wayland")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid Noctalia output connector", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_noctalia_requires_wayland_without_fallback(self) -> None:
+        self.install_stubs("noctalia", "swaybg", "feh")
+        path = self.core_asset_path(desktop="i3", session="x11")
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="i3", session="x11")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Noctalia v5 setter unavailable", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_output_is_not_silently_ignored_by_auto_setter(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        result = self.cli("--setter", "auto", "--output", "DP-1", "apply", path,
+                          desktop="niri", session="wayland")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--output requires --setter noctalia", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_noctalia_timeout_kills_unresponsive_ipc(self) -> None:
+        self.install_stubs("noctalia", "swaybg")
+        path = self.core_asset_path(desktop="niri", session="wayland")
+        result = self.cli("--setter", "noctalia", "apply", path,
+                          desktop="niri", session="wayland", EZW_TEST_IPC_SLEEP="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Noctalia IPC timed out", result.stderr)
+        self.assertEqual([c["command"] for c in self.calls()], ["noctalia"])
 
     def test_niri_swaybg_launch_is_explicitly_unverified(self) -> None:
         self.install_stubs("swaybg")

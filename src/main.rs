@@ -43,6 +43,14 @@ struct Args {
     #[arg(long, default_value_t = false)]
     download_only: bool,
 
+    /// Desktop setter: auto preserves legacy selection; noctalia uses native v5 IPC.
+    #[arg(long, value_enum, default_value_t = setter::Setter::Auto)]
+    setter: setter::Setter,
+
+    /// Noctalia output connector (for example DP-1); requires --setter noctalia.
+    #[arg(long, requires = "setter")]
+    output: Option<String>,
+
     #[command(subcommand)]
     command: Option<CliCommand>,
 }
@@ -169,12 +177,15 @@ fn main() -> Result<()> {
             return run_store(root, operation);
         }
         Some(CliCommand::Doctor) => {
-            println!("{}", setter::Capability::detect().describe());
+            println!(
+                "{}",
+                setter::Capability::detect_with(cli.setter, cli.output.as_deref())?.describe()
+            );
             return Ok(());
         }
         Some(CliCommand::Apply { path }) => {
             let asset = manager.open_local(path)?;
-            return apply_wallpaper(asset.path());
+            return apply_wallpaper(asset.path(), cli.setter, cli.output.as_deref());
         }
         Some(CliCommand::List { json }) => {
             let assets = manager.list_local(&cli.dir)?;
@@ -197,20 +208,27 @@ fn main() -> Result<()> {
     let assets = manager.fetch(&cli.backend, provider.as_ref(), 1)?;
     if !cli.download_only {
         if let Some(asset) = assets.first() {
-            apply_wallpaper(asset.path())?;
+            apply_wallpaper(asset.path(), cli.setter, cli.output.as_deref())?;
         }
     }
     Ok(())
 }
 
-fn apply_wallpaper(path: &std::path::Path) -> Result<()> {
-    let capability = setter::Capability::detect();
+fn apply_wallpaper(
+    path: &std::path::Path,
+    setter: setter::Setter,
+    output: Option<&str>,
+) -> Result<()> {
+    let capability = setter::Capability::detect_with(setter, output)?;
     debug!(
         "using wallpaper adapter {} for {}",
         capability.adapter(),
         path.display()
     );
     let outcome = capability.apply(path)?;
+    if matches!(outcome, setter::ApplyStatus::PathObserved) {
+        eprintln!("wallpaper path observed in Noctalia IPC (rendered pixels not verified)");
+    }
     if matches!(outcome, setter::ApplyStatus::LaunchedUnverified) {
         eprintln!(
             "wallpaper command launched, but desktop application cannot be independently verified"
