@@ -175,9 +175,10 @@ def apply_wallpaper(binary: Path, fixture: Path, env: dict[str, str]) -> int:
         raise E2EFailure("ezwallpaper apply could not launch or timed out") from exc
     if proc.returncode != 0:
         raise E2EFailure(f"ezwallpaper apply exited {proc.returncode}: {stderr.decode(errors='replace')[-600:]}")
-    if b"unverified" not in stderr.lower():
-        # Swaybg launch is not evidence of displayed wallpaper.
-        raise E2EFailure("expected ezwallpaper to report unverified swaybg process launch")
+    if b"cannot be independently verified" not in stderr.lower():
+        # Explicitly match the existing production warning: process launch alone
+        # does not establish a visible image. The screenshot assertion does.
+        raise E2EFailure("expected the unverified swaybg launch warning")
     return proc.pid
 
 
