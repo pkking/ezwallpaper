@@ -114,7 +114,7 @@ impl GetImgUrl for PexelProvider {
 fn download_image(url: &Url, dir: &str) -> Result<String> {
     let name = url
         .path_segments()
-        .and_then(|segments| segments.last())
+        .and_then(|mut segments| segments.next_back())
         .ok_or_else(|| anyhow::anyhow!("Pexels image URL has no path filename"))?;
     let path = super::safe_download_path(dir, name)?;
     // Verify upstream status before opening/truncating a destination file.
