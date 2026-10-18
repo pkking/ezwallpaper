@@ -36,15 +36,15 @@ AGENTS.md; docs/architecture.md; docs/adr/0001-core-cli-boundaries.md; crates/ez
 
 ## Acceptance criteria
 
-- [ ] One shared pure safe-download-destination function with regression tests for traversal, absolute, Windows separators, reserved names and normal filenames.
-- [ ] Bing and Pexels callers validate names and do not panic on malformed URLs.
-- [ ] Reject existing symlink output targets and status-check HTTP responses before opening files.
+- [x] One shared pure safe-download-destination function with regression tests for traversal, absolute, Windows separators, reserved names and normal filenames.
+- [x] Bing and Pexels callers validate names and do not panic on malformed URLs.
+- [x] Reject existing symlink output targets and status-check HTTP responses before opening files.
 - [ ] All four required PR checks pass on final commit; documentation reflects limited guarantees.
 
 ## Implementation slices
 
-- [ ] 1. Add shared safe filename helper with headless tests.
-- [ ] 2. Integrate provider callers and preflight status checks.
+- [x] 1. Add shared safe filename helper with headless tests.
+- [x] 2. Integrate provider callers and preflight status checks.
 - [ ] 3. CI run, review and traceable follow-up.
 
 ## Verification matrix
@@ -65,13 +65,15 @@ The change only rejects malformed/traversing download filenames and does not cha
 
 - 2026-10-18: read source for current Bing/Pexels downloads, observed unvalidated Path::join and unchecked URL path extraction; plan created before implementation.
 
+- 2026-10-18: implemented shared portable filename checks and existing-symlink refusal in wp_provider/mod.rs; integrated status-before-open and panic-free URL parsing in Bing/Pexels. CI is not yet observed.
+
 ## Deviations and discoveries
 
-None yet.
+Existing symlink metadata validation is a best-effort safety check, not a race-free sandbox. Overwrite semantics for ordinary regular files remain as before.
 
 ## Resume from here
 
-Implement a shared path-component guard in crates/ezwallpaper-core/src/wp_provider/mod.rs with deterministic unit tests, then update two providers.
+Open Issue #19 PR from agent/harden-provider-download-paths-19 and inspect full CI; repair any rustfmt, Clippy or test failures before merging.
 
 ## Completion
 
