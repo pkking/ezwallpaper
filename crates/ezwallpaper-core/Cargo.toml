@@ -1,0 +1,17 @@
+[package]
+name = "ezwallpaper-core"
+version = "0.2.1"
+edition = "2018"
+authors = ["li chaoran <pkwarcraft@gmail.com>"]
+description = "Headless wallpaper acquisition and asset management library"
+license = "MIT"
+repository = "https://github.com/pkking/ezwallpaper"
+
+[dependencies]
+anyhow = "1.0.90"
+derivative = "2.2.0"
+log = "0.4.22"
+reqwest = { version = "0.12.8", features = ["blocking", "json"] }
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87"
+url = "2.3.1"

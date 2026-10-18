@@ -6,10 +6,11 @@ Run from repository root, using the toolchain chosen in the current CI workflow:
 
     python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v
     cargo fmt --all -- --check
-    cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
-    cargo test --all-targets --verbose
+    cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+    cargo test --workspace --all-targets --verbose
     cargo run -- --help
     cargo run -- --version
+    cargo run -- doctor
 
 Never describe a command as passing unless its exit code and tested revision are known.
 
@@ -36,3 +37,12 @@ Expected logs are uploaded as an artifact on failure as well as success. Uploads
 Record command, revision SHA, status code, relevant output, artifact path and CI run URL. Mark not executed as UNASSESSED, not PASS. For external APIs, separate simulated fixture coverage from live diagnostic observations.
 
 A CLI smoke test passes only if the command behavior was checked; it must not be presented as an end-to-end wallpaper success. A post-merge archive needs the specific final CI result.
+
+
+## Workspace-specific contracts
+
+- Verify core independent build with `cargo test -p ezwallpaper-core` and `cargo check -p ezwallpaper-core`.
+- Core must not depend on wallpaper-rs and must remain usable without `DISPLAY` or `WAYLAND_DISPLAY`.
+- `doctor` must be side-effect free; cover GNOME, KDE, LXQt, niri/Sway and X11 selection with pure unit tests, not live environment changes.
+- `apply` CLI smoke should only use a nonexistent test path and verify failure occurs before adapter invocation. Real wallpaper effects are outside required CI.
+- Report swaybg daemon spawn as unverified; do not infer visual success from a process PID.

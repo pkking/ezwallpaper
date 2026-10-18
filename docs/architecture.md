@@ -1,27 +1,39 @@
-# Architecture and known implementation boundaries
+# Architecture and supported capability boundaries
 
-This is a factual orientation to the current tree, not a proposed target architecture.
+Baseline: ADR 0001 (docs/adr/0001-core-cli-boundaries.md). This document describes code currently being implemented, not a claim of OS desktop validation.
 
-## User flow
+## Cargo workspace
 
-1. src/main.rs parses options with clap (resolution, locale, directory, backend, token, download_only).
-2. build_provider chooses BingProvider or PexelProvider and validates provider arguments.
-3. GetImgUrl::get_img(1) fetches provider JSON and downloads a selected image into the configured directory.
-4. Unless --download-only is set, main calls wallpaper::set_from_path with the local downloaded image.
+- Root package `ezwallpaper` is the CLI. Its `src/main.rs` handles flags and user flow, and `src/setter.rs` owns runtime OS/DE/WM integration.
+- `crates/ezwallpaper-core` is a reusable Rust library that does not depend on a desktop session or the `wallpaper` crate.
+- `core/src/wp_provider` retains Bing/Pexels adapters, with locale/resolution parsers; `core/src/lib.rs` exports `WallpaperManager` and `WallpaperAsset`.
+- Core returns local absolute paths with source provenance after checking regular-file existence. It does not yet decode the image or provide durable catalogs/caches/metadata/JSON manifests.
+- `src/setter.rs` selects native / LXQt / Wayland swaybg / X11 feh wallpaper integration, providing `doctor` for side-effect-free discovery and `apply` for local files.
 
-## Source map and contracts
+## Existing user journeys
 
-- src/wp_provider/mod.rs: GetImgUrl trait.
-- src/wp_provider/bing.rs: Bing daily-image metadata, URL and local file download.
-- src/wp_provider/pexel.rs: Pexels authenticated image search and local file download.
-- src/wp_provider/zone.rs: accepted locale values.
-- src/wp_provider/resolution.rs: accepted Bing resolution values.
-- src/wp_selector.rs: WallPaper/WpType structures. The TODO in main indicates the selector is not yet integrated.
+1. `ezwallpaper [old flags]`: select Bing/Pexels, perform provider request, save image to configured directory, resolve an existing local asset. Apply unless `--download-only`.
+2. `ezwallpaper doctor`: inspect available OS/DE prerequisites and print selected adapter; no download or wallpaper modification.
+3. `ezwallpaper apply <local-file>`: canonicalize and verify a local regular file, select an adapter and request wallpaper application without contacting providers.
+4. Other Rust programs can call `WallpaperManager` or provider adapters directly. They need not depend on any desktop backend.
 
-## Boundaries and verification limits
+## Support model
 
-- Provider network response and downloaded bytes are untrusted; offline test fixtures must replace external APIs.
-- File output and desktop wallpaper changes are side effects; separate pure selection/parsing tests from operations that touch disk or the OS.
-- Currently README states usage was tested manually in Windows 10 and 11 in MinGW64. CI originally runs on Ubuntu only; treat other desktop behavior as unassessed.
-- No lockfile is currently tracked. Cargo.toml specifies semver-compatible ranges; dependency resolution is not fully pinned until Cargo.lock is committed. No source-level behavior changes are implied by governance scaffolding.
-- Existing provider code and CLI use expects/unwraps; safety refactoring is a separately scoped task, not an implicit outcome of this change.
+"Supported" means a repository-implemented integration path exists to set the wallpaper, including through a system-ecosystem program. Each path requires its appropriate OS, desktop session, binaries and privileges. "Validated" requires real platform-specific wallaper-setting evidence, not Rust compilation or command-only mocks.
+
+- Windows: Win32 via wallpaper-rs.
+- macOS: AppleScript via wallpaper-rs.
+- Named Linux DE: GNOME/Unity/Pantheon, KDE, Cinnamon, MATE, XFCE, LXDE, Deepin when the exact wallpaper-rs 3.2.0 identifier and expected command match.
+- LXQt: pcmanfm-qt -w.
+- Unknown Wayland compositor: swaybg fallback, **launch does not prove application**.
+- Unknown X11 window manager: feh --bg-fill fallback.
+- No session: desktop adapter intentionally unavailable; core still works.
+- Plasma 6, multi-value XDG identifiers, Wayland process lifecycle and third-party tools need real integration validation. Other Unix OSs are unassessed.
+
+## Operational and test boundaries
+
+- Download endpoints and file bytes are untrusted. No live requests, Pexels tokens or desktop mutation in required CI; fake providers and detection tests must remain deterministic.
+- Core's initial asset check only validates existence and regular-file status. File format validation, path-safe provider downloads, sandboxing, cache history/retention and atomicity are future work.
+- External program availability alone is not a guarantee of a valid GUI session, compatible compositor or successful rendered wallpaper.
+- Ubuntu GitHub Actions compile/tests and offline CLI smoke are distinct from Windows/macOS/Linux-desktop integration evidence.
+- Keep old CLI flags functioning. Cargo.lock is not committed yet and dependency resolution is not fully pinned.

@@ -53,7 +53,7 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy (keep original strict checks)
-        run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used
 
   rust-tests:
     name: Rust tests and CLI smoke
@@ -71,7 +71,9 @@ jobs:
         run: |
           mkdir -p artifacts/ci
           set -o pipefail
-          cargo test --all-targets --verbose 2>&1 | tee artifacts/ci/cargo-test.log
+          cargo test --workspace --all-targets --verbose 2>&1 | tee artifacts/ci/cargo-test.log
+      - name: Verify headless core independently
+        run: cargo check -p ezwallpaper-core
       - name: Offline CLI acceptance
         shell: bash
         run: |
@@ -82,6 +84,14 @@ jobs:
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
           grep -q -- '--backend' artifacts/ci/help.txt
           grep -q -- '--download-only' artifacts/ci/help.txt
+          target/debug/ezwallpaper doctor > artifacts/ci/doctor.txt
+          grep -q -- 'adapter:' artifacts/ci/doctor.txt
+          set +e
+          target/debug/ezwallpaper apply /nonexistent-ezwallpaper-ci-wallpaper.png > artifacts/ci/apply.stdout 2> artifacts/ci/apply.stderr
+          apply_status=$?
+          set -e
+          test "$apply_status" -ne 0
+          grep -q -- 'wallpaper file is not accessible' artifacts/ci/apply.stderr
           set +e
           target/debug/ezwallpaper --backend not-a-provider --download-only > artifacts/ci/invalid.stdout 2> artifacts/ci/invalid.stderr
           status=$?
