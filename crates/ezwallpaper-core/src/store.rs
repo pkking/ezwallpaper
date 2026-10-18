@@ -4,14 +4,17 @@
 use anyhow::{bail, Context, Result};
 use cacache::{SyncReader, SyncWriter};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
 const MARKER: &str = ".ezwallpaper-store";
 const VERSION: &[u8] = b"ezwallpaper-store-v1\n";
 const CACHE: &str = "cache";
+// cacache 13.x index layout. Used only to reject rows its list_sync silently skips.
+const CACHE_INDEX: &str = "index-v5";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoredWallpaper {
@@ -109,6 +112,31 @@ impl WallpaperStore {
         })
     }
 
+    /// Enumerate every indexed SHA-256 entry, verifying its complete contents.
+    ///
+    /// This is deliberately read-only and fails as a whole if an index row or
+    /// content blob is invalid. The index preflight is required because
+    /// cacache::list_sync silently omits malformed index rows.
+    pub fn list(&self) -> Result<Vec<StoredWallpaper>> {
+        let cache = self.cache_dir();
+        if !validate_cache_index(&cache)? {
+            // A freshly initialized store has no index directory yet.
+            return Ok(Vec::new());
+        }
+        let mut unique = BTreeMap::new();
+        for metadata in cacache::list_sync(&cache) {
+            let metadata = metadata.context("cannot enumerate Core store index")?;
+            validate_id(&metadata.key)?;
+            if !unique.contains_key(&metadata.key) {
+                let entry = self
+                    .inspect(&metadata.key)
+                    .with_context(|| format!("invalid Core store entry {}", metadata.key))?;
+                unique.insert(metadata.key, entry);
+            }
+        }
+        Ok(unique.into_values().collect())
+    }
+
     /// Verify the entire blob, not just presence of a metadata index entry.
     pub fn inspect(&self, id: &str) -> Result<StoredWallpaper> {
         validate_id(id)?;
@@ -159,6 +187,76 @@ impl WallpaperStore {
     }
 }
 
+/// Verify every physical index row before using cacache's canonical index API.
+/// cacache 13.x ignores corrupt row checksums / JSON in its own enumeration;
+/// without this guard a broken store could be presented as an empty/partial one.
+fn validate_cache_index(cache: &Path) -> Result<bool> {
+    let index = cache.join(CACHE_INDEX);
+    match fs::symlink_metadata(&index) {
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(err) => return Err(err).context("cannot inspect Core store index"),
+        Ok(meta) if !meta.is_dir() || meta.file_type().is_symlink() => {
+            bail!("Core store index must be a real directory");
+        }
+        Ok(_) => {}
+    }
+
+    let mut pending = vec![index];
+    while let Some(dir) = pending.pop() {
+        for item in fs::read_dir(&dir).context("cannot enumerate Core store index directory")? {
+            let item = item.context("cannot read Core store index entry")?;
+            let kind = item.file_type()?;
+            if kind.is_dir() {
+                pending.push(item.path());
+            } else if kind.is_file() {
+                validate_index_bucket(&item.path())?;
+            } else {
+                bail!("Core store index contains an unsupported entry type");
+            }
+        }
+    }
+    Ok(true)
+}
+
+fn validate_index_bucket(path: &Path) -> Result<()> {
+    let input = File::open(path)
+        .with_context(|| format!("cannot open Core store index bucket {}", path.display()))?;
+    let mut records = 0usize;
+    for (line_number, line) in BufReader::new(input).lines().enumerate() {
+        let line = line.context("cannot read Core store index row")?;
+        if line_number == 0 && line.is_empty() {
+            // cacache prepends a newline to its append-only bucket entries.
+            continue;
+        }
+        let (expected_hash, record) = line
+            .split_once('\t')
+            .context("malformed Core store index row")?;
+        let actual_hash = format!("{:x}", Sha256::digest(record.as_bytes()));
+        if expected_hash != actual_hash {
+            bail!("Core store index row failed checksum verification");
+        }
+        let value: serde_json::Value =
+            serde_json::from_str(record).context("invalid Core store index JSON")?;
+        let key = value
+            .get("key")
+            .and_then(serde_json::Value::as_str)
+            .context("Core store index key is missing or invalid")?;
+        validate_id(key)?;
+        let integrity = value
+            .get("integrity")
+            .and_then(serde_json::Value::as_str)
+            .context("Core store index integrity is missing or invalid")?;
+        integrity
+            .parse::<cacache::Integrity>()
+            .context("Core store index has malformed integrity identifier")?;
+        records += 1;
+    }
+    if records == 0 {
+        bail!("Core store index bucket contains no valid entries");
+    }
+    Ok(())
+}
+
 fn validate_id(id: &str) -> Result<()> {
     let digest = id.strip_prefix("sha256:").unwrap_or("");
     if digest.len() != 64
@@ -203,6 +301,86 @@ mod tests {
         let store =
             WallpaperStore::init(temp.path().join("managed")).expect("initialize fresh store");
         (temp, store)
+    }
+
+    #[test]
+    fn listing_is_empty_deduplicated_ordered_and_stable_after_reopen() {
+        let (temp, store) = fixture();
+        assert!(store.list().expect("empty owned store").is_empty());
+        let first = temp.path().join("first.jpg");
+        let second = temp.path().join("second.jpg");
+        let duplicate = temp.path().join("duplicate.png");
+        fs::write(&first, b"abc").expect("first");
+        fs::write(&second, b"xyz").expect("second");
+        fs::write(&duplicate, b"abc").expect("duplicate");
+        let one = store.import_file(&first).expect("import first");
+        let two = store.import_file(&second).expect("import second");
+        store.import_file(&duplicate).expect("import same bytes");
+        let mut expected = vec![one, two];
+        expected.sort_by(|a, b| a.content_id.cmp(&b.content_id));
+        assert_eq!(store.list().expect("verified sorted list"), expected);
+        let reopened = WallpaperStore::open(&store.root).expect("reopen");
+        assert_eq!(reopened.list().expect("list after reopen"), expected);
+        assert_eq!(fs::read(&first).expect("source unchanged"), b"abc");
+        assert_eq!(fs::read(&duplicate).expect("source unchanged"), b"abc");
+    }
+
+    fn first_index_bucket(store: &WallpaperStore) -> PathBuf {
+        let index = store.cache_dir().join(CACHE_INDEX);
+        let first = fs::read_dir(index)
+            .expect("index directory")
+            .next()
+            .expect("first directory")
+            .expect("first directory entry")
+            .path();
+        let second = fs::read_dir(first)
+            .expect("index shard")
+            .next()
+            .expect("second directory")
+            .expect("second directory entry")
+            .path();
+        fs::read_dir(second)
+            .expect("index bucket shard")
+            .next()
+            .expect("index bucket")
+            .expect("index bucket entry")
+            .path()
+    }
+
+    #[test]
+    fn list_rejects_corrupt_index_without_modifying_it_or_original() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("source.jpg");
+        fs::write(&source, b"abc").expect("source");
+        store.import_file(&source).expect("import");
+        let bucket = first_index_bucket(&store);
+        fs::write(&bucket, b"\nbad-hash\t{\"key\":\"bogus\"}")
+            .expect("simulate a damaged index row");
+        let before = fs::read(&bucket).expect("corrupted state");
+        assert!(store.list().is_err());
+        assert_eq!(fs::read(&bucket).expect("list must be read-only"), before);
+        assert_eq!(fs::read(&source).expect("source must be untouched"), b"abc");
+    }
+
+    #[test]
+    fn list_fails_closed_for_missing_content_and_invalid_index_key() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("source.jpg");
+        fs::write(&source, b"abc").expect("source");
+        let saved = store.import_file(&source).expect("import");
+        let cache = store.cache_dir();
+        let metadata = cacache::metadata_sync(&cache, &saved.content_id)
+            .expect("metadata lookup")
+            .expect("indexed content");
+        cacache::remove_hash_sync(&cache, &metadata.integrity)
+            .expect("simulate a missing blob");
+        assert!(store.list().is_err());
+        assert_eq!(fs::read(&source).expect("source remains intact"), b"abc");
+
+        let (_another_temp, another_store) = fixture();
+        cacache::write_sync(another_store.cache_dir(), "invalid-key", b"abc")
+            .expect("simulate a foreign index key");
+        assert!(another_store.list().is_err());
     }
 
     #[test]
