@@ -8,7 +8,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -88,7 +88,7 @@ See [testing and evidence requirements](docs/agents/testing.md) and [branch prot
 
 ## Core library and standalone desktop operations
 
-`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. The separate opt-in content store is durable; general-purpose catalog search and image decoding are not implemented. Ephemeral local listing and JSON v1 manifests remain available.
+`crates/ezwallpaper-core` can fetch and open wallpaper assets without any desktop integration. Consumers receive `WallpaperAsset` values containing source provenance and an absolute readable regular-file path. The separate opt-in content store is durable; general-purpose catalog search remains unimplemented; explicit image probing/derivation is available. Ephemeral local listing and JSON v1 manifests remain available.
 
 ```sh
 # Diagnose available wallpaper integration, no network/desktop effects
@@ -133,6 +133,23 @@ Noctalia's own automatic rotation and any future ezwallpaper rotation scheduler 
 
 Developer workflow: `cargo test --workspace --all-targets`, `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used`, and `cargo fmt --all -- --check`. The [desktop integration evidence protocol](docs/agents/desktop-integration-evidence.md) distinguishes isolated Core → CLI → GNOME/Plasma/niri/X11 command-contract CI from real desktop wallpaper observations. Both fake-command tests and real compositor screenshots are automated for Sway only; **all other OS/DE visual outcomes remain unassessed**.
 
+## Local image pixel validation and derivation (opt-in)
+
+A file extension, remote provider dimensions or an existing manifest entry does not prove valid decoded pixels. Inspect actual image bytes or derive portrait/landscape outputs without modifying a desktop:
+
+```sh
+ezwallpaper probe /absolute/path/source.jpg --json
+ezwallpaper derive /absolute/path/source.jpg ./portrait.png \
+  --width 1080 --height 1920 --fit cover --format png --json
+ezwallpaper derive /absolute/path/source.png ./login.jpg \
+  --width 3840 --height 2160 --fit contain --format jpeg --json
+```
+
+The headless Core exposes `probe_image` and `derive_image`. Probe decodes image bytes, applies EXIF orientation, recognizes PNG/JPEG/WebP/BMP and outputs source SHA-256, raw/display dimensions, MIME type and a separate JSON schema v1. Derive does not overwrite source or an existing destination; it publishes a staged file without clobbering. `cover` crops to fill the exact output dimensions; `contain` letterboxes to avoid stretching.
+
+Input is limited to 64 MiB, 16,384 pixels per edge and 32 million pixels; output to 8,192 per edge and 16 million pixels. The decoder's allocation limit is best-effort, not a hard process sandbox.
+
+**Compatibility:** legacy `list --json` manifest v1 still reports filesystem metadata without decoding. These optional commands do not change OS wallpaper state or automatically write into the CAS. Derivative cache keys, allowed-root recursive symlinks and physical monitor pixel evidence remain for [Issue #53](https://github.com/pkking/ezwallpaper/issues/53) and [#59](https://github.com/pkking/ezwallpaper/issues/59). See [ADR 0006](docs/adr/0006-image-probe-derive.md) and [image-rs ImageReader](https://docs.rs/image/latest/image/struct.ImageReader.html).
 ## Headless catalog and machine-readable consumer contract
 
 ```sh
