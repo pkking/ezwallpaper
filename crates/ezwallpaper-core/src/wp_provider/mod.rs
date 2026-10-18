@@ -156,7 +156,7 @@ mod tests {
     impl Read for InterruptedStream {
         fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
             if self.sent {
-                return Err(io::Error::new(io::ErrorKind::Interrupted, "connection lost"));
+                return Err(io::Error::new(io::ErrorKind::ConnectionReset, "connection lost"));
             }
             self.sent = true;
             output[0] = b'x';
