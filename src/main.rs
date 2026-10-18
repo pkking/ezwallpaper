@@ -87,6 +87,8 @@ enum CliCommand {
 enum StoreOperation {
     /// Initialize a new (or empty) managed directory.
     Init,
+    /// List verified unique content IDs and sizes without modifying storage.
+    List,
     /// Copy a local wallpaper into the content-addressable store.
     Import { path: PathBuf },
     /// Read and verify a saved SHA-256 content ID.
@@ -104,6 +106,12 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
     let store = WallpaperStore::open(root)?;
     match operation {
         StoreOperation::Init => unreachable!("handled before store open"),
+        StoreOperation::List => {
+            // Verify the whole inventory before printing any results.
+            for entry in store.list()? {
+                println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+            }
+        }
         StoreOperation::Import { path } => {
             let entry = store.import_file(path)?;
             println!("{}", entry.content_id);
