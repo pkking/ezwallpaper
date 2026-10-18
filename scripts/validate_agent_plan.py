@@ -143,7 +143,7 @@ def changed_paths(base_sha: str) -> list[str]:
 
 
 ARCHITECTURE_SVG = "docs/architecture.svg"
-ADR_FILE = re.compile(r"^docs/adr/[0-9]{4}-[a-zA-Z0-9][a-zA-Z0-9_-]*\\.md$")
+ADR_FILE = re.compile(r"^docs/adr/[0-9]{4}-[a-zA-Z0-9][a-zA-Z0-9_-]*\.md$")
 
 def _specific_reason(value: str) -> bool:
     reason = value.strip()
@@ -176,7 +176,7 @@ def validate_architecture(root: Path, body: str, changed_files: list[str]) -> No
     if not changed_adrs:
         return
     if ARCHITECTURE_SVG in changed_files:
-        if len(re.findall(r"(?m)^Architecture diagram: updated\\s*$", body)) != 1:
+        if len(re.findall(r"(?m)^Architecture diagram: updated\s*$", body)) != 1:
             raise IntegrityError("ADR change with updated SVG must declare Architecture diagram: updated")
         return
 
