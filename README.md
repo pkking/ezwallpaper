@@ -55,8 +55,10 @@ The Core source APIs and CLI can prepare separate landscape and portrait pools w
 ezwallpaper --backend bing --bing-offset 0 --count 8 -d ./bing fetch --json
 
 # Fetch Pexels portrait candidates, filtering on API-reported source dimensions
-export EZWALLPAPER_PEXELS_TOKEN='your-api-key' # do not paste tokens in shell history
-ezwallpaper --backend pexel --orientation portrait --query 'mountains' \
+# Create ~/.config/ezwallpaper/pexels.token with your API key, then chmod 600 it
+# Alternatively set EZWALLPAPER_PEXELS_TOKEN outside shell history
+ezwallpaper --backend pexel --token-file ~/.config/ezwallpaper/pexels.token \
+  --orientation portrait --query 'mountains' \
   --min-width 1080 --min-height 1920 --count 12 -d ./portrait fetch --json
 
 # Public SFW Wallhaven candidates, landscape 4K; no API token needed
