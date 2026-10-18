@@ -1,7 +1,7 @@
 # 2026-10-18-harden-provider-download-paths: reject unsafe upstream file names
 
 Issue: #19
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -39,23 +39,23 @@ AGENTS.md; docs/architecture.md; docs/adr/0001-core-cli-boundaries.md; crates/ez
 - [x] One shared pure safe-download-destination function with regression tests for traversal, absolute, Windows separators, reserved names and normal filenames.
 - [x] Bing and Pexels callers validate names and do not panic on malformed URLs.
 - [x] Reject existing symlink output targets and status-check HTTP responses before opening files.
-- [ ] All four required PR checks pass on final commit; documentation reflects limited guarantees.
+- [x] All four required PR checks pass on final commit; documentation reflects limited guarantees.
 
 ## Implementation slices
 
 - [x] 1. Add shared safe filename helper with headless tests.
 - [x] 2. Integrate provider callers and preflight status checks.
-- [ ] 3. CI run, review and traceable follow-up.
+- [x] 3. CI run, review and traceable follow-up.
 
 ## Verification matrix
 
 | Scope | Command / gate | Evidence | Status |
 |---|---|---|---|
-| Core unit tests | cargo test -p ezwallpaper-core | validated bad/good path cases | pending |
-| Quality | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI logs | pending |
-| Other tests | cargo test --workspace --all-targets | CI logs | pending |
-| Offline CLI | Rust tests and CLI smoke | no network or setter | pending |
-| Governance | Agent plan integrity and contract self-tests | CI logs | pending |
+| Core unit tests | cargo test -p ezwallpaper-core | validated bad/good path cases | CI #39097236374 passed |
+| Quality | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI logs | CI #39097236374 passed |
+| Other tests | cargo test --workspace --all-targets | CI logs | CI #39097236374 passed |
+| Offline CLI | Rust tests and CLI smoke | no network or setter | CI #39097236374 passed |
+| Governance | Agent plan integrity and contract self-tests | CI logs | CI #39097236374 passed |
 
 ## Decision gates
 
@@ -65,7 +65,9 @@ The change only rejects malformed/traversing download filenames and does not cha
 
 - 2026-10-18: read source for current Bing/Pexels downloads, observed unvalidated Path::join and unchecked URL path extraction; plan created before implementation.
 
-- 2026-10-18: implemented shared portable filename checks and existing-symlink refusal in wp_provider/mod.rs; integrated status-before-open and panic-free URL parsing in Bing/Pexels. CI is not yet observed.
+- 2026-10-18: implemented shared portable filename checks and existing-symlink refusal in wp_provider/mod.rs; integrated status-before-open and panic-free URL parsing in Bing/Pexels.
+- 2026-10-18: PR #20 final head 36462fccc5317cf307602a4717321bdac40131f6 passed Agent plan integrity, Agent contract self-tests, Rust quality, Rust tests and CLI smoke: https://github.com/pkking/ezwallpaper/actions/runs/39097236374.
+- 2026-10-18: PR #20 squash merged as 4fc97d4fc4aca45ea0eb639f530a66ee5deb5d6d.
 
 ## Deviations and discoveries
 
@@ -73,11 +75,11 @@ Existing symlink metadata validation is a best-effort safety check, not a race-f
 
 ## Resume from here
 
-Open Issue #19 PR from agent/harden-provider-download-paths-19 and inspect full CI; repair any rustfmt, Clippy or test failures before merging.
+Verify this completion-only archival PR's own final-head CI, merge if green, and close Issue #19.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: 4fc97d4fc4aca45ea0eb639f530a66ee5deb5d6d (merged PR #20)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39097236374
 E2E artifact: offline tests only
-Remaining unassessed items: live provider responses, symlink TOCTOU hardening, atomic replacement
+Remaining unassessed items: live provider responses; symlink TOCTOU hardening; atomic replacement and partial-write recovery remain out of scope
