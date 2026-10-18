@@ -1,7 +1,7 @@
 # 2026-10-18-owned-store-inventory: verified read-only CAS listing
 
 Issue: #37
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -50,8 +50,8 @@ No provider access, wallpaper change, metadata search/filtering, new DB, GC, mig
 
 ## Implementation slices
 
-- [ ] 1. Read-only index validation and Core list method with deterministic regression tests.
-- [ ] 2. CLI list subcommand, offline acceptance smoke and user-facing documentation.
+- [x] 1. Read-only index validation and Core list method with deterministic regression tests (implemented; CI not yet run).
+- [x] 2. CLI list subcommand, offline acceptance smoke and user-facing documentation (implemented; CI not yet run).
 - [ ] 3. Inspect final PR diff/checks, repair failures and record final CI evidence.
 
 ## Verification matrix
@@ -73,6 +73,7 @@ None: additive read-only behavior within ADR 0003 and approved Issue #37. New cl
 
 - 2026-10-18: inspected master SHA `6fc78d8`, Issue #37 and prior successful push run 39112946213; no checks have run for this branch yet.
 - 2026-10-18: upstream `cacache` source confirms `list_sync` iterator and silent invalid row skipping in `bucket_entries`, motivating preflight.
+- 2026-10-18: branch implementation commits `ec216db` (Core + Rust tests), `9267323` (CLI), `7ba4c2e` (offline CI), `20a464b` (README). These are **unverified** until final-head CI succeeds. Filesystem index preflight is a read-only dependency on cacache 13.x `index-v5` format.
 
 ## Deviations and discoveries
 
@@ -80,7 +81,7 @@ None: additive read-only behavior within ADR 0003 and approved Issue #37. New cl
 
 ## Resume from here
 
-Implement the Core read-only inventory and index preflight in `crates/ezwallpaper-core/src/store.rs` on branch `agent/owned-store-inventory-37`, then update this checklist before PR creation. Blocker: Rust build cannot run locally; GitHub CI will provide executable verification.
+Create the linked PR from `agent/owned-store-inventory-37` to `master` with `Issue: #37` and the canonical Plan line; inspect all six CI jobs for the PR head, then fix failures without bypassing checks. Blocker: Rust build cannot run locally; GitHub CI will provide executable verification.
 
 ## Completion
 
