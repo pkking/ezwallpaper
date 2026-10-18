@@ -90,7 +90,7 @@ Review and merge the completion-only archive PR after its own required CI passes
 ## Completion
 
 Final implementation PR head: `7094cd05654510676f7e0c7c15a2956dab50a6d3`
-Merged implementation commit: `9c9ecc182d0ca8d895ab2d0ea79d3f062a04b044`
+Final commit: `9c9ecc182d0ca8d895ab2d0ea79d3f062a04b044`
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/39114978707 (6/6 passed)
 Offline CLI evidence: https://github.com/pkking/ezwallpaper/actions/runs/39114978707/artifacts/12131918352 (live desktop E2E not applicable)
 Remaining unassessed items: actual GUI wallpaper integration and concurrent hostile cache mutation, both outside Issue #37.
