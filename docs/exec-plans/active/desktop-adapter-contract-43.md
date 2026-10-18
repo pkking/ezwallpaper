@@ -1,7 +1,7 @@
 # desktop-adapter-contract-43: Offline desktop adapter integration evidence
 
 Issue: #43
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -46,8 +46,8 @@ Establish a repeatable end-to-end, headless test from the Core-produced `list --
 
 ## Implementation slices
 
-- [ ] 1. Introduce isolated subprocess contract tests that consume a real built `ezwallpaper` binary.
-- [ ] 2. Add the test invocation to Ubuntu offline CI and describe explicit manual live validation.
+- [x] 1. Introduce isolated subprocess contract tests that consume a real built `ezwallpaper` binary.
+- [x] 2. Add the test invocation to Ubuntu offline CI and describe explicit manual live validation.
 - [ ] 3. Inspect final CI, record evidence and archive only after all acceptance is met.
 
 ## Verification matrix
@@ -70,6 +70,7 @@ None. CI test scaffolding and documentation are routine changes within accepted 
 
 - 2026-10-18: master `5cb38c1`, CI run `39116442922` = success (baseline only).
 - 2026-10-18: Issue #43 created; branch `test/desktop-adapter-contract-43` created from baseline.
+- 2026-10-18: Added real-binary fake-command contract suite (7 scenarios), Ubuntu CI invocation, README/testing notes and controlled-live-evidence protocol. CI and Rust execution are NOT YET VERIFIED.
 
 ## Deviations and discoveries
 
@@ -78,7 +79,7 @@ None. CI test scaffolding and documentation are routine changes within accepted 
 
 ## Resume from here
 
-Create `tests/test_desktop_adapter_contract.py` on `test/desktop-adapter-contract-43`, then connect it to `.github/workflows/ci.yml` and inspect the resulting PR-head CI run.
+Open the Issue-linked PR from `test/desktop-adapter-contract-43` to `master`; inspect the PR-head Agent integrity, Rust/CLI and Windows/macOS checks, then fix any failing test before declaring success.
 
 ## Completion
 
