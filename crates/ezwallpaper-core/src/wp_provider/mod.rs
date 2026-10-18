@@ -1,10 +1,15 @@
 pub mod bing;
 pub mod pexel;
+pub mod wallhaven;
 mod resolution;
 mod zone;
 
 use crate::wp_selector::WallPaper;
 use anyhow::{bail, Context, Result};
+use reqwest::blocking::{Client, RequestBuilder, Response};
+use reqwest::StatusCode;
+use std::thread;
+use std::time::Duration;
 use std::fs;
 use std::io::ErrorKind;
 use std::io::{self, Read};
@@ -13,6 +18,54 @@ use tempfile::NamedTempFile;
 
 pub trait GetImgUrl {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>>;
+}
+
+/// Shared bounded client for remote provider metadata and assets.
+fn http_client() -> Result<Client> {
+    Ok(Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(30))
+        .build()?)
+}
+
+/// Retry only bounded transient failures. Keep authorization headers out of logs.
+fn request_with_retry(request: RequestBuilder) -> Result<Response> {
+    for attempt in 0..3 {
+        let call = request
+            .try_clone()
+            .ok_or_else(|| anyhow::anyhow!("provider request cannot be retried"))?;
+        match call.send() {
+            Ok(response) if response.status() == StatusCode::TOO_MANY_REQUESTS
+                || response.status().is_server_error() =>
+            {
+                if attempt == 2 {
+                    return Ok(response.error_for_status()?);
+                }
+            }
+            Ok(response) => return Ok(response.error_for_status()?),
+            Err(err) if err.is_connect() || err.is_timeout() => {
+                if attempt == 2 {
+                    return Err(err.into());
+                }
+            }
+            Err(err) => return Err(err.into()),
+        }
+        thread::sleep(Duration::from_millis(100 * (1 << attempt)));
+    }
+    unreachable!("bounded retry loop always returns")
+}
+
+/// Assert a provider-supplied URL stays on its documented image CDN.
+fn checked_image_url(raw: &str, allowed_hosts: &[&str]) -> Result<url::Url> {
+    let url = url::Url::parse(raw)?;
+    if url.scheme() != "https"
+        || !allowed_hosts.iter().any(|host| url.host_str() == Some(host))
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        bail!("provider supplied an unsupported image URL");
+    }
+    Ok(url)
 }
 
 /// Join one untrusted URL-provided *filename*, never an upstream relative path.
