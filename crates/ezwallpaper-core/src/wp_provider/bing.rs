@@ -144,7 +144,10 @@ mod tests {
         assert!(older.archive_url(4).is_ok());
         assert!(older.archive_url(5).is_err());
         for idx in [-1, 8, 100] {
-            assert!(BingProvider::new().with_time_offset(idx).archive_url(1).is_err());
+            assert!(BingProvider::new()
+                .with_time_offset(idx)
+                .archive_url(1)
+                .is_err());
         }
         assert!(base.archive_url(0).is_err());
         assert!(base.archive_url(9).is_err());
@@ -153,12 +156,17 @@ mod tests {
     #[test]
     fn reduced_json_response_and_untrusted_urlbase() {
         let provider = BingProvider::new();
-        let urls = provider.image_urls(r#"{"images":[{"urlbase":"/th?id=OHR.Flower_EN-US"}]}"#)
+        let urls = provider
+            .image_urls(r#"{"images":[{"urlbase":"/th?id=OHR.Flower_EN-US"}]}"#)
             .expect("valid reduced fixture");
         assert_eq!(urls.len(), 1);
         assert!(urls[0].as_str().contains("OHR.Flower_EN-US"));
-        assert!(provider.image_urls(r#"{"images":[{"urlbase":"https://evil.test/th?id=x"}]}"#).is_err());
-        assert!(provider.image_urls(r#"{"images":[{"urlbase":"/th?id=..%2Fescape"}]}"#).is_ok());
+        assert!(provider
+            .image_urls(r#"{"images":[{"urlbase":"https://evil.test/th?id=x"}]}"#)
+            .is_err());
+        assert!(provider
+            .image_urls(r#"{"images":[{"urlbase":"/th?id=..%2Fescape"}]}"#)
+            .is_ok());
         assert!(provider.image_urls("not json").is_err());
     }
 
@@ -166,8 +174,12 @@ mod tests {
     fn bing_query_id_cannot_traverse_download_directory() {
         let url =
             Url::parse("https://www.bing.com/th?id=..%2Fescape.jpg").expect("valid URL fixture");
-        let name = url.query_pairs().find(|(key, _)| key == "id")
-            .expect("id parameter").1.into_owned();
+        let name = url
+            .query_pairs()
+            .find(|(key, _)| key == "id")
+            .expect("id parameter")
+            .1
+            .into_owned();
         assert!(super::super::safe_download_path(".", &name).is_err());
     }
 }
