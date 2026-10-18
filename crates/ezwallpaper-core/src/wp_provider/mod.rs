@@ -5,9 +5,9 @@ mod zone;
 
 use crate::wp_selector::WallPaper;
 use anyhow::{bail, Context, Result};
-use std::io::{self, Read};
 use std::fs;
 use std::io::ErrorKind;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
@@ -91,8 +91,6 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
     Ok(dest)
 }
 
-
- 
 /// Publish only a complete stream; unsuccessful copies never expose partial
 /// data at the wallpaper path. The temporary file is securely created on the
 /// same filesystem and removed automatically on failure.
@@ -123,7 +121,8 @@ fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result
     // Re-check in case the destination was altered during the stream. The
     // subsequent rename still has a TOCTOU window, not a sandbox guarantee.
     safe_download_path(dir, name)?;
-    stage.persist(destination)
+    stage
+        .persist(destination)
         .with_context(|| format!("cannot publish wallpaper at {}", destination.display()))?;
     Ok(())
 }
@@ -139,7 +138,12 @@ mod tests {
         fs::write(&dest, b"old-good-file").expect("initial wallpaper");
         write_complete_download(&dest, &b"new-good-file"[..]).expect("publish full image");
         assert_eq!(fs::read(&dest).expect("published image"), b"new-good-file");
-        assert_eq!(fs::read_dir(temp.path()).expect("directory entries").count(), 1);
+        assert_eq!(
+            fs::read_dir(temp.path())
+                .expect("directory entries")
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -151,12 +155,17 @@ mod tests {
         assert_eq!(fs::read(&dest).expect("published file"), b"data");
     }
 
-    struct InterruptedStream { sent: bool }
+    struct InterruptedStream {
+        sent: bool,
+    }
 
     impl Read for InterruptedStream {
         fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
             if self.sent {
-                return Err(io::Error::new(io::ErrorKind::ConnectionReset, "connection lost"));
+                return Err(io::Error::new(
+                    io::ErrorKind::ConnectionReset,
+                    "connection lost",
+                ));
             }
             self.sent = true;
             output[0] = b'x';
@@ -172,7 +181,12 @@ mod tests {
         let result = write_complete_download(&dest, InterruptedStream { sent: false });
         assert!(result.is_err());
         assert_eq!(fs::read(&dest).expect("original file"), b"keep-original");
-        assert_eq!(fs::read_dir(temp.path()).expect("directory entries").count(), 1);
+        assert_eq!(
+            fs::read_dir(temp.path())
+                .expect("directory entries")
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -181,7 +195,12 @@ mod tests {
         let dest = temp.path().join("missing.jpg");
         assert!(write_complete_download(&dest, InterruptedStream { sent: false }).is_err());
         assert!(!dest.exists());
-        assert_eq!(fs::read_dir(temp.path()).expect("directory entries").count(), 0);
+        assert_eq!(
+            fs::read_dir(temp.path())
+                .expect("directory entries")
+                .count(),
+            0
+        );
     }
 
     #[test]
@@ -191,7 +210,12 @@ mod tests {
         fs::write(&dest, b"old").expect("original wallpaper");
         assert!(write_complete_download(&dest, &b""[..]).is_err());
         assert_eq!(fs::read(&dest).expect("existing image"), b"old");
-        assert_eq!(fs::read_dir(temp.path()).expect("directory entries").count(), 1);
+        assert_eq!(
+            fs::read_dir(temp.path())
+                .expect("directory entries")
+                .count(),
+            1
+        );
     }
 
     #[cfg(unix)]
@@ -204,9 +228,11 @@ mod tests {
         fs::write(&original, b"existing").expect("original image");
         symlink(&original, &dest).expect("symlink fixture");
         assert!(write_complete_download(&dest, &b"new"[..]).is_err());
-        assert_eq!(fs::read(&original).expect("original unchanged"), b"existing");
+        assert_eq!(
+            fs::read(&original).expect("original unchanged"),
+            b"existing"
+        );
     }
-
 
     #[test]
     fn url_filenames_are_single_portable_components() {
