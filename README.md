@@ -6,9 +6,9 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 ![ezwallpaper Core and CLI architecture](docs/architecture.svg)
 
-The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. Dashed elements are **planned**, not implemented: additional sources, durable cache, deduplication, tags and history.
+The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. Dashed elements are **planned**, not implemented: additional sources, the approved opt-in Core-owned CAS, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -114,3 +114,7 @@ ezwallpaper hash /absolute/path/to/wallpaper.jpg
 ```
 
 The Core API `WallpaperManager::content_id(&asset)` streams SHA-256 over current file bytes and returns `sha256:<hex>`. The CLI never downloads or sets a wallpaper for this command. Equal bytes yield equal IDs regardless of path or source; hashing is not a file snapshot during concurrent modifications, not image format validation, and not a persistent cache. The existing JSON manifest v1 does not acquire any new fields.
+
+## Approved store direction (not yet implemented)
+
+[ADR 0003](docs/adr/0003-owned-content-store.md) approves an isolated, explicitly enabled Core-owned CAS root with import, inspect and export operations. Existing `--dir` and JSON manifest v1 stay unchanged. No automatic file cleanup or cache operation has been implemented yet.
