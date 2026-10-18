@@ -5,7 +5,9 @@ mod wp_selector;
 
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 pub use wp_provider::{bing::BingProvider, pexel::PexelProvider, GetImgUrl};
@@ -70,6 +72,31 @@ impl WallpaperManager {
             .into_iter()
             .map(|wallpaper| self.verify_asset(source_id, wallpaper.path()))
             .collect()
+    }
+
+    /// Compute an on-demand, source-independent content identifier.
+    ///
+    /// Always reads the current file bytes; this is not an atomic snapshot if
+    /// another process modifies the file while it is hashed. JSON Manifest v1
+    /// remains unchanged, and this does not decode or authenticate an image.
+    pub fn content_id(&self, asset: &WallpaperAsset) -> Result<String> {
+        let path = asset.path();
+        let mut file = fs::File::open(path)
+            .with_context(|| format!("cannot open wallpaper for hashing: {}", path.display()))?;
+        if !file.metadata()?.is_file() {
+            bail!("wallpaper hash input is not a regular file: {}", path.display());
+        }
+        let mut hasher = Sha256::new();
+        let mut buffer = [0u8; 64 * 1024];
+        loop {
+            let n = file.read(&mut buffer)
+                .with_context(|| format!("cannot read wallpaper for hashing: {}", path.display()))?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buffer[..n]);
+        }
+        Ok(format!("sha256:{:x}", hasher.finalize()))
     }
 
     /// Open an existing local file without network or desktop side effects.
@@ -237,6 +264,48 @@ mod tests {
         assert!(manifest["assets"][0]["path"].as_str().is_some());
 
         fs::remove_dir_all(dir).expect("clean isolated fixtures");
+    }
+
+    #[test]
+    fn content_id_matches_sha256_known_vector_and_ignores_path() {
+        let dir = tempfile::tempdir().expect("isolated hash fixtures");
+        let first = dir.path().join("first.png");
+        let duplicate = dir.path().join("second.jpg");
+        let different = dir.path().join("different.png");
+        fs::write(&first, b"abc").expect("NIST vector fixture");
+        fs::write(&duplicate, b"abc").expect("same bytes, different path");
+        fs::write(&different, b"abd").expect("different bytes");
+
+        let manager = WallpaperManager;
+        let first = manager.open_local(&first).expect("first asset");
+        let duplicate = manager.open_local(&duplicate).expect("duplicate asset");
+        let different = manager.open_local(&different).expect("different asset");
+
+        let expected = "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        assert_eq!(manager.content_id(&first).expect("hash abc"), expected);
+        assert_eq!(
+            manager.content_id(&duplicate).expect("hash duplicate"),
+            expected
+        );
+        assert_ne!(
+            manager.content_id(&different).expect("hash abd"),
+            expected
+        );
+        // Content IDs are additive: the v1 manifest schema is not modified.
+        let json = serde_json::to_value(WallpaperManifest::new(&[first]))
+            .expect("serialize unchanged v1 manifest");
+        assert_eq!(json["schema_version"], 1);
+        assert!(json["assets"][0].get("content_id").is_none());
+    }
+
+    #[test]
+    fn content_id_fails_if_file_disappears_after_listing() {
+        let dir = tempfile::tempdir().expect("isolated hash fixture");
+        let path = dir.path().join("will-disappear.jpg");
+        fs::write(&path, b"abc").expect("fixture exists");
+        let asset = WallpaperManager.open_local(&path).expect("initial file");
+        fs::remove_file(path).expect("remove fixture after catalog");
+        assert!(WallpaperManager.content_id(&asset).is_err());
     }
 
     #[test]
