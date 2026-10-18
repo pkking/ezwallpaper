@@ -1,7 +1,7 @@
 # 2026-10-18-readme-architecture-adr-sync: publish and govern architecture diagram
 
 Issue: #14
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-18
@@ -42,25 +42,25 @@ Embed a source-controlled visual architecture diagram in README showing Source â
 ## Acceptance criteria
 
 - [x] README displays source-controlled architecture diagram with core, CLI and third-party consumers.
-- [x] SVG is source-controlled and visually distinguishes implemented paths from future items (XML validation pending).
+- [x] SVG is source-controlled, XML-valid and distinguishes implemented paths from planned items.
 - [x] AGENTS, ADR guidelines, workflow and PR template require synchronized updates.
-- [x] Deterministic CI and tests reject changed ADRs missing updated figure or justified no-impact statement (CI pending).
-- [ ] Final reviewed PR head passes all required CI checks.
+- [x] Deterministic CI rejects changed ADRs missing the diagram or a documented no-impact reason.
+- [x] Final reviewed PR head passes all required CI checks.
 
 ## Implementation slices
 
 - [x] Add SVG diagram and README embedding, link from architecture documentation.
 - [x] Add governance language in AGENTS/ADR/PR workflow.
-- [x] Extend validator + offline regression tests, observe CI (CI pending).
+- [x] Extend validator + offline regression tests; all checks green on PR #16.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Diagram XML | Python ElementTree parse | valid SVG | pending |
-| Governance | python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v | negative/positive tests | pending |
-| PR gate | Agent plan integrity | Issue #14, plan path, ADR/diagram synchronization | pending |
-| Rust gates | existing Rust quality / tests / smoke | unchanged and green | pending |
+| Diagram XML | Python ElementTree parse (PR integrity) | valid SVG and all required markers | PASS, run 39096581316 |
+| Governance | python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v | positive/negative ADR sync contract tests | PASS, run 39096581316 |
+| PR gate | Agent plan integrity | Issue #14, linked plan, README/SVG validation | PASS, run 39096581316 |
+| Rust gates | existing Rust quality / tests / smoke | unchanged and green | PASS, run 39096581316 |
 
 ## Decision gates
 
@@ -68,6 +68,8 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Evidence log
 
+- 2026-10-18: PR #16 https://github.com/pkking/ezwallpaper/pull/16 merged into protected master as `11660deee0a9f1718f9ac922202672d166caae89`.
+- 2026-10-18: PR #16 final head `55da193758156c547b8cbf4f090a73bfaadae5d2` passed Agent plan integrity, Agent contract self-tests, Rust quality, Rust tests and CLI smoke. CI https://github.com/pkking/ezwallpaper/actions/runs/39096581316 .
 - 2026-10-18: extended existing PR integrity script to parse canonical README/SVG and require same-PR SVG updates for modified architecture ADRs; an explicit no-impact exception must be justified in both ADR and PR.
 - 2026-10-18: added positive/negative offline contract tests for diagram parsing, marker preservation, ADR diff synchronization and exception validation.
 - 2026-10-18: added README-embedded docs/architecture.svg showing implemented Core, CLI and third-party paths, while explicitly marking planned sources/cache.
@@ -81,11 +83,11 @@ The core-vs-CLI architecture was already approved in ADR 0001; this task publish
 
 ## Resume from here
 
-Create PR with Issue #14 and this plan; inspect Agent plan integrity, contract self-tests and Rust CI; resolve any concrete failures.
+Merge the completion-only archival PR, then close Issue #14. No implementation work remains.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable (documentation + offline contract validator)
-Remaining unassessed items: CI
+Final commit: 11660deee0a9f1718f9ac922202672d166caae89 (PR #16 squash merge)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39096581316 (all four jobs passed for head 55da193758156c547b8cbf4f090a73bfaadae5d2)
+E2E artifact: not applicable (architecture documentation and offline contract checks)
+Remaining unassessed items: external GitHub rendering visual review (SVG XML validity verified); no live desktop tests were required
