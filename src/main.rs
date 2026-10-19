@@ -448,7 +448,6 @@ fn print_assets(assets: &[WallpaperAsset], json: bool) -> Result<()> {
     Ok(())
 }
 
-
 #[cfg(test)]
 mod list_cli_tests {
     use super::*;
