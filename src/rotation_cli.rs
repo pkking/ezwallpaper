@@ -484,6 +484,46 @@ mod tests {
     }
 
     #[test]
+    fn simultaneous_hourly_invocations_acknowledge_each_output_once() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+
+        let (_dir, profile, state) = fixture();
+        let start = Arc::new(Barrier::new(3));
+        let mut handles = Vec::new();
+        for _ in 0..2 {
+            let p = profile.clone();
+            let s = state.clone();
+            let gate = Arc::clone(&start);
+            handles.push(thread::spawn(move || {
+                gate.wait();
+                run_with_adapter(&p, &s, None, false, true, |_, _| {
+                    thread::sleep(std::time::Duration::from_millis(10));
+                    Ok(ApplyStatus::PathObserved)
+                })
+                .expect("serializable same-hour apply")
+            }));
+        }
+        start.wait();
+        let total: usize = handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .expect("thread completed")
+                    .iter()
+                    .filter(|result| result.applied_path_observed)
+                    .count()
+            })
+            .sum();
+        assert_eq!(total, 2);
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("persisted state"))
+                .expect("valid saved state");
+        assert_eq!(saved.outputs.len(), 2);
+    }
+
+    #[test]
     fn invalid_profile_is_rejected_without_state_creation() {
         let (_dir, profile, state) = fixture();
         fs::write(
