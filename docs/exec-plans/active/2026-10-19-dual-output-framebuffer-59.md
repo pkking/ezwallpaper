@@ -44,9 +44,9 @@ Issue #59; AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/agen
 
 ## Implementation slices
 
-- [ ] 1. Add isolated dual-output Sway compositor harness and deterministic pixel helper regression tests.
-- [ ] 2. Extend existing Sway GitHub Actions gate with independent dual-output run and preserved artifacts.
-- [ ] 3. Record upstream niri blocker and future Noctalia/niri matrix, with verified vs UNASSESSED outcomes.
+- [x] 1. Add isolated dual-output Sway compositor harness and deterministic pixel helper regression tests (pending PR-head CI).
+- [x] 2. Extend existing Sway GitHub Actions gate with independent dual-output run and preserved artifacts (pending CI).
+- [x] 3. Record upstream niri blocker and future Noctalia/niri matrix, with verified vs UNASSESSED outcomes.
 - [ ] 4. Observe final-head CI, fix failures, merge, archive plan when verified; keep #59 open.
 
 ## Verification matrix
@@ -64,15 +64,16 @@ None for this nonprivileged CI-only harness. A separate explicit ADR/approval ma
 
 ## Evidence log
 
+- 2026-10-19: implemented disposable Sway dual-output harness, offline assert helpers, existing CI integration and evidence docs. Awaiting actual PR-head CI; do not label as PASS yet.
 - 2026-10-19: repo master 2d4e403 and CI success 39221901136. Upstream niri v26.04 `main.rs` headless argument false and PR #3800 open. This proves current upstream blocker, not a pixel test.
 
 ## Deviations and discoveries
 
-None.
+- Since upstream production niri cannot create two virtual outputs yet, implement the screenshot substrate with supported Sway only; never claim this verifies niri or Noctalia.
 
 ## Resume from here
 
-Implement isolated `tests/e2e/sway/dual.py` with two physical framebuffer checks; hook into Sway CI and use run artifacts to diagnose exact final-head result.
+Open PR for the isolated two-output Sway gate, inspect the new Sway CI step and fix observed failures before merge; niri/Noctalia native evidence is still unassessed.
 
 ## Completion
 
