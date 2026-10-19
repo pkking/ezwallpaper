@@ -60,7 +60,7 @@ def assert_readback(observed: str, expected: Path) -> None:
 
 def check_shell_version(value: str) -> str:
     version = value.strip()
-    if not version.startswith("noctalia 5.2.1"):
+    if not (version == "noctalia 5.2.1" or version.startswith("noctalia 5.2.1 ")):
         raise E2EFailure(f"wrong native Noctalia version: {version!r}")
     return version
 
