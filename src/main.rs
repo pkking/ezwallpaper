@@ -9,6 +9,7 @@ use log::debug;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+mod rotation_cli;
 mod setter;
 
 const DEFAULT_RESOLUTION: &str = "UHD";
@@ -151,10 +152,43 @@ enum CliCommand {
         #[command(subcommand)]
         operation: StoreOperation,
     },
+    /// Explicit, offline multi-output wallpaper rotation (preview by default).
+    Rotate {
+        #[command(subcommand)]
+        operation: RotateOperation,
+    },
     /// Apply a pre-existing local file without network requests.
     Apply {
         /// Absolute or relative path to an existing wallpaper image.
         path: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum RotateOperation {
+    /// Plan the current hourly wallpaper choice, optionally apply via Noctalia v5 IPC.
+    Next {
+        /// Versioned JSON profile declaring Noctalia outputs and local image pools.
+        #[arg(long)]
+        profile: PathBuf,
+        /// Optional state file; defaults to the user's XDG state directory.
+        #[arg(long)]
+        state: Option<PathBuf>,
+        /// Explicitly apply through Noctalia v5 and commit path-readback acknowledgements.
+        #[arg(long, conflicts_with = "dry_run")]
+        apply: bool,
+        /// Preview only (default); never creates state files or changes a wallpaper.
+        #[arg(long)]
+        dry_run: bool,
+        /// Replan even if this UTC epoch has already been acknowledged.
+        #[arg(long)]
+        force: bool,
+        /// Override the UTC hour for deterministic preview; not available with --apply.
+        #[arg(long)]
+        epoch: Option<i64>,
+        /// Print machine-readable output, separately versioned from wallpaper manifest.
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -317,6 +351,34 @@ fn main() -> Result<()> {
 
     let manager = WallpaperManager;
     match &cli.command {
+        Some(CliCommand::Rotate {
+            operation:
+                RotateOperation::Next {
+                    profile,
+                    state,
+                    apply,
+                    dry_run: _,
+                    force,
+                    epoch,
+                    json,
+                },
+        }) => {
+            let results = rotation_cli::run_rotation(
+                profile,
+                state.as_deref(),
+                *epoch,
+                *force,
+                *apply,
+            )?;
+            if *json {
+                println!("{}", serde_json::to_string_pretty(&results)?);
+            } else {
+                for result in &results {
+                    println!("{:?}", result);
+                }
+            }
+            return Ok(());
+        }
         Some(CliCommand::Store { root, operation }) => {
             return run_store(root, operation);
         }
