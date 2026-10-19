@@ -6,6 +6,12 @@ on:
   push:
     branches: [master]
 
+# Keep only the newest revision's evidence for a PR; older runs are invalidated
+# by later commits and must not consume runners while the current head waits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
