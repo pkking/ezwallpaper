@@ -55,9 +55,9 @@ Issue #59 latest checkpoint; AGENTS.md; docs/agents/workflow.md; docs/agents/tes
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Pure Python harness | python3 -m unittest discover -s tests -p 'test_noctalia_sway_helpers.py' -v | negative+positive test results | NOT RUN |
-| Native Noctalia v5.2.1 | Noctalia + Sway headless dual-output real E2E | screenshots, JSON, logs, binary version | NOT RUN |
-| Rust/contract/platform | PR CI (7 existing checks) | final-head run IDs | NOT RUN |
+| Pure Python harness | python3 -m unittest discover -s tests -p 'test_noctalia_sway_helpers.py' -v | negative+positive test results | Await updated fixture unit-test CI |
+| Native Noctalia v5.2.1 | Noctalia + Sway headless dual-output real E2E | screenshots, JSON, logs, binary version | FAILED 39284018628: onboarding overlay; FIXED IN SOURCE, RETEST PENDING |
+| Rust/contract/platform | PR CI (7 existing checks) | final-head run IDs | SUCCESS on previous HEAD 2a4a607; rerun new HEAD pending |
 | niri/physical/lockscreen | separate #59 work | explicit UNASSESSED | UNASSESSED |
 
 ## Decision gates
@@ -71,6 +71,8 @@ None for a CI-only isolated integration test that changes no product-facing cont
 ## Deviations and discoveries
 
 - The GitHub Noctalia v5.2.1 release provides source/assets, not an independently verified downloadable executable; use pinned source build in CI.
+- CI [39284018628](https://github.com/pkking/ezwallpaper/actions/runs/39284018628) for PR #72 HEAD `2a4a607` reached native Noctalia + dual-headless Sway rendering after all 761 upstream build targets succeeded; **7/8 jobs successful**, native E2E failed at `first/HEADLESS-2` with blue pixel_fraction=0.0134 (<0.9). Real failed screenshot artifact [12204161167](https://github.com/pkking/ezwallpaper/actions/runs/39284018628/artifacts/12204161167) visibly contains native **Welcome to Noctalia** first-run overlay on HEADLESS-2, while HEADLESS-1 red screenshot matches fixture and Noctalia log reports the real `blue.png` texture uploaded. Thus this failure is not an absent second output or IPC failure; acceptance is still NOT MET.
+- Root cause: the isolated fresh HOME triggers Noctalia's setup wizard. The native v5.2.1 documented fixture property `[shell].setup_wizard_enabled=false` disables this onboarding overlay without modifying wallpaper, hiding failures, or lowering the 0.90 screenshot threshold. Added an offline TOML contract assertion. Re-run eight exact-head checks and re-inspect screenshots/artifact; no claim of success yet.
 
 ## Resume from here
 
