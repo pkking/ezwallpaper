@@ -8,7 +8,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md) · [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -132,6 +132,17 @@ Noctalia's own automatic rotation and any future ezwallpaper rotation scheduler 
 `doctor` reports integration prerequisites, not proof that the desktop applied an image. For swaybg it is possible to launch a process without observing the resulting wallpaper; the CLI explicitly warns of this limitation. It does not yet own/replace existing swaybg processes. No GUI is needed for `--download-only` or direct core library use. Path/content validation is limited to regular-file existence at this stage.
 
 Developer workflow: `cargo test --workspace --all-targets`, `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used`, and `cargo fmt --all -- --check`. The [desktop integration evidence protocol](docs/agents/desktop-integration-evidence.md) distinguishes isolated Core → CLI → GNOME/Plasma/niri/X11 command-contract CI from real desktop wallpaper observations. Both fake-command tests and real compositor screenshots are automated for Sway only; **all other OS/DE visual outcomes remain unassessed**.
+
+## Root-confined nested local catalog (opt-in)
+
+The default `ezwallpaper list` still enumerates only directly contained, non-symlink image-like files. For organized landscape/portrait libraries, recursive enumeration is an explicit offline operation:
+
+```sh
+ezwallpaper --dir ./wallpapers list --recursive --json
+ezwallpaper --dir ./wallpapers list --recursive --follow-symlinks --json
+```
+
+Without `--follow-symlinks`, all symlinks are skipped. When enabled, symlinked directories and files must resolve **inside** the canonical `--dir` root; an escaped or dangling link aborts with an error. Directory cycles are stopped, duplicate canonical file paths appear once, and entries are sorted. Traversal is bounded to 4,096 directories / 100,000 entries; this is not a security sandbox against concurrent malicious filesystem changes. Files are **not decoded**, the output remains the existing JSON manifest v1, and neither command downloads nor changes the desktop. For actual image validity call `probe` explicitly. See [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md).
 
 ## Local image pixel validation and derivation (opt-in)
 
