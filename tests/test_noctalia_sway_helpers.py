@@ -19,10 +19,10 @@ def topology(name2="HEADLESS-2", second_width=240):
 
 class NativeNoctaliaHarnessTests(unittest.TestCase):
     def test_pinned_version(self):
-        self.assertEqual(check_shell_version("noctalia 5.2.1\n"), "noctalia 5.2.1")
+        self.assertEqual(check_shell_version("noctalia v5.2.1 (v5.2.1)\n"), "noctalia v5.2.1 (v5.2.1)")
 
     def test_no_unpinned_shell_release(self):
-        for val in ("noctalia 5.1.0", "noctalia 5.2.10", "quickshell 5.2.1", ""):
+        for val in ("noctalia 5.2.1", "noctalia v5.2.10 (v5.2.10)", "quickshell 5.2.1", ""):
             with self.subTest(val=val), self.assertRaises(E2EFailure):
                 check_shell_version(val)
 

@@ -282,7 +282,7 @@ jobs:
             meson compile -C build-ci -j 2 noctalia) \
             2>&1 | tee artifacts/noctalia-sway-e2e/upstream-build.log
           /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
-          grep -q '^noctalia 5.2.1' artifacts/noctalia-sway-e2e/upstream-version.txt
+          grep -Fx 'noctalia v5.2.1 (v5.2.1)' artifacts/noctalia-sway-e2e/upstream-version.txt
       - name: Test actual native IPC and dual output rendered pixels
         shell: bash
         run: |
