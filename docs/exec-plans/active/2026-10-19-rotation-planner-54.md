@@ -1,7 +1,7 @@
 # 2026-10-19-rotation-planner-54: headless no-repeat epoch rotation plan
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -43,9 +43,9 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/architecture.md
 
 ## Implementation slices
 
-- [ ] 1. Add pure Core rotation planning module with versioned, serializable output state/proposal and input validation.
-- [ ] 2. Add deterministic behavior tests (24 epochs, duplicate/shrink, UTC rollback, force, separate output pools).
-- [ ] 3. Document future CLI/persistence boundary and validate with GitHub Actions.
+- [x] 1. Add pure Core rotation planning module with versioned, serializable output state/proposal and input validation. (PR CI pending)
+- [x] 2. Add deterministic behavior tests (24 epochs, duplicate/shrink, UTC rollback, force, separate output pools). (PR CI pending)
+- [x] 3. Document future CLI/persistence boundary and validate with GitHub Actions. (PR CI pending)
 
 ## Verification matrix
 
@@ -63,6 +63,7 @@ This additive pure Core API does not alter existing CLI defaults or persistence 
 
 ## Evidence log
 
+- 2026-10-19: first implementation checkpoint 4435a053ab7cc22f42e23a0b017935405918a039 includes rotation.rs, Core exports, 5 offline planner tests, ADR 0008, architecture SVG/text and README. Actual Rust commands NOT RUN locally; GitHub PR CI pending.
 - 2026-10-19: inspected #54, AGENTS.md and merged #64 baseline; independent planner is a prerequisite to any reliable hourly stateful operation.
 
 ## Deviations and discoveries
@@ -71,7 +72,7 @@ None yet.
 
 ## Resume from here
 
-Implement and test the pure Core planner in crates/ezwallpaper-core/src/rotation.rs on agent/issue-54-core-rotation-planner, then open a linked PR and inspect all final-head CI checks.
+Open a linked PR from agent/issue-54-core-rotation-planner to master with Issue #54 and this active plan; inspect all final-head CI jobs, fix failures and merge only when green.
 
 ## Completion
 
