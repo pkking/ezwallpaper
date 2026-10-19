@@ -18,6 +18,7 @@ const MAX_PROFILE_BYTES: u64 = 256 * 1024;
 const MAX_STATE_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_OUTPUTS: usize = 16;
 const MAX_POOL: usize = 4_096;
+const MAX_ASSET_BYTES: u64 = 64 * 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -243,6 +244,9 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
     }
     let mut by_id = BTreeMap::new();
     for asset in assets {
+        if asset.size_bytes() > MAX_ASSET_BYTES {
+            bail!("local wallpaper exceeds 64 MiB rotation source limit");
+        }
         let id = manager.content_id(&asset)?;
         by_id
             .entry(id)
