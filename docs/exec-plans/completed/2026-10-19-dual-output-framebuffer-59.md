@@ -81,4 +81,4 @@ Begin a new active Issue #59 slice for Noctalia v5.2.1 in a fully isolated Wayla
 Final commit: 18ddccd90d7c7a47df7b9b18b9a4ce1901e2c134 (PR #70 squash merged)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/39234753110 (PR #70 final head 601accd90fa12a45723ec6129119edb65c9ca976, 7/7 success)
 E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39234753110/artifacts/12177424478 (Sway dual screenshot/log + single-output evidence)
-Remaining unassessed: real niri/Noctalia dual-output pixels, physical/4K/portrait scaling, hotplug and lockscreen.
+Remaining unassessed items: real niri/Noctalia dual-output pixels, physical/4K/portrait scaling, hotplug and lockscreen.
