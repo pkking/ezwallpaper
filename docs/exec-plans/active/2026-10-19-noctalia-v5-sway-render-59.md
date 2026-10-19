@@ -1,7 +1,7 @@
 # 2026-10-19-noctalia-v5-sway-render-59: native Noctalia dual-output pixels
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -47,8 +47,8 @@ Issue #59 latest checkpoint; AGENTS.md; docs/agents/workflow.md; docs/agents/tes
 
 ## Implementation slices
 
-- [ ] 1. Create native Noctalia build/test job pinned to upstream v5.2.1 and isolated headless runner.
-- [ ] 2. Add dual-output native IPC + real framebuffer harness and deterministic negative tests.
+- [x] 1. Create native Noctalia build/test job pinned to upstream v5.2.1 and isolated headless runner (implemented; execution pending).
+- [x] 2. Add dual-output native IPC + real framebuffer harness and deterministic negative tests (implemented; execution pending).
 - [ ] 3. Review job evidence and docs; fix failures; merge only with final-head green checks, then archive the plan separately.
 
 ## Verification matrix
@@ -66,7 +66,7 @@ None for a CI-only isolated integration test that changes no product-facing cont
 
 ## Evidence log
 
-- 2026-10-19: master `2114309`, push CI `39235443320` success; prior Sway-only PR #70 green. Native Noctalia test UNASSESSED.
+- 2026-10-19: master `2114309`, push CI `39235443320` success; prior Sway-only PR #70 green. Native Noctalia test UNASSESSED.\n- 2026-10-19: implementation on branch `agent/noctalia-v5-sway-dual-render-59`: added pinned upstream SHA `6ef43e2`, Debian Trixie CI source build, unprivileged Sway/Noctalia runner, isolated DBus/XDG session, IPC and pixel assertions, offline negative tests, and evidence docs. GitHub PR-head CI NOT RUN at this checkpoint.
 
 ## Deviations and discoveries
 
@@ -74,7 +74,7 @@ None for a CI-only isolated integration test that changes no product-facing cont
 
 ## Resume from here
 
-Implement a disposable Noctalia v5.2.1 + Sway two-output CI harness on this branch, then inspect native framebuffer artifacts; if source dependencies or renderer cannot run, keep the plan active and record the exact failing gate rather than reporting success.
+Open linked PR and inspect its final-head CI; debug the native Noctalia build and screenshot artifacts, then merge only when every gate is green. If blocked, record the exact failing check and keep this plan in active/.
 
 ## Completion
 
