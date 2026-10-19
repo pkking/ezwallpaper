@@ -171,7 +171,10 @@ impl WallpaperManager {
             .canonicalize()
             .with_context(|| format!("cannot resolve wallpaper catalog: {}", input.display()))?;
         if !root.is_dir() {
-            bail!("wallpaper catalog root is not a directory: {}", root.display());
+            bail!(
+                "wallpaper catalog root is not a directory: {}",
+                root.display()
+            );
         }
 
         let mut pending = vec![root.clone()];
@@ -186,8 +189,9 @@ impl WallpaperManager {
             if seen_directories.len() > MAX_DIRS {
                 bail!("recursive wallpaper catalog exceeds directory limit");
             }
-            let entries = fs::read_dir(&folder)
-                .with_context(|| format!("cannot list wallpaper directory: {}", folder.display()))?;
+            let entries = fs::read_dir(&folder).with_context(|| {
+                format!("cannot list wallpaper directory: {}", folder.display())
+            })?;
             for entry in entries {
                 let entry = entry?;
                 scanned_entries += 1;
@@ -368,18 +372,23 @@ mod tests {
         fs::write(root.join("nested/ignore.txt"), b"not image").expect("write text fixture");
 
         let manager = WallpaperManager;
-        assert_eq!(manager.list_local(root).expect("legacy flat catalog").len(), 1);
+        assert_eq!(
+            manager.list_local(root).expect("legacy flat catalog").len(),
+            1
+        );
         let assets = manager
             .list_local_recursive(root, false)
             .expect("recursive catalog");
         assert_eq!(assets.len(), 2);
         assert!(assets[0].path() < assets[1].path());
         assert!(assets.iter().all(|a| a.path().starts_with(root)));
-        let manifest = serde_json::to_value(WallpaperManifest::new(&assets))
-            .expect("serialize existing v1");
+        let manifest =
+            serde_json::to_value(WallpaperManifest::new(&assets)).expect("serialize existing v1");
         assert_eq!(manifest["schema_version"], 1);
         assert!(manifest["assets"][0].get("content_id").is_none());
-        assert!(manager.list_local_recursive(root.join("top.png"), false).is_err());
+        assert!(manager
+            .list_local_recursive(root.join("top.png"), false)
+            .is_err());
     }
 
     #[cfg(unix)]
@@ -396,8 +405,7 @@ mod tests {
         symlink(root.join("top.png"), root.join("duplicate.png")).expect("duplicate link");
         symlink(root.join("nested"), root.join("alias")).expect("directory link");
         symlink(&root, root.join("nested/cycle")).expect("loop");
-        symlink(temp.path().join("outside.jpg"), root.join("escape.jpg"))
-            .expect("outside link");
+        symlink(temp.path().join("outside.jpg"), root.join("escape.jpg")).expect("outside link");
 
         let manager = WallpaperManager;
         let default = manager
