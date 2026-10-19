@@ -8,7 +8,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md) · [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md) · [ADR 0008](docs/adr/0008-pure-rotation-planner.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md) · [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md) · [ADR 0008](docs/adr/0008-pure-rotation-planner.md) · [ADR 0009](docs/adr/0009-locked-noctalia-rotation.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -143,6 +143,26 @@ ezwallpaper --dir ./wallpapers list --recursive --follow-symlinks --json
 ```
 
 Without `--follow-symlinks`, all symlinks are skipped. When enabled, symlinked directories and files must resolve **inside** the canonical `--dir` root; an escaped or dangling link aborts with an error. Directory cycles are stopped, duplicate canonical file paths appear once, and entries are sorted. Traversal is bounded to 4,096 directories / 100,000 entries; this is not a security sandbox against concurrent malicious filesystem changes. Files are **not decoded**, the output remains the existing JSON manifest v1, and neither command downloads nor changes the desktop. For actual image validity call `probe` explicitly. See [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md).
+
+## Offline hourly Noctalia rotation (explicit opt-in)
+
+The CLI can now consume a user-authored multi-output profile and rotate existing image pools while keeping Noctalia as the sole wallpaper renderer. **No change to the legacy default behavior**: merely installing the CLI never schedules rotation or modifies Noctalia settings.
+
+1. Copy [the example JSON profile](docs/examples/rotation-profile.json) to `~/.config/ezwallpaper/rotation.json`. Replace the example directory paths with your own landscape and portrait pools. Output names such as `DP-1` and `HDMI-A-1` must match your actual Noctalia connectors. The `owner` must be `ezwallpaper`; relative pool paths, if used, are resolved against the profile's directory. The profile is **not** an executable script and may contain no secrets.
+2. Preview **without** creating state files, invoking Noctalia or downloading anything:
+   ```sh
+   ezwallpaper rotate next --profile ~/.config/ezwallpaper/rotation.json --dry-run --json
+   # reproducible preview of a UTC-hour bucket:
+   ezwallpaper rotate next --profile ~/.config/ezwallpaper/rotation.json --epoch 500000 --json
+   ```
+3. **Disable Noctalia's own wallpaper automation on these outputs** to keep a single rotation authority. In an active Linux Wayland/Noctalia v5 session, explicitly apply:
+   ```sh
+   ezwallpaper rotate next --profile ~/.config/ezwallpaper/rotation.json --apply --json
+   ```
+   An applied entry reports `applied_path_observed=true` only when `noctalia msg wallpaper-get` confirms the selected path. It never reports `visually_verified=true`; physical displays and lock screen need separate tests. A failed output remains unacknowledged and safely retries; outputs applied before a later failure retain their committed progress. An empty/single-image pool reports a degraded/no-change reason, not a successful new picture.
+4. Optional hourly scheduling: copy [user service](docs/examples/ezwallpaper-rotation.service) and [user timer](docs/examples/ezwallpaper-rotation.timer) into `~/.config/systemd/user/`, **edit the binary/profile paths**, inspect the service, then explicitly `systemctl --user daemon-reload` and `systemctl --user enable --now ezwallpaper-rotation.timer`. The CLI never installs/enables the timer. The running user manager must have the Wayland/Noctalia environment; a login/session manager may require `systemctl --user import-environment WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP` or an equivalent desktop integration. Avoid enabling a timer in a headless session.
+
+State is created only by `--apply`, under `$XDG_STATE_HOME/ezwallpaper/rotation-v1.json` (Linux fallback `~/.local/state/ezwallpaper/rotation-v1.json`); `--state PATH` overrides it. This file and its persistent sibling `.lock` are owned by the invoking user. No state is deleted automatically, and no auto-migration is supported. Cross-process advisory locking and atomic per-output replacement protect cooperating processes; they are **not** a sandbox against hostile concurrent filesystem changes or a guarantee of pixel rendering. Time is based on UTC-hour buckets, so DST or missed timer ticks never cause a replay storm. See [ADR 0009](docs/adr/0009-locked-noctalia-rotation.md) and [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) for missing live niri evidence. Source pool refills remain a separate fetch operation.
 
 ## Pure rotation planning for other consumers (Core API)
 
