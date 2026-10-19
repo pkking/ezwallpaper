@@ -1,0 +1,10 @@
+[Unit]
+Description=Rotate configured wallpapers through Noctalia v5
+Documentation=https://github.com/pkking/ezwallpaper
+
+[Service]
+Type=oneshot
+# Replace with actual binary location and installed opt-in profile.
+# No sudo, no automatic configuration changes, no swaybg fallback.
+ExecStart=%h/.local/bin/ezwallpaper rotate next --profile %h/.config/ezwallpaper/rotation.json --apply --json
+NoNewPrivileges=true
