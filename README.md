@@ -8,7 +8,7 @@ A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Ex
 
 The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, including a nonpersistent local catalog and JSON manifest v1. It can also compute optional, on-demand SHA-256 content IDs without altering JSON manifest v1; this allows external consumers to compare duplicate image bytes even if filenames differ. The **`ezwallpaper` CLI** consumes core assets and integrates with OS/DE/WM-native APIs or ecosystem programs; scripts and other applications can consume core assets without using a desktop setter. The **optional isolated Core-owned CAS** now provides explicit import, inspect and export. Dashed elements are **planned**, not implemented: additional sources, automatic cache GC, tagging and history.
 
-**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md) · [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
+**Architecture source of truth:** [editable SVG](docs/architecture.svg) · [implementation status](docs/architecture.md) · [accepted ADR 0001](docs/adr/0001-core-cli-boundaries.md) · [approved ADR 0003](docs/adr/0003-owned-content-store.md) · [ADR 0004](docs/adr/0004-noctalia-v5-ipc.md) · [ADR 0005](docs/adr/0005-provider-source-capabilities.md) · [ADR 0006](docs/adr/0006-image-probe-derive.md) · [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md) · [ADR 0008](docs/adr/0008-pure-rotation-planner.md). Architecture-changing ADRs must update this diagram **in the same PR**, or document a specific reason why the decision has no impact on the diagram (see [ADR contribution rules](docs/adr/README.md)).
 
 # Features
 - support set desktop background with images from [bing daliy picture](https://www.bing.com)
@@ -143,6 +143,12 @@ ezwallpaper --dir ./wallpapers list --recursive --follow-symlinks --json
 ```
 
 Without `--follow-symlinks`, all symlinks are skipped. When enabled, symlinked directories and files must resolve **inside** the canonical `--dir` root; an escaped or dangling link aborts with an error. Directory cycles are stopped, duplicate canonical file paths appear once, and entries are sorted. Traversal is bounded to 4,096 directories / 100,000 entries; this is not a security sandbox against concurrent malicious filesystem changes. Files are **not decoded**, the output remains the existing JSON manifest v1, and neither command downloads nor changes the desktop. For actual image validity call `probe` explicitly. See [ADR 0007](docs/adr/0007-rooted-recursive-catalog.md).
+
+## Pure rotation planning for other consumers (Core API)
+
+A headless `plan_rotation(output, epoch, content_ids, state, force)` API now provides **deterministic, no-adjacent-repeat proposals** for separately managed displays. Candidates use byte-based SHA-256 identities rather than filenames; duplicate images do not count as new content. It returns explicit `select`, `already_applied`, `empty_pool` or `no_alternative` decisions and a versioned proposed state. The calling application must only persist that state after observing an appropriate apply outcome. The planner itself does not read files, download, update wallpaper, create timers or save state.
+
+UTC epoch buckets are supplied by the consumer (for an hourly schedule, Unix UTC seconds divided by 3600); repeated and earlier buckets do not rotate unless explicitly forced. Missing hours are not replayed. The **hourly CLI profile / persisted state / Noctalia integration is still planned**, not a shipped `next` command. See [ADR 0008](docs/adr/0008-pure-rotation-planner.md) and [Issue #54](https://github.com/pkking/ezwallpaper/issues/54).
 
 ## Local image pixel validation and derivation (opt-in)
 
