@@ -366,7 +366,12 @@ fn main() -> Result<()> {
             let results =
                 rotation_cli::run_rotation(profile, state.as_deref(), *epoch, *force, *apply)?;
             if *json {
-                println!("{}", serde_json::to_string_pretty(&results)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(
+                        &serde_json::json!({"schema_version": 1, "outputs": results})
+                    )?
+                );
             } else {
                 for result in &results {
                     println!("{:?}", result);
@@ -547,5 +552,53 @@ mod list_cli_tests {
         }
 
         assert!(Args::try_parse_from(["ezwallpaper", "list", "--follow-symlinks"]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod rotate_cli_tests {
+    use super::*;
+
+    #[test]
+    fn rotate_next_requires_profile_and_apply_is_explicit() {
+        let args = Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--dry-run",
+            "--json",
+        ])
+        .expect("parse safe rotation preview");
+        match args.command {
+            Some(CliCommand::Rotate {
+                operation:
+                    RotateOperation::Next {
+                        profile,
+                        apply,
+                        dry_run,
+                        json,
+                        ..
+                    },
+            }) => {
+                assert_eq!(profile, PathBuf::from("config.json"));
+                assert!(!apply);
+                assert!(dry_run);
+                assert!(json);
+            }
+            _ => panic!("expected opt-in rotate next"),
+        }
+        assert!(Args::try_parse_from(["ezwallpaper", "rotate", "next"]).is_err());
+        assert!(Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--apply",
+            "--dry-run",
+        ])
+        .is_err());
     }
 }
