@@ -381,7 +381,10 @@ mod tests {
             .expect("recursive catalog");
         assert_eq!(assets.len(), 2);
         assert!(assets[0].path() < assets[1].path());
-        assert!(assets.iter().all(|a| a.path().starts_with(root)));
+        let canonical_root = root.canonicalize().expect("canonical root");
+        assert!(assets
+            .iter()
+            .all(|a| a.path().starts_with(&canonical_root)));
         let manifest =
             serde_json::to_value(WallpaperManifest::new(&assets)).expect("serialize existing v1");
         assert_eq!(manifest["schema_version"], 1);
