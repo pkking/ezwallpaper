@@ -14,10 +14,10 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-pub use rotation::{plan_rotation, RotationDecision, RotationPlan, RotationState};
 pub use image_assets::{
     derive_image, probe_image, DerivedFormat, DerivedImage, FitMode, ImageProbe,
 };
+pub use rotation::{plan_rotation, RotationDecision, RotationPlan, RotationState};
 pub use store::{StoreInventory, StoredWallpaper, WallpaperStore};
 pub use wp_provider::{
     bing::BingProvider, pexel::PexelProvider, wallhaven::WallhavenProvider, GetImgUrl, Orientation,
