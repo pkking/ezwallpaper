@@ -8,6 +8,7 @@ mod wp_selector;
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -56,6 +57,18 @@ impl WallpaperAsset {
     pub fn size_bytes(&self) -> u64 {
         self.size_bytes
     }
+}
+
+fn is_image_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|suffix| suffix.to_str())
+        .map(|suffix| {
+            matches!(
+                suffix.to_ascii_lowercase().as_str(),
+                "jpg" | "jpeg" | "png" | "webp" | "bmp"
+            )
+        })
+        .unwrap_or(false)
 }
 
 /// Headless boundary between source retrieval and external wallpaper consumers.
@@ -130,22 +143,93 @@ impl WallpaperManager {
                 continue;
             }
             let path = entry.path();
-            let is_image = path
-                .extension()
-                .and_then(|suffix| suffix.to_str())
-                .map(|suffix| {
-                    matches!(
-                        suffix.to_ascii_lowercase().as_str(),
-                        "jpg" | "jpeg" | "png" | "webp" | "bmp"
-                    )
-                })
-                .unwrap_or(false);
-            if is_image {
+            if is_image_path(&path) {
                 assets.push(self.verify_asset("local", path)?);
             }
         }
         assets.sort_by(|left, right| left.path.cmp(&right.path));
         Ok(assets)
+    }
+
+    /// Opt-in nested local catalog constrained to the canonical directory root.
+    ///
+    /// Symlinks are skipped unless explicitly requested. In follow mode,
+    /// symlinks escaping the root (or dangling) fail the whole enumeration,
+    /// and canonical directory/file identities break cycles and duplicates.
+    /// This is a best-effort path check, not a sandbox against concurrent
+    /// hostile filesystem mutations. No image bytes are decoded.
+    pub fn list_local_recursive(
+        &self,
+        directory: impl AsRef<Path>,
+        follow_symlinks: bool,
+    ) -> Result<Vec<WallpaperAsset>> {
+        const MAX_DIRS: usize = 4_096;
+        const MAX_ENTRIES: usize = 100_000;
+
+        let input = directory.as_ref();
+        let root = input
+            .canonicalize()
+            .with_context(|| format!("cannot resolve wallpaper catalog: {}", input.display()))?;
+        if !root.is_dir() {
+            bail!(
+                "wallpaper catalog root is not a directory: {}",
+                root.display()
+            );
+        }
+
+        let mut pending = vec![root.clone()];
+        let mut seen_directories = HashSet::new();
+        let mut assets = BTreeMap::new();
+        let mut scanned_entries = 0usize;
+
+        while let Some(folder) = pending.pop() {
+            if !seen_directories.insert(folder.clone()) {
+                continue;
+            }
+            if seen_directories.len() > MAX_DIRS {
+                bail!("recursive wallpaper catalog exceeds directory limit");
+            }
+            let entries = fs::read_dir(&folder).with_context(|| {
+                format!("cannot list wallpaper directory: {}", folder.display())
+            })?;
+            for entry in entries {
+                let entry = entry?;
+                scanned_entries += 1;
+                if scanned_entries > MAX_ENTRIES {
+                    bail!("recursive wallpaper catalog exceeds entry limit");
+                }
+
+                let file_type = entry.file_type()?;
+                if file_type.is_symlink() && !follow_symlinks {
+                    continue;
+                }
+                if !file_type.is_file() && !file_type.is_dir() && !file_type.is_symlink() {
+                    continue;
+                }
+
+                let path = entry.path();
+                let resolved = path
+                    .canonicalize()
+                    .with_context(|| format!("cannot resolve catalog entry: {}", path.display()))?;
+                if !resolved.starts_with(&root) {
+                    bail!("catalog entry escapes allowed root: {}", path.display());
+                }
+
+                if resolved.is_dir() {
+                    if !seen_directories.contains(&resolved) {
+                        pending.push(resolved);
+                    }
+                } else if resolved.is_file() && is_image_path(&path) {
+                    if let std::collections::btree_map::Entry::Vacant(vacant) =
+                        assets.entry(resolved.clone())
+                    {
+                        let asset = self.verify_asset("local", &resolved)?;
+                        vacant.insert(asset);
+                    }
+                }
+            }
+        }
+        Ok(assets.into_values().collect())
     }
 
     fn verify_asset(&self, source: &str, path: impl AsRef<Path>) -> Result<WallpaperAsset> {
@@ -276,6 +360,69 @@ mod tests {
         assert!(manifest["assets"][0]["path"].as_str().is_some());
 
         fs::remove_dir_all(dir).expect("clean isolated fixtures");
+    }
+
+    #[test]
+    fn recursive_catalog_is_opt_in_and_keeps_manifest_v1() {
+        let temp = tempfile::tempdir().expect("isolated recursive catalog");
+        let root = temp.path();
+        fs::create_dir(root.join("nested")).expect("create nested directory");
+        fs::write(root.join("top.png"), b"top").expect("write top fixture");
+        fs::write(root.join("nested/deep.jpg"), b"deep").expect("write nested fixture");
+        fs::write(root.join("nested/ignore.txt"), b"not image").expect("write text fixture");
+
+        let manager = WallpaperManager;
+        assert_eq!(
+            manager.list_local(root).expect("legacy flat catalog").len(),
+            1
+        );
+        let assets = manager
+            .list_local_recursive(root, false)
+            .expect("recursive catalog");
+        assert_eq!(assets.len(), 2);
+        assert!(assets[0].path() < assets[1].path());
+        let canonical_root = root.canonicalize().expect("canonical root");
+        assert!(assets.iter().all(|a| a.path().starts_with(&canonical_root)));
+        let manifest =
+            serde_json::to_value(WallpaperManifest::new(&assets)).expect("serialize existing v1");
+        assert_eq!(manifest["schema_version"], 1);
+        assert!(manifest["assets"][0].get("content_id").is_none());
+        assert!(manager
+            .list_local_recursive(root.join("top.png"), false)
+            .is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn recursive_catalog_bounds_symlinks_deduplicates_and_breaks_cycles() {
+        use std::os::unix::fs::symlink;
+        let temp = tempfile::tempdir().expect("isolated symlink fixtures");
+        let root = temp.path().join("allowed");
+        fs::create_dir(&root).expect("create allowed root");
+        fs::create_dir(root.join("nested")).expect("create nested");
+        fs::write(root.join("top.png"), b"top").expect("write image");
+        fs::write(root.join("nested/deep.JPG"), b"deep").expect("write nested image");
+        fs::write(temp.path().join("outside.jpg"), b"outside").expect("write outside");
+        symlink(root.join("top.png"), root.join("duplicate.png")).expect("duplicate link");
+        symlink(root.join("nested"), root.join("alias")).expect("directory link");
+        symlink(&root, root.join("nested/cycle")).expect("loop");
+        symlink(temp.path().join("outside.jpg"), root.join("escape.jpg")).expect("outside link");
+
+        let manager = WallpaperManager;
+        let default = manager
+            .list_local_recursive(&root, false)
+            .expect("skip all symlinks by default");
+        assert_eq!(default.len(), 2);
+        assert!(manager.list_local_recursive(&root, true).is_err());
+
+        fs::remove_file(root.join("escape.jpg")).expect("remove outside link");
+        let followed = manager
+            .list_local_recursive(&root, true)
+            .expect("follow bounded local symlinks");
+        assert_eq!(followed.len(), 2);
+        assert_eq!(followed, default);
+        symlink(root.join("missing.png"), root.join("broken.png")).expect("dangling link");
+        assert!(manager.list_local_recursive(&root, true).is_err());
     }
 
     #[test]
