@@ -91,6 +91,14 @@ python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v
 
 These tests inject a stateful in-memory command runner, not real gsettings or wallpaper tools. Review evidence for sensitive content and associate any manually collected screenshot with the exact tested commit, GNOME release, session and monitor configuration before publishing.
 
+## Isolated dual-output screenshot foundation (Sway only)
+
+The `Sway headless visual E2E` job additionally runs `tests/e2e/sway/dual.py` on a **fresh, private** headless compositor with two actual `wl_output` devices: `HEADLESS-1` landscape 320x240 and `HEADLESS-2` portrait 240x320. Each `swaybg -o OUTPUT` instance is launched exclusively for the test. The harness captures actual `grim -o` screenshots, checks both frames against distinct red/blue fixtures at 97% sampled RGB coverage and ±9 tolerance, then changes only the landscape frame to green and verifies the portrait frame still shows blue. After stopping its own wallpaper processes it checks both captured baseline colors again.
+
+It writes `artifacts/sway-dual-e2e/dual-result.json`, compositor log and before/after PPM+PNG screenshots as PR CI artifacts. Missing output, incorrect geometry, wrong pixels, changed unaffected output or failure to restore the test-only compositor baseline fails the job; absence of a screenshot is never a PASS. The harness never attaches to an ambient user Wayland session. This is real **Sway + swaybg** multi-output compositor evidence, **not** Noctalia IPC, niri, physical monitors, 4K or scaling evidence. A green result has `tested_noctalia: false` and `tested_niri: false`.
+
+**Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 and actual niri two-output pixels still require a separate, compatible isolated runtime and evidence.
+
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
 **Scope:** a user-invoked check in a disposable, interactive niri session; it is not an unattended CI claim or evidence for every physical display. The helper tests the native Noctalia v5 path setter and then independently samples actual `grim` framebuffer PPM bytes for **two named outputs**. A path match without matching screenshot pixels is a failure, not success.

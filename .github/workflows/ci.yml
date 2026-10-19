@@ -188,6 +188,8 @@ jobs:
           grim -h || true
       - name: Check pure Python PNG/PPM assertion helpers
         run: python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v
+      - name: Verify offline dual-output topology and pixel helpers
+        run: python3 -m unittest discover -s tests -p 'test_sway_dual_helpers.py' -v
       - name: Build actual ezwallpaper CLI
         run: cargo build --bin ezwallpaper
       - name: Observe actual composited Sway wallpaper
@@ -195,12 +197,19 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/sway-e2e
           python3 tests/e2e/sway/run.py --binary target/debug/ezwallpaper --artifact-dir artifacts/sway-e2e 2>&1 | tee artifacts/sway-e2e/test.log
+      - name: Observe isolated two-output Sway framebuffer separation
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/sway-dual-e2e
+          python3 tests/e2e/sway/dual.py --artifact-dir artifacts/sway-dual-e2e 2>&1 | tee artifacts/sway-dual-e2e/test.log
       - name: Always preserve real desktop evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sway-headless-visual-e2e
-          path: artifacts/sway-e2e/
+          path: |
+            artifacts/sway-e2e/
+            artifacts/sway-dual-e2e/
           if-no-files-found: warn
 
   platform-tests:
