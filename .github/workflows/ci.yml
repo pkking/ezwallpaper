@@ -257,6 +257,7 @@ jobs:
           git clone --depth 1 --branch v5.2.1 https://github.com/noctalia-dev/noctalia.git /tmp/noctalia-v5.2.1
           git -C /tmp/noctalia-v5.2.1 describe --tags --exact-match | grep -Fx v5.2.1
           git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
+          grep -Fx '6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4' artifacts/noctalia-sway-e2e/upstream-commit.txt
           (cd /tmp/noctalia-v5.2.1 && \
             meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
             meson compile -C build-ci -j 2 noctalia) \
