@@ -1,7 +1,7 @@
 # 2026-10-19-persisted-noctalia-rotation-54: opt-in profile, locked state and apply acknowledgement
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -36,28 +36,28 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issues #54/#55/#59; 
 
 ## Acceptance criteria
 
-- [ ] Parse and validate bounded versioned profile and load existing versioned state; prevent mismatched profile and malformed state.
-- [ ] Dry-run JSON reports per output without creating state or mutating desktop; explicit apply requires Noctalia IPC PathObserved.
-- [ ] Commit atomic acknowledged state under cross-process lock, skip already-applied epochs; handle failure/no-change, restart, duplicate pools, and two outputs.
-- [ ] Offline mock-adapter tests for preview, successful per-output apply, failed callback preserving old state, and epoch idempotency; cross-platform CI.
-- [ ] ADR, architecture SVG/text, README and opt-in systemd user timer example; no system writes and no GUI actions in CI.
-- [ ] All seven PR-head CI checks green at final revision.
+- [x] Parse and validate bounded versioned profile and load existing versioned state; prevent mismatched profile and malformed state.
+- [x] Dry-run JSON reports per output without creating state or mutating desktop; explicit apply requires Noctalia IPC PathObserved.
+- [x] Commit atomic acknowledged state under cross-process lock, skip already-applied epochs; handle failure/no-change, restart, duplicate pools, and two outputs.
+- [x] Offline mock-adapter tests for preview, successful per-output apply, failed callback preserving old state, and epoch idempotency; cross-platform CI.
+- [x] ADR, architecture SVG/text, README and opt-in systemd user timer example; no system writes and no GUI actions in CI.
+- [x] All seven PR-head CI checks green at final revision.
 
 ## Implementation slices
 
 - [x] 1. Add ADR 0009 and execution plan before implementation.
 - [x] 2. Add CLI profile/state/locking/atomic acknowledgement layer and flag plumbing (unverified pending CI).
 - [x] 3. Add offline deterministic tests and systemd user timer documentation (unverified pending CI).
-- [ ] 4. Observe CI final SHA; fix failures and merge only on passing checks.
+- [x] 4. Observe CI final SHA; fix failures and merge only on passing checks.
 
 ## Verification matrix
 
 | Scope | Gate | Result |
 | --- | --- | --- |
-| Formatting and Clippy | cargo fmt and strict cargo clippy | pending |
-| Rust tests and offline CLI | GitHub Actions Linux | pending |
-| Native portable build/tests | Windows/macOS | pending |
-| Governance and Sway regression | PR checks | pending |
+| Formatting and Clippy | cargo fmt and strict cargo clippy | passed at final PR head |
+| Rust tests and offline CLI | GitHub Actions Linux | passed at final PR head |
+| Native portable build/tests | Windows/macOS | passed at final PR head |
+| Governance and Sway regression | PR checks | passed at final PR head |
 | Physical niri dual monitor | Issue #59 | unassessed |
 
 ## Decision gates
@@ -66,6 +66,7 @@ The user continued after recommendation of XDG user state, file locks, atomic wr
 
 ## Evidence log
 
+- 2026-10-19: final PR head a55e60919668292a77d9a236b9ac1cfc6ff9bde0 passed all seven CI gates (Linux quality/tests, Sway headless visual, Windows, macOS, Agent plan integrity and contract self-tests): https://github.com/pkking/ezwallpaper/actions/runs/39216062368. Squash-merged to master at 0843589c1857c6c0c04248e4a2774ac751bd219b. This evidence does not establish physical niri/Noctalia output pixels.
 - 2026-10-19: implementation checkpoint f43cf101f36d86259e52f3d04ecb94972b31b7f2 includes CLI route, user-owned lock and atomic persistence, mock Noctalia acknowledgement/failure cases, example profile/service/timer, ADR 0009, README and architecture SVG. No Cargo available locally; PR CI is pending, not claimed passed.
 - 2026-10-19: inspected latest #54, existing rotation.rs/Noctalia IPC, agent workflow and successful master CI; branch from 205c8a4. New branch CI not run yet.
 
@@ -75,11 +76,11 @@ None yet.
 
 ## Resume from here
 
-Open the linked PR from `agent/issue-54-persisted-noctalia-rotation`, inspect the final-head CI failures and fix them without relaxing quality gates; then merge only on seven green checks.
+Begin the next Issue #54 slice with a new active plan for source replenishment/hotplug or handle Issue #59 opt-in physical dual-display validation; do not reopen this completed slice without new evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: offline fixtures only
-Remaining unassessed items: real niri/Noctalia rendered output, desktop hotplug, provider refill, durable power-loss semantics across all filesystem types.
+Final commit: 0843589c1857c6c0c04248e4a2774ac751bd219b
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39216062368
+E2E artifact: offline mocks and Sway headless compositor screenshot job in linked CI; physical niri pixels unassessed
+Remaining unassessed items: Physical niri/Noctalia dual-output and lockscreen pixel verification (#59), hotplug, and automated provider pool replenishment (#54).

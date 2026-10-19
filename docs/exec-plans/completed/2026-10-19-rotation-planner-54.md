@@ -1,7 +1,7 @@
 # 2026-10-19-rotation-planner-54: headless no-repeat epoch rotation plan
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -35,26 +35,26 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/architecture.md
 
 ## Acceptance criteria
 
-- [ ] Core planner supports deterministic no-repeat across 24+ epochs, independent outputs, idempotent repeat/backward time, forced next, candidate shrink and duplicates.
-- [ ] Empty/single pools return explicit degraded/no-change statuses rather than false success.
-- [ ] Planner does not mutate input state or perform I/O, with follow-up state committed only by caller after success.
-- [ ] Tests run offline across Linux/Windows/macOS and strict fmt, Clippy and full CI pass at final PR revision.
-- [ ] ADR, architecture SVG/text and active plan are synchronized.
+- [x] Core planner supports deterministic no-repeat across 24+ epochs, independent outputs, idempotent repeat/backward time, forced next, candidate shrink and duplicates.
+- [x] Empty/single pools return explicit degraded/no-change statuses rather than false success.
+- [x] Planner does not mutate input state or perform I/O, with follow-up state committed only by caller after success.
+- [x] Tests run offline across Linux/Windows/macOS and strict fmt, Clippy and full CI pass at final PR revision.
+- [x] ADR, architecture SVG/text and active plan are synchronized.
 
 ## Implementation slices
 
-- [x] 1. Add pure Core rotation planning module with versioned, serializable output state/proposal and input validation. (PR CI pending)
-- [x] 2. Add deterministic behavior tests (24 epochs, duplicate/shrink, UTC rollback, force, separate output pools). (PR CI pending)
-- [x] 3. Document future CLI/persistence boundary and validate with GitHub Actions. (PR CI pending)
+- [x] 1. Add pure Core rotation planning module with versioned, serializable output state/proposal and input validation. (final PR-head CI passed)
+- [x] 2. Add deterministic behavior tests (24 epochs, duplicate/shrink, UTC rollback, force, separate output pools). (final PR-head CI passed)
+- [x] 3. Document future CLI/persistence boundary and validate with GitHub Actions. (final PR-head CI passed)
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Rust fmt & Clippy | cargo fmt / cargo clippy | PR CI | pending |
-| Core & CLI | cargo test --workspace --all-targets | PR CI | pending |
-| Platform | windows-latest / macos-latest | PR CI | pending |
-| Offline GUI | Sway and fake adapter contracts | PR CI | pending |
+| Rust fmt & Clippy | cargo fmt / cargo clippy | passed at final PR head | passed at final PR head |
+| Core & CLI | cargo test --workspace --all-targets | passed at final PR head | passed at final PR head |
+| Platform | windows-latest / macos-latest | passed at final PR head | passed at final PR head |
+| Offline GUI | Sway and fake adapter contracts | passed at final PR head | passed at final PR head |
 | Real desktop | niri + Noctalia dual output | Issue #59, unassessed |
 
 ## Decision gates
@@ -63,7 +63,8 @@ This additive pure Core API does not alter existing CLI defaults or persistence 
 
 ## Evidence log
 
-- 2026-10-19: first implementation checkpoint 4435a053ab7cc22f42e23a0b017935405918a039 includes rotation.rs, Core exports, 5 offline planner tests, ADR 0008, architecture SVG/text and README. Actual Rust commands NOT RUN locally; GitHub PR CI pending.
+- 2026-10-19: final PR head 1e901fae0f49f4941a8ba2142e1f9015ff5830db passed all seven CI gates (Linux quality/tests, Sway headless visual, Windows, macOS, Agent plan integrity and contract self-tests): https://github.com/pkking/ezwallpaper/actions/runs/39213406546. Squash-merged to master at 205c8a4aaa3fb71b14f8f83f24d1b2029fb49617. This evidence does not establish physical niri/Noctalia output pixels.
+- 2026-10-19: first implementation checkpoint 4435a053ab7cc22f42e23a0b017935405918a039 includes rotation.rs, Core exports, 5 offline planner tests, ADR 0008, architecture SVG/text and README. Actual Rust commands NOT RUN locally; GitHub final PR-head CI passed.
 - 2026-10-19: inspected #54, AGENTS.md and merged #64 baseline; independent planner is a prerequisite to any reliable hourly stateful operation.
 
 ## Deviations and discoveries
@@ -72,11 +73,11 @@ None yet.
 
 ## Resume from here
 
-Open a linked PR from agent/issue-54-core-rotation-planner to master with Issue #54 and this active plan; inspect all final-head CI jobs, fix failures and merge only when green.
+Begin the next Issue #54 slice with a new active plan for source replenishment/hotplug or handle Issue #59 opt-in physical dual-display validation; do not reopen this completed slice without new evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable (pure headless plan)
-Remaining unassessed items: persistent atomic state, file locks, profile CLI, Noctalia real output behavior, clock/timezone integration and actual rendered pixels.
+Final commit: 205c8a4aaa3fb71b14f8f83f24d1b2029fb49617
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39213406546
+E2E artifact: offline mocks and Sway headless compositor screenshot job in linked CI; physical niri pixels unassessed
+Remaining unassessed items: Persistent multi-output orchestrator addressed by PR #66; provider refresh/hotplug and physical Noctalia dual-output pixel proof remain out of this plan's scope.
