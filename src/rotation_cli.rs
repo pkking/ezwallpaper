@@ -1,9 +1,7 @@
 //! Opt-in, user-owned persistent rotation orchestration.
 //! Core selection is pure; this CLI boundary owns I/O and apply acknowledgement.
 use anyhow::{anyhow, bail, Context, Result};
-use ezwallpaper_core::{
-    plan_rotation, RotationDecision, RotationState, WallpaperManager,
-};
+use ezwallpaper_core::{plan_rotation, RotationDecision, RotationState, WallpaperManager};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
@@ -93,10 +91,13 @@ fn valid_connector(name: &str) -> bool {
 }
 
 fn read_small_file(path: &Path, maximum: u64) -> Result<Vec<u8>> {
-    let metadata = fs::symlink_metadata(path)
-        .with_context(|| format!("cannot inspect {}", path.display()))?;
+    let metadata =
+        fs::symlink_metadata(path).with_context(|| format!("cannot inspect {}", path.display()))?;
     if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() > maximum {
-        bail!("refusing symlink, non-file or oversized input: {}", path.display());
+        bail!(
+            "refusing symlink, non-file or oversized input: {}",
+            path.display()
+        );
     }
     fs::read(path).with_context(|| format!("cannot read {}", path.display()))
 }
@@ -106,15 +107,17 @@ fn load_profile(path: &Path) -> Result<Profile> {
         .canonicalize()
         .with_context(|| format!("cannot resolve rotation profile: {}", path.display()))?;
     let bytes = read_small_file(&identity_path, MAX_PROFILE_BYTES)?;
-    let raw: ProfileFile = serde_json::from_slice(&bytes)
-        .context("rotation profile must be valid JSON schema v1")?;
+    let raw: ProfileFile =
+        serde_json::from_slice(&bytes).context("rotation profile must be valid JSON schema v1")?;
     if raw.schema_version != 1 || raw.owner != "ezwallpaper" {
         bail!("unsupported profile version or rotation authority");
     }
     if raw.outputs.is_empty() || raw.outputs.len() > MAX_OUTPUTS {
         bail!("rotation profile must have between 1 and 16 outputs");
     }
-    let base = identity_path.parent().ok_or_else(|| anyhow!("profile has no parent"))?;
+    let base = identity_path
+        .parent()
+        .ok_or_else(|| anyhow!("profile has no parent"))?;
     let mut names = HashSet::new();
     let mut outputs = Vec::with_capacity(raw.outputs.len());
     for output in raw.outputs {
@@ -191,7 +194,10 @@ fn read_state(path: &Path, profile: &Profile) -> Result<SavedState> {
 fn check_regular_or_absent(path: &Path) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
-            bail!("refusing non-regular or symlink state/lock path: {}", path.display())
+            bail!(
+                "refusing non-regular or symlink state/lock path: {}",
+                path.display()
+            )
         }
         Ok(_) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -201,7 +207,9 @@ fn check_regular_or_absent(path: &Path) -> Result<()> {
 
 fn atomic_save(path: &Path, state: &SavedState) -> Result<()> {
     check_regular_or_absent(path)?;
-    let parent = path.parent().ok_or_else(|| anyhow!("state path has no parent"))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow!("state path has no parent"))?;
     let mut staged = NamedTempFile::new_in(parent).context("cannot stage rotation state")?;
     serde_json::to_writer_pretty(&mut staged, state)?;
     staged.write_all(b"\n")?;
@@ -236,7 +244,9 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
     let mut by_id = BTreeMap::new();
     for asset in assets {
         let id = manager.content_id(&asset)?;
-        by_id.entry(id).or_insert_with(|| asset.path().to_path_buf());
+        by_id
+            .entry(id)
+            .or_insert_with(|| asset.path().to_path_buf());
     }
     Ok(by_id)
 }
@@ -292,7 +302,9 @@ fn run_with_adapter(
         std::env::current_dir()?.join(state_path)
     };
     let lock = if apply {
-        let parent = state_path.parent().ok_or_else(|| anyhow!("state path has no parent"))?;
+        let parent = state_path
+            .parent()
+            .ok_or_else(|| anyhow!("state path has no parent"))?;
         fs::create_dir_all(parent).context("cannot create user rotation state directory")?;
         check_regular_or_absent(&state_path)?;
         let lock_path = state_lock_path(&state_path);
@@ -303,7 +315,8 @@ fn run_with_adapter(
             .create(true)
             .open(&lock_path)
             .context("cannot open rotation lock")?;
-        file.lock_exclusive().context("cannot acquire rotation lock")?;
+        file.lock_exclusive()
+            .context("cannot acquire rotation lock")?;
         Some(file)
     } else {
         None
@@ -315,13 +328,7 @@ fn run_with_adapter(
         let by_id = selected_candidates(output)?;
         let candidate_ids = by_id.keys().cloned().collect::<Vec<_>>();
         let previous = saved.outputs.get(&output.name).cloned().unwrap_or_default();
-        let proposed = plan_rotation(
-            &output.name,
-            epoch,
-            &candidate_ids,
-            &previous,
-            force,
-        )?;
+        let proposed = plan_rotation(&output.name, epoch, &candidate_ids, &previous, force)?;
         let selected_path = proposed
             .content_id
             .as_ref()
@@ -329,7 +336,9 @@ fn run_with_adapter(
             .cloned();
         let mut observed = false;
         if apply && proposed.decision == RotationDecision::Select {
-            let path = selected_path.as_ref().ok_or_else(|| anyhow!("selected file disappeared"))?;
+            let path = selected_path
+                .as_ref()
+                .ok_or_else(|| anyhow!("selected file disappeared"))?;
             let asset = WallpaperManager.open_local(path)?;
             let current_id = WallpaperManager.content_id(&asset)?;
             if Some(&current_id) != proposed.content_id.as_ref() {
@@ -380,7 +389,10 @@ mod tests {
         let state = dir.path().join("state/rotation.json");
         fs::create_dir(dir.path().join("landscape")).expect("landscape");
         fs::create_dir(dir.path().join("portrait")).expect("portrait");
-        for (sub, files) in [("landscape", ["a.png", "b.png"]), ("portrait", ["c.png", "d.png"])] {
+        for (sub, files) in [
+            ("landscape", ["a.png", "b.png"]),
+            ("portrait", ["c.png", "d.png"]),
+        ] {
             for (number, name) in files.iter().enumerate() {
                 let content = format!("{}-{}", sub, number);
                 fs::write(dir.path().join(sub).join(name), content).expect("test asset");
@@ -402,7 +414,9 @@ mod tests {
         })
         .expect("preview");
         assert_eq!(result.len(), 2);
-        assert!(result.iter().all(|x| x.decision == RotationDecision::Select));
+        assert!(result
+            .iter()
+            .all(|x| x.decision == RotationDecision::Select));
         assert!(result.iter().all(|x| !x.applied_path_observed));
         assert_ne!(result[0].content_id, result[1].content_id);
         assert!(!state.exists());
@@ -432,7 +446,9 @@ mod tests {
             |_, _| panic!("idempotent preview never calls setter"),
         )
         .expect("idempotent");
-        assert!(same.iter().all(|x| x.decision == RotationDecision::AlreadyApplied));
+        assert!(same
+            .iter()
+            .all(|x| x.decision == RotationDecision::AlreadyApplied));
         assert!(state_lock_path(&state).exists());
     }
 
@@ -470,10 +486,12 @@ mod tests {
             r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1;rm","dir":"landscape"}]}"#,
         )
         .expect("invalid fixture");
-        assert!(run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
-            panic!("must not apply")
-        })
-        .is_err());
+        assert!(
+            run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
+                panic!("must not apply")
+            })
+            .is_err()
+        );
         assert!(!state.exists());
     }
 
@@ -481,12 +499,17 @@ mod tests {
     fn mismatched_state_or_symlink_refused() {
         let (_dir, profile, state) = fixture();
         fs::create_dir_all(state.parent().expect("parent")).expect("state parent");
-        fs::write(&state, br#"{"schema_version":1,"profile":"other","outputs":{}}"#)
-            .expect("foreign state");
-        assert!(run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
-            panic!("must not apply")
-        })
-        .is_err());
+        fs::write(
+            &state,
+            br#"{"schema_version":1,"profile":"other","outputs":{}}"#,
+        )
+        .expect("foreign state");
+        assert!(
+            run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
+                panic!("must not apply")
+            })
+            .is_err()
+        );
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
@@ -494,10 +517,12 @@ mod tests {
             let external = state.parent().expect("parent").join("external");
             fs::write(&external, b"not touched").expect("external");
             symlink(&external, &state).expect("link state");
-            assert!(run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
-                panic!("must not apply")
-            })
-            .is_err());
+            assert!(
+                run_with_adapter(&profile, &state, Some(1), false, false, |_, _| {
+                    panic!("must not apply")
+                })
+                .is_err()
+            );
             assert_eq!(fs::read(&external).expect("external safe"), b"not touched");
         }
     }
