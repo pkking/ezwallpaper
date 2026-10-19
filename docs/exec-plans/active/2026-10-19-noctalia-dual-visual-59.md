@@ -44,9 +44,9 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/agents/desktop-
 
 ## Implementation slices
 
-- [ ] 1. Add a Python stdlib-only, opt-in double-output verification and recovery helper.
-- [ ] 2. Add deterministic fake-tool and PPM parser tests; integrate with Linux offline CI.
-- [ ] 3. Document exact opt-in verification protocol, result vocabulary and remaining manual/isolated gaps.
+- [x] 1. Add a Python stdlib-only, opt-in double-output verification and recovery helper.
+- [x] 2. Add deterministic fake-tool and PPM parser tests; integrate with Linux offline CI (pending actual CI execution).
+- [x] 3. Document exact opt-in verification protocol, result vocabulary and remaining manual/isolated gaps.
 - [ ] 4. Verify final-head GitHub CI and merge/record outcome; keep Issue #59 open for isolated compositor/physical acceptance.
 
 ## Verification matrix
@@ -65,15 +65,16 @@ None: helper is optional, never invoked by default CI on a real desktop and cann
 
 ## Evidence log
 
+- 2026-10-19: Added `scripts/verify_noctalia_live.py`, `tests/test_noctalia_live_verification.py`, the Rust CI's mock-only test invocation, and opt-in documentation. Code is NOT claimed tested until PR CI completes.
 - 2026-10-19: inspected master SHA and last green CI; observed Issue #59 open, no PRs open. No local Cargo or real niri compositor available; all actual desktop pixel evidence is UNASSESSED.
 
 ## Deviations and discoveries
 
-None.
+- Additional discovery: the existing README still incorrectly described the opt-in hourly rotation CLI as planned; this PR aligns that statement with master implementation.
 
 ## Resume from here
 
-Implement and mock-test `scripts/verify_noctalia_live.py` and `tests/test_noctalia_live_verification.py` on this branch, then amend this plan with precise test/CI results.
+Open the Issue #59 PR targeting master; inspect the resulting CI run and fix any failures before merge.
 
 ## Completion
 
