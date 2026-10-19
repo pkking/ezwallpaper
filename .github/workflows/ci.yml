@@ -272,8 +272,14 @@ jobs:
           export NOCTALIA_SOURCE_SHA="$(cat artifacts/noctalia-sway-e2e/upstream-commit.txt)"
           # The wrapper owns its private session bus; harness owns compositor,
           # shell processes, HOME, XDG runtime/state and every fixture.
-          EZW_OWNED_DBUS_SESSION=1 dbus-run-session -- \
-            python3 tests/e2e/sway/noctalia_v5.py \
+          # Docker job steps run as root: run the compositor as an unprivileged
+          # user (Sway refuses root) without modifying an interactive session.
+          useradd --create-home --shell /bin/bash ezw-e2e
+          chown -R ezw-e2e:ezw-e2e artifacts/noctalia-sway-e2e
+          runuser -u ezw-e2e -- env \
+            PATH="$PATH" NOCTALIA_SOURCE_SHA="$NOCTALIA_SOURCE_SHA" \
+            EZW_OWNED_DBUS_SESSION=1 \
+            dbus-run-session -- python3 tests/e2e/sway/noctalia_v5.py \
               --binary target/debug/ezwallpaper \
               --artifact-dir artifacts/noctalia-sway-e2e \
             2>&1 | tee artifacts/noctalia-sway-e2e/test.log
