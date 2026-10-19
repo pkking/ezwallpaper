@@ -19,7 +19,7 @@ def topology(name2="HEADLESS-2", second_width=240):
 
 class NativeNoctaliaHarnessTests(unittest.TestCase):
     def test_pinned_version(self):
-        self.assertEqual(check_shell_version("noctalia 5.2.1\\n"), "noctalia 5.2.1")
+        self.assertEqual(check_shell_version("noctalia 5.2.1\n"), "noctalia 5.2.1")
 
     def test_no_unpinned_shell_release(self):
         for val in ("noctalia 5.1.0", "noctalia 5.2.10", "quickshell 5.2.1", ""):
@@ -28,7 +28,7 @@ class NativeNoctaliaHarnessTests(unittest.TestCase):
 
     def test_exact_ipc_output_path(self):
         expected = Path("/tmp/red.png")
-        assert_readback("/tmp/red.png\\n", expected)
+        assert_readback("/tmp/red.png\n", expected)
         for raw in ("/tmp/other.png", "/tmp/red.png.extra", "", "OK"):
             with self.subTest(raw=raw), self.assertRaises(E2EFailure):
                 assert_readback(raw, expected)
@@ -45,7 +45,7 @@ class NativeNoctaliaHarnessTests(unittest.TestCase):
         import struct
         # P6 bytes are intentionally constructed independently of compositor.
         red = (232, 36, 42)
-        ppm = b"P6\\n320 240\\n255\\n" + bytes(red) * (320 * 240)
+        ppm = b"P6\n320 240\n255\n" + bytes(red) * (320 * 240)
         self.assertGreaterEqual(pixel_fraction(ppm, red, GEOMETRY["HEADLESS-1"]), .97)
         with self.assertRaises(E2EFailure):
             pixel_fraction(ppm, red, GEOMETRY["HEADLESS-2"])
