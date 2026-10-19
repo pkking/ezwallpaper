@@ -228,7 +228,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            ca-certificates git curl python3 pkg-config build-essential meson ninja-build \
+            ca-certificates git curl python3 pkg-config build-essential meson ninja-build passwd libssl-dev \
             dbus dbus-user-session sway grim \
             libwayland-dev wayland-protocols libegl-dev libgles-dev \
             libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev \
