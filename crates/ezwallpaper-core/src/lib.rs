@@ -1,6 +1,7 @@
 //! Headless wallpaper acquisition and local asset management.
 //! This crate does not inspect desktop sessions or apply wallpaper to the OS.
 pub mod image_assets;
+pub mod rotation;
 pub mod store;
 pub mod wp_provider;
 mod wp_selector;
@@ -16,6 +17,7 @@ use std::path::{Path, PathBuf};
 pub use image_assets::{
     derive_image, probe_image, DerivedFormat, DerivedImage, FitMode, ImageProbe,
 };
+pub use rotation::{plan_rotation, RotationDecision, RotationPlan, RotationState};
 pub use store::{StoreInventory, StoredWallpaper, WallpaperStore};
 pub use wp_provider::{
     bing::BingProvider, pexel::PexelProvider, wallhaven::WallhavenProvider, GetImgUrl, Orientation,

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
   <title id="title">ezwallpaper Core and CLI architecture</title>
-  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest and a Rust API. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
+  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest, a Rust API and pure content-ID rotation proposals; actual hourly desktop orchestration is planned. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
   <rect width="1060" height="700" fill="#f8fafc"/>
   <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
   <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
@@ -29,7 +29,7 @@
   </g>
   <rect x="168" y="245" width="724" height="66" rx="11" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
   <text x="530" y="271" fill="#14532d" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">WallpaperManager + ephemeral catalog</text>
-  <text x="530" y="294" fill="#166534" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Fetch · rooted list (opt-in) · image probe / cover / contain</text>
+  <text x="530" y="294" fill="#166534" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Fetch · rooted catalog · probe / derive · rotation plan (pure)</text>
   <path d="M530 311 V335" stroke="#15803d" stroke-width="2"/>
   <path d="M524 329 L530 336 L536 329" fill="none" stroke="#15803d" stroke-width="2"/>
   <rect x="182" y="337" width="696" height="57" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.7"/>
