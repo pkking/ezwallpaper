@@ -282,7 +282,14 @@ mod tests {
     #[test]
     fn rejects_malformed_ids_state_and_output() {
         let good = id("a");
-        assert!(plan_rotation("", 1, std::slice::from_ref(&good), &RotationState::default(), false).is_err());
+        assert!(plan_rotation(
+            "",
+            1,
+            std::slice::from_ref(&good),
+            &RotationState::default(),
+            false
+        )
+        .is_err());
         assert!(plan_rotation(
             "DP-1",
             1,
@@ -295,7 +302,14 @@ mod tests {
             schema_version: 2,
             ..RotationState::default()
         };
-        assert!(plan_rotation("DP-1", 1, std::slice::from_ref(&good), &bad, false).is_err());
+        assert!(plan_rotation(
+            "DP-1",
+            1,
+            std::slice::from_ref(&good),
+            &bad,
+            false
+        )
+        .is_err());
         bad.schema_version = 1;
         bad.last_epoch = Some(5);
         assert!(plan_rotation("DP-1", 6, &[good], &bad, false).is_err());
