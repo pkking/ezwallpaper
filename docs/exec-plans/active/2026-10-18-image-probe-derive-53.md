@@ -1,7 +1,7 @@
 # 2026-10-18-image-probe-derive-53: strict local image inspection and optional derivation
 
 Issue: #53
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-18
 Last checkpoint: 2026-10-19
@@ -48,7 +48,7 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0001-core-c
 
 ## Implementation slices
 
-- [ ] 4. Add bounded rooted recursive walk and opt-in CLI flags with offline tests; update README/architecture and checkpoint CI.
+- [x] 4. Add bounded rooted recursive walk and opt-in CLI flags with offline tests; update README/architecture and checkpoint CI (execution unverified until PR CI).
 - [x] 1. Add image-rs subset and bounded Core decode/probe.
 - [x] 2. Derive API (cover/contain, PNG/JPEG) and fixture tests.
 - [x] 3. CLI probe/derive, docs/ADR/diagram, CI verification pending.
@@ -69,6 +69,7 @@ Pure Rust image codec dependency is intentionally scoped to four common image fo
 
 ## Evidence log
 
+- 2026-10-19: branch 0b24254ee708bddd8c4eaae45cd5096145d667c0 includes opt-in recursive Core/CLI code, 2 deterministic Core tests, CLI flag test, ADR 0007, architecture SVG and README. Local Rust/Cargo unavailable; PR CI must validate the branch before any merge.
 - 2026-10-19: verified #63 on master and its successful CI run 39147086219; inspected list_local, CLI list, AGENTS.md, #53 and ADR 0006. New slice branch agent/issue-53-rooted-recursive-catalog; no local Cargo toolchain (UNASSESSED until CI).
 - 2026-10-18: inspected issue and upstream ImageReader/Limits/EXIF docs; base #62 CI seven checks success. Local cargo unavailable; CI is primary verification.
 - 2026-10-18: added image-rs feature-scoped dependency, image_assets.rs, Core exports, CLI probe/derive, offline binary fixtures, ADR 0006 and diagram/README changes. New code not yet CI-tested.
@@ -79,7 +80,7 @@ Image-rs docs say max_alloc is best-effort, but width and height caps are strict
 
 ## Resume from here
 
-Implement rooted recursive catalog on agent/issue-53-rooted-recursive-catalog from master 3c51eac; then open a linked PR, examine final-head CI and fix any failures before merging. No Rust checks have run for this new branch.
+Open a PR from agent/issue-53-rooted-recursive-catalog to master with Issue #53 and this Plan metadata; inspect all final-head CI jobs, fix any failures and merge only after they are green. Local Rust toolchain unavailable.
 
 ## Completion
 
