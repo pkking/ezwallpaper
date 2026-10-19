@@ -212,6 +212,79 @@ jobs:
             artifacts/sway-dual-e2e/
           if-no-files-found: warn
 
+  noctalia-sway-visual-e2e:
+    name: Noctalia v5.2.1 + Sway dual-render E2E
+    runs-on: ubuntu-24.04
+    # Trixie provides WirePlumber 0.5 / C++23 and Noctalia's pinned v5.2.1
+    # build dependencies; this image is CI-only, not a production dependency.
+    container: debian:trixie
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native Noctalia build requirements and headless Sway tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            ca-certificates git curl python3 pkg-config build-essential meson ninja-build \
+            dbus dbus-user-session sway grim \
+            libwayland-dev wayland-protocols libegl-dev libgles-dev \
+            libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev \
+            libharfbuzz-dev libxkbcommon-dev libglib2.0-dev \
+            libsecret-1-dev libsodium-dev libsdbus-c++-dev \
+            libpipewire-0.3-dev libwireplumber-0.5-dev \
+            libpam0g-dev libpolkit-agent-1-dev libpolkit-gobject-1-dev \
+            libcurl4-openssl-dev libwebp-dev libjxl-dev libsndfile1-dev \
+            librsvg2-dev libqalculate-dev libxml2-dev libmd4c-dev \
+            libtomlplusplus-dev libical-dev nlohmann-json3-dev libstb-dev \
+            libgl1-mesa-dri libgbm1 libegl1 libgles2 \
+            fonts-dejavu-core
+      - name: Verify offline Noctalia/Sway fixture rejection
+        run: python3 -m unittest discover -s tests -p 'test_noctalia_sway_helpers.py' -v
+      - name: Build actual CLI
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - name: Compile real ezwallpaper CLI
+        run: cargo build --bin ezwallpaper
+      - name: Build pinned upstream native Noctalia v5.2.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          git clone --depth 1 --branch v5.2.1 https://github.com/noctalia-dev/noctalia.git /tmp/noctalia-v5.2.1
+          git -C /tmp/noctalia-v5.2.1 describe --tags --exact-match | grep -Fx v5.2.1
+          git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
+          (cd /tmp/noctalia-v5.2.1 && \
+            meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
+            meson compile -C build-ci -j 2 noctalia) \
+            2>&1 | tee artifacts/noctalia-sway-e2e/upstream-build.log
+          /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
+          grep -q '^noctalia 5.2.1' artifacts/noctalia-sway-e2e/upstream-version.txt
+      - name: Test actual native IPC and dual output rendered pixels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          export PATH="/tmp/noctalia-v5.2.1/build-ci:$PATH"
+          export NOCTALIA_SOURCE_SHA="$(cat artifacts/noctalia-sway-e2e/upstream-commit.txt)"
+          # The wrapper owns its private session bus; harness owns compositor,
+          # shell processes, HOME, XDG runtime/state and every fixture.
+          EZW_OWNED_DBUS_SESSION=1 dbus-run-session -- \
+            python3 tests/e2e/sway/noctalia_v5.py \
+              --binary target/debug/ezwallpaper \
+              --artifact-dir artifacts/noctalia-sway-e2e \
+            2>&1 | tee artifacts/noctalia-sway-e2e/test.log
+      - name: Preserve raw actual framebuffer evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-noctalia-5.2.1-sway-dual-evidence
+          path: artifacts/noctalia-sway-e2e/
+          if-no-files-found: warn
+
   platform-tests:
     name: Platform tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
