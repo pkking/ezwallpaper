@@ -363,13 +363,8 @@ fn main() -> Result<()> {
                     json,
                 },
         }) => {
-            let results = rotation_cli::run_rotation(
-                profile,
-                state.as_deref(),
-                *epoch,
-                *force,
-                *apply,
-            )?;
+            let results =
+                rotation_cli::run_rotation(profile, state.as_deref(), *epoch, *force, *apply)?;
             if *json {
                 println!("{}", serde_json::to_string_pretty(&results)?);
             } else {
