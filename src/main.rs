@@ -98,6 +98,12 @@ enum CliCommand {
         /// Emit a machine-readable JSON v1 asset manifest.
         #[arg(long)]
         json: bool,
+        /// Recursively inspect nested directories without following links by default.
+        #[arg(long)]
+        recursive: bool,
+        /// Follow links only within the canonical catalog root; requires --recursive.
+        #[arg(long, requires = "recursive")]
+        follow_symlinks: bool,
     },
     /// Print the SHA-256 identity of an existing local file without modifying it.
     Hash {
@@ -365,8 +371,16 @@ fn main() -> Result<()> {
             }
             return Ok(());
         }
-        Some(CliCommand::List { json }) => {
-            let assets = manager.list_local(&cli.dir)?;
+        Some(CliCommand::List {
+            json,
+            recursive,
+            follow_symlinks,
+        }) => {
+            let assets = if *recursive {
+                manager.list_local_recursive(&cli.dir, *follow_symlinks)?
+            } else {
+                manager.list_local(&cli.dir)?
+            };
             return print_assets(&assets, *json);
         }
         Some(CliCommand::Hash { path }) => {
@@ -432,4 +446,50 @@ fn print_assets(assets: &[WallpaperAsset], json: bool) -> Result<()> {
         }
     }
     Ok(())
+}
+
+
+#[cfg(test)]
+mod list_cli_tests {
+    use super::*;
+
+    #[test]
+    fn recursive_listing_flags_are_opt_in() {
+        let default = Args::try_parse_from(["ezwallpaper", "list"])
+            .expect("legacy list parses without new flags");
+        match default.command {
+            Some(CliCommand::List {
+                recursive,
+                follow_symlinks,
+                ..
+            }) => {
+                assert!(!recursive);
+                assert!(!follow_symlinks);
+            }
+            _ => panic!("unexpected command"),
+        }
+
+        let opted_in = Args::try_parse_from([
+            "ezwallpaper",
+            "list",
+            "--recursive",
+            "--follow-symlinks",
+            "--json",
+        ])
+        .expect("both listing flags parse");
+        match opted_in.command {
+            Some(CliCommand::List {
+                recursive,
+                follow_symlinks,
+                json,
+            }) => {
+                assert!(recursive);
+                assert!(follow_symlinks);
+                assert!(json);
+            }
+            _ => panic!("unexpected command"),
+        }
+
+        assert!(Args::try_parse_from(["ezwallpaper", "list", "--follow-symlinks"]).is_err());
+    }
 }
