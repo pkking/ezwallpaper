@@ -517,9 +517,8 @@ mod tests {
             })
             .sum();
         assert_eq!(total, 2);
-        let saved: SavedState =
-            serde_json::from_slice(&fs::read(&state).expect("persisted state"))
-                .expect("valid saved state");
+        let saved: SavedState = serde_json::from_slice(&fs::read(&state).expect("persisted state"))
+            .expect("valid saved state");
         assert_eq!(saved.outputs.len(), 2);
     }
 
