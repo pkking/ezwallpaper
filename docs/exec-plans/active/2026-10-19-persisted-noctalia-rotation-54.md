@@ -1,7 +1,7 @@
 # 2026-10-19-persisted-noctalia-rotation-54: opt-in profile, locked state and apply acknowledgement
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -45,9 +45,9 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issues #54/#55/#59; 
 
 ## Implementation slices
 
-- [ ] 1. Add ADR 0009 and execution plan before implementation.
-- [ ] 2. Add CLI profile/state/locking/atomic acknowledgement layer and flag plumbing.
-- [ ] 3. Add offline deterministic tests and systemd user timer documentation.
+- [x] 1. Add ADR 0009 and execution plan before implementation.
+- [x] 2. Add CLI profile/state/locking/atomic acknowledgement layer and flag plumbing (unverified pending CI).
+- [x] 3. Add offline deterministic tests and systemd user timer documentation (unverified pending CI).
 - [ ] 4. Observe CI final SHA; fix failures and merge only on passing checks.
 
 ## Verification matrix
@@ -66,6 +66,7 @@ The user continued after recommendation of XDG user state, file locks, atomic wr
 
 ## Evidence log
 
+- 2026-10-19: implementation checkpoint f43cf101f36d86259e52f3d04ecb94972b31b7f2 includes CLI route, user-owned lock and atomic persistence, mock Noctalia acknowledgement/failure cases, example profile/service/timer, ADR 0009, README and architecture SVG. No Cargo available locally; PR CI is pending, not claimed passed.
 - 2026-10-19: inspected latest #54, existing rotation.rs/Noctalia IPC, agent workflow and successful master CI; branch from 205c8a4. New branch CI not run yet.
 
 ## Deviations and discoveries
@@ -74,7 +75,7 @@ None yet.
 
 ## Resume from here
 
-Implement `src/rotation_cli.rs` against this plan on `agent/issue-54-persisted-noctalia-rotation`, add CLI route/tests/docs, then open a linked PR, review final-head CI and address concrete failures.
+Open the linked PR from `agent/issue-54-persisted-noctalia-rotation`, inspect the final-head CI failures and fix them without relaxing quality gates; then merge only on seven green checks.
 
 ## Completion
 
