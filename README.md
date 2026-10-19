@@ -133,6 +133,24 @@ Noctalia's own automatic rotation and any future ezwallpaper rotation scheduler 
 
 Developer workflow: `cargo test --workspace --all-targets`, `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used`, and `cargo fmt --all -- --check`. The [desktop integration evidence protocol](docs/agents/desktop-integration-evidence.md) distinguishes isolated Core → CLI → GNOME/Plasma/niri/X11 command-contract CI from real desktop wallpaper observations. Both fake-command tests and real compositor screenshots are automated for Sway only; **all other OS/DE visual outcomes remain unassessed**.
 
+## niri + Noctalia v5 dual-output pixel verification (manual opt-in)
+
+The CLI's Noctalia IPC confirms paths, **not** rendered pixels. For Issue [#59](https://github.com/pkking/ezwallpaper/issues/59), a separate **interactive, reversible** test helper can produce actual per-output compositor screenshot evidence on a **disposable niri Wayland session**. This script is not run on a real desktop by CI:
+
+```sh
+# Inspect and disable competing Noctalia/ezwallpaper rotation first; close/hide windows
+# and widgets that could cover the wallpaper. Read the full recovery protocol.
+python3 scripts/verify_noctalia_live.py \\
+  --binary ./target/debug/ezwallpaper \\
+  --output-a DP-1 --output-b HDMI-A-1 \\
+  --artifact-dir ./noctalia-proof-new \\
+  --confirm-live-change
+```
+
+It requires an interactive TTY, an active **niri** Wayland session, two distinct connectors and an existing readable absolute wallpaper path for *each* output. It captures both originals before asking the user to type `APPLY`; otherwise **no wallpaper is changed**. It generates two local, solid-color PNG fixtures, applies each through the explicit Noctalia setter, then measures P6 `grim` screenshots. A `PIXEL_VERIFIED` result requires at least **90%** matching sampled pixels **on each output**; windows, panels, effects and transitions can legitimately cause a failure. These are actual frame pixels, not just process exit codes. The helper attempts to restore **both** prior paths even after failure and independently reports `PATH_OBSERVED` restoration, which does not itself prove restored frame pixels. If restoration fails, the private `recovery.json` remains in the new artifact directory for manual recovery.
+
+**Privacy/safety:** Screenshots can expose windows or notifications; review all artifacts locally before sharing. Run only on a disposable session; disable concurrent rotation and establish independent recovery first. No systemd service, live compositor, lockscreen, provider token or real wallpaper changes run in required CI. The offline mock suite is `python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v`. Passing mock CI alone does **not** validate niri, physical 4K/portrait monitors, hotplug or lockscreen. See [evidence and recovery instructions](docs/agents/desktop-integration-evidence.md#niri--noctalia-v5-opt-in-dual-output-pixel-test).
+
 ## Root-confined nested local catalog (opt-in)
 
 The default `ezwallpaper list` still enumerates only directly contained, non-symlink image-like files. For organized landscape/portrait libraries, recursive enumeration is an explicit offline operation:
@@ -168,7 +186,7 @@ State is created only by `--apply`, under `$XDG_STATE_HOME/ezwallpaper/rotation-
 
 A headless `plan_rotation(output, epoch, content_ids, state, force)` API now provides **deterministic, no-adjacent-repeat proposals** for separately managed displays. Candidates use byte-based SHA-256 identities rather than filenames; duplicate images do not count as new content. It returns explicit `select`, `already_applied`, `empty_pool` or `no_alternative` decisions and a versioned proposed state. The calling application must only persist that state after observing an appropriate apply outcome. The planner itself does not read files, download, update wallpaper, create timers or save state.
 
-UTC epoch buckets are supplied by the consumer (for an hourly schedule, Unix UTC seconds divided by 3600); repeated and earlier buckets do not rotate unless explicitly forced. Missing hours are not replayed. The **hourly CLI profile / persisted state / Noctalia integration is still planned**, not a shipped `next` command. See [ADR 0008](docs/adr/0008-pure-rotation-planner.md) and [Issue #54](https://github.com/pkking/ezwallpaper/issues/54).
+UTC epoch buckets are supplied by the consumer (for an hourly schedule, Unix UTC seconds divided by 3600); repeated and earlier buckets do not rotate unless explicitly forced. Missing hours are not replayed. The opt-in hourly CLI profile, persisted state and Noctalia integration are implemented. See the offline hourly rotation section above; physical niri pixel evidence remains unassessed. See [ADR 0008](docs/adr/0008-pure-rotation-planner.md) and [Issue #54](https://github.com/pkking/ezwallpaper/issues/54).
 
 ## Local image pixel validation and derivation (opt-in)
 

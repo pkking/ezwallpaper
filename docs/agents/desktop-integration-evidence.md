@@ -91,6 +91,34 @@ python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v
 
 These tests inject a stateful in-memory command runner, not real gsettings or wallpaper tools. Review evidence for sensitive content and associate any manually collected screenshot with the exact tested commit, GNOME release, session and monitor configuration before publishing.
 
+## niri + Noctalia v5: opt-in dual-output pixel test
+
+**Scope:** a user-invoked check in a disposable, interactive niri session; it is not an unattended CI claim or evidence for every physical display. The helper tests the native Noctalia v5 path setter and then independently samples actual `grim` framebuffer PPM bytes for **two named outputs**. A path match without matching screenshot pixels is a failure, not success.
+
+1. Before changing anything, verify niri and Noctalia versions, check both output names and scaling with your normal compositor tooling, disable Noctalia's own auto-rotation and any enabled ezwallpaper timer, close windows/overlays, and establish an independent way to restore your session. Do **not** run during a work session with sensitive visible content. This helper does not alter systemd, disable timers or change compositor configuration.
+2. Verify `noctalia msg wallpaper-get DP-1` and `noctalia msg wallpaper-get HDMI-A-1` each report a readable absolute local file. Unsupported, empty or non-file originals block all changes. Make sure `grim` can capture both named outputs and that the actual niri session has `WAYLAND_DISPLAY` and `XDG_SESSION_TYPE=wayland`.
+3. From a TTY in that disposable session, run the following and type exactly `APPLY` after reviewing the two-output warning:
+
+   ```sh
+   python3 scripts/verify_noctalia_live.py \\
+     --binary ./target/debug/ezwallpaper \\
+     --output-a DP-1 --output-b HDMI-A-1 \\
+     --artifact-dir ./noctalia-proof-new \\
+     --confirm-live-change
+   ```
+
+4. The script refuses an existing artifact directory, creates a private one (mode 0700), writes a recovery manifest (mode 0600), applies local red/blue fixtures per output using the actual `ezwallpaper --setter noctalia --output ... apply` command and checks `wallpaper-get` path acknowledgement. It captures each output independently with `grim -o OUTPUT -t ppm`. A strict P6 parser samples across the entire frame at ±9 RGB tolerance and requires at least 90% matching samples per output. This quantified threshold is an explicit test heuristic, not a universal compositor standard. Windows/panels/animations may obstruct it. These tests do not depend on current provider access or network.
+5. Both saved original paths are restored in a `finally` block, even if an earlier apply changes wallpaper before returning failure. The tool attempts both restores and checks Noctalia path readback independently. It removes the recovery manifest **only after both restores have matching path readbacks**. If either fails, check `recovery.json` locally, use `ezwallpaper --setter noctalia --output OUTPUT apply /original/path` or Noctalia's UI to restore manually, and verify by eye. Never publish `recovery.json` or unsanitized screenshots. A recorded `PATH_OBSERVED` is **not** a verified original framebuffer.
+6. Review `result.json`, each `OUTPUT-fixture.ppm`, version/topology information and any independent manual screenshots before attaching evidence to #59. Screenshot artifacts can contain private data. Record the commit SHA and label the result by session/output/resolution. A pass only covers the two observed frames in that session; it does not prove SDDM/Plymouth, lockscreen, persistent rotation under concurrent timers, physical GPU modes or hotplug.
+
+**CI-only safety gate** (no real Noctalia/Wayland invocation):
+
+```sh
+python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v
+```
+
+This first slice of #59 explicitly leaves isolated niri + Noctalia virtual-output CI, tested desktop versions, dual physical-output observation and screen-lock scenarios **UNASSESSED**. The earlier Sway visual E2E cannot substitute for those results.
+
 ## Running the automated contract test locally
 
 On Linux, from the repository root:
