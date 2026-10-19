@@ -153,7 +153,9 @@ pub fn plan_rotation(
         }
     }
     if remaining.is_empty() {
-        cycle = cycle.checked_add(1).ok_or_else(|| anyhow::anyhow!("rotation cycle overflow"))?;
+        cycle = cycle
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("rotation cycle overflow"))?;
         remaining = shuffled_candidates(output, cycle, &pool);
         if remaining.first() == state.last_content_id.as_ref() && remaining.len() > 1 {
             remaining.swap(0, 1);
@@ -163,7 +165,12 @@ pub fn plan_rotation(
     let selected = remaining.remove(0);
     let proposed_state = RotationState {
         schema_version: SCHEMA_VERSION,
-        last_epoch: Some(state.last_epoch.map(|last| last.max(epoch)).unwrap_or(epoch)),
+        last_epoch: Some(
+            state
+                .last_epoch
+                .map(|last| last.max(epoch))
+                .unwrap_or(epoch),
+        ),
         last_content_id: Some(selected.clone()),
         remaining,
         cycle,
@@ -208,10 +215,9 @@ mod tests {
             assert!(same_epoch.proposed_state.is_none());
         }
         assert!(acknowledged.cycle > 1);
-        let restored: RotationState = serde_json::from_str(
-            &serde_json::to_string(&acknowledged).expect("serialize state"),
-        )
-        .expect("deserialize state");
+        let restored: RotationState =
+            serde_json::from_str(&serde_json::to_string(&acknowledged).expect("serialize state"))
+                .expect("deserialize state");
         assert_eq!(restored, acknowledged);
     }
 
@@ -243,14 +249,17 @@ mod tests {
             .expect("portrait plan");
         assert_ne!(first.content_id, vertical.content_id);
         let acknowledged = first.proposed_state.expect("acknowledged");
-        let rollback = plan_rotation("DP-1", 99, &landscape, &acknowledged, false)
-            .expect("clock rollback");
+        let rollback =
+            plan_rotation("DP-1", 99, &landscape, &acknowledged, false).expect("clock rollback");
         assert_eq!(rollback.decision, RotationDecision::AlreadyApplied);
         let forced = plan_rotation("DP-1", 99, &landscape, &acknowledged, true)
             .expect("manual forced rotation");
         assert_eq!(forced.decision, RotationDecision::Select);
         assert_ne!(forced.content_id, acknowledged.last_content_id);
-        assert_eq!(forced.proposed_state.expect("forced state").last_epoch, Some(100));
+        assert_eq!(
+            forced.proposed_state.expect("forced state").last_epoch,
+            Some(100)
+        );
     }
 
     #[test]
@@ -264,8 +273,8 @@ mod tests {
             .filter(|candidate| Some((*candidate).as_str()) != accepted.last_content_id.as_deref())
             .cloned()
             .collect();
-        let next = plan_rotation("DP-1", 2, &available, &accepted, false)
-            .expect("pool was reduced");
+        let next =
+            plan_rotation("DP-1", 2, &available, &accepted, false).expect("pool was reduced");
         assert!(available.contains(next.content_id.as_ref().expect("selected")));
         assert_ne!(next.content_id, accepted.last_content_id);
     }
@@ -274,7 +283,14 @@ mod tests {
     fn rejects_malformed_ids_state_and_output() {
         let good = id("a");
         assert!(plan_rotation("", 1, &[good.clone()], &RotationState::default(), false).is_err());
-        assert!(plan_rotation("DP-1", 1, &["fake".into()], &RotationState::default(), false).is_err());
+        assert!(plan_rotation(
+            "DP-1",
+            1,
+            &["fake".into()],
+            &RotationState::default(),
+            false
+        )
+        .is_err());
         let mut bad = RotationState::default();
         bad.schema_version = 2;
         assert!(plan_rotation("DP-1", 1, &[good.clone()], &bad, false).is_err());
