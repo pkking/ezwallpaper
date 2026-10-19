@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
   <title id="title">ezwallpaper Core and CLI architecture</title>
-  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest, a Rust API and pure content-ID rotation proposals; actual hourly desktop orchestration is planned. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
+  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest, a Rust API and pure content-ID rotation proposals; the opt-in CLI now wraps rotation in a locked state file with per-output Noctalia v5 path readback; live dual-output pixel verification and source replenishment are planned. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
   <rect width="1060" height="700" fill="#f8fafc"/>
   <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
   <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
@@ -46,8 +46,8 @@
   <text x="50" y="536" fill="#334155" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Consumers</text>
   <rect x="51" y="552" width="612" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="357" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">ezwallpaper CLI</text>
-  <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">OS / DE / WM detection + wallpaper setter</text>
-  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Native APIs · Noctalia IPC · gsettings / DBus · swaybg / feh</text>
+  <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">OS / DE / WM setter + opt-in rotation state</text>
+  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Noctalia IPC + locked state · other OS/DE setters</text>
   <rect x="686" y="552" width="323" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="847" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">Third-party consumers</text>
   <text x="847" y="603" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Rust apps · scripts · services</text>
