@@ -99,6 +99,43 @@ It writes `artifacts/sway-dual-e2e/dual-result.json`, compositor log and before/
 
 **Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 and actual niri two-output pixels still require a separate, compatible isolated runtime and evidence.
 
+## Native Noctalia v5.2.1 + Sway dual-output renderer gate (new; evidence pending)
+
+A separate `Noctalia v5.2.1 + Sway dual-render E2E` job builds **native**
+[upstream Noctalia v5.2.1](https://github.com/noctalia-dev/noctalia/tree/v5.2.1)
+(commit `6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4`) from source in an
+isolated Debian Trixie container. Its actual binary and bundled source-tree
+assets are used; the previous Quickshell-based v4 is never substituted. This
+is CI-only tooling, not an ezwallpaper runtime or end-user package requirement.
+
+The job deliberately runs Sway as an **unprivileged** test user on two private
+wlroots headless outputs. It creates a fresh D-Bus session, HOME and XDG
+config/runtime/data/cache/state paths, disables shell telemetry, external
+network features, animations and wallpaper automation in test-only config, and
+never attaches to any existing desktop. The runner starts Noctalia directly,
+requires `noctalia msg status`, uses the built `ezwallpaper --setter noctalia
+--output ... apply`, requires exact `wallpaper-get` path readback and then
+asserts actual independent `grim` P6 framebuffer pixels for each output. It
+tests red (320×240) and blue (240×320) concurrently, switches only the
+landscape output to green, and checks that the portrait output remains blue.
+No swaybg wallpaper process is launched in this test.
+
+The measured threshold is **>=90% of sampled pixels (RGB tolerance ±9)** per
+output, lower than the 97% Sway+swaybg threshold because native shell surfaces
+can obscure a small part of the background. This is not a performance
+measurement. PNG/PPM captures, JSON result, both source and shell versions,
+topology, logs, and source SHA are always uploaded on either outcome.
+A missing shell/protocol/screenshot, wrong pixel colors, failed cleanup or
+missing original ephemeral background is a **failure**, not an opt-out.
+
+**Verification rule:** the existence of this workflow file alone proves nothing.
+A run must finish successfully at the final PR head and its real screenshot
+artifacts must be inspected before classifying Noctalia/Sway/headless as
+`PIXEL_VERIFIED`. Until then it remains **UNASSESSED**. Even on success this
+does **not** establish native niri outputs, any physical monitor, lockscreen,
+hotplug, 4K, output scaling, GPU, SDDM or Plymouth. Upstream niri v26.04's
+production headless limitation remains tracked in Issue #59.
+
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
 **Scope:** a user-invoked check in a disposable, interactive niri session; it is not an unattended CI claim or evidence for every physical display. The helper tests the native Noctalia v5 path setter and then independently samples actual `grim` framebuffer PPM bytes for **two named outputs**. A path match without matching screenshot pixels is a failure, not success.

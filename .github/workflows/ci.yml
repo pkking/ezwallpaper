@@ -6,6 +6,12 @@ on:
   push:
     branches: [master]
 
+# Keep only the newest revision's evidence for a PR; older runs are invalidated
+# by later commits and must not consume runners while the current head waits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -210,6 +216,99 @@ jobs:
           path: |
             artifacts/sway-e2e/
             artifacts/sway-dual-e2e/
+          if-no-files-found: warn
+
+  noctalia-sway-visual-e2e:
+    name: Noctalia v5.2.1 + Sway dual-render E2E
+    runs-on: ubuntu-24.04
+    # Trixie provides WirePlumber 0.5 / C++23 and Noctalia's pinned v5.2.1
+    # build dependencies; this image is CI-only, not a production dependency.
+    container: debian:trixie
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native Noctalia build requirements and headless Sway tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            ca-certificates git curl python3 pkg-config build-essential meson ninja-build passwd libssl-dev \
+            dbus dbus-user-session sway grim \
+            libwayland-dev wayland-protocols libegl-dev libgles-dev \
+            libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev \
+            libharfbuzz-dev libxkbcommon-dev libglib2.0-dev \
+            libsecret-1-dev libsodium-dev libsdbus-c++-dev \
+            libpipewire-0.3-dev libwireplumber-0.5-dev \
+            libpam0g-dev libpolkit-agent-1-dev libpolkit-gobject-1-dev \
+            libcurl4-gnutls-dev libwebp-dev libjxl-dev libsndfile1-dev \
+            librsvg2-dev libqalculate-dev libxml2-dev libmd4c-dev \
+            libtomlplusplus-dev libical-dev nlohmann-json3-dev libstb-dev \
+            libgl1-mesa-dri libgbm1 libegl1 libgles2 \
+            fonts-dejavu-core
+      - name: Install pinned upstream Wayland protocols 1.47 for Noctalia v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 1.47 https://github.com/wayland-mirror/wayland-protocols.git /tmp/wayland-protocols-1.47
+          git -C /tmp/wayland-protocols-1.47 describe --tags --exact-match | grep -Fx 1.47
+          # Full 1.47 staging protocols include ext-background-effect-v1.
+          # Trixie's apt package omits that XML. Never patch Noctalia upstream.
+          test -f /tmp/wayland-protocols-1.47/staging/ext-background-effect/ext-background-effect-v1.xml
+          meson setup /tmp/wayland-protocols-1.47/build \
+            /tmp/wayland-protocols-1.47 -Dtests=false --prefix=/usr/local
+          meson install -C /tmp/wayland-protocols-1.47/build
+          PKG_CONFIG_PATH=/usr/local/share/pkgconfig pkg-config --modversion wayland-protocols | grep -Fx 1.47
+      - name: Verify offline Noctalia/Sway fixture rejection
+        run: python3 -m unittest discover -s tests -p 'test_noctalia_sway_helpers.py' -v
+      - name: Build actual CLI
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - name: Compile real ezwallpaper CLI
+        run: cargo build --bin ezwallpaper
+      - name: Build pinned upstream native Noctalia v5.2.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          git clone --depth 1 --branch v5.2.1 https://github.com/noctalia-dev/noctalia.git /tmp/noctalia-v5.2.1
+          git -C /tmp/noctalia-v5.2.1 describe --tags --exact-match | grep -Fx v5.2.1
+          git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
+          grep -Fx '6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4' artifacts/noctalia-sway-e2e/upstream-commit.txt
+          (cd /tmp/noctalia-v5.2.1 && \
+            PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
+            meson compile -C build-ci -j 2 noctalia) \
+            2>&1 | tee artifacts/noctalia-sway-e2e/upstream-build.log
+          /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
+          grep -Fx 'noctalia v5.2.1 (v5.2.1)' artifacts/noctalia-sway-e2e/upstream-version.txt
+      - name: Test actual native IPC and dual output rendered pixels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          export PATH="/tmp/noctalia-v5.2.1/build-ci:$PATH"
+          export NOCTALIA_SOURCE_SHA="$(cat artifacts/noctalia-sway-e2e/upstream-commit.txt)"
+          # The wrapper owns its private session bus; harness owns compositor,
+          # shell processes, HOME, XDG runtime/state and every fixture.
+          # Docker job steps run as root: run the compositor as an unprivileged
+          # user (Sway refuses root) without modifying an interactive session.
+          useradd --create-home --shell /bin/bash ezw-e2e
+          chown -R ezw-e2e:ezw-e2e artifacts/noctalia-sway-e2e
+          runuser -u ezw-e2e -- env \
+            PATH="$PATH" NOCTALIA_SOURCE_SHA="$NOCTALIA_SOURCE_SHA" \
+            EZW_OWNED_DBUS_SESSION=1 \
+            dbus-run-session -- python3 tests/e2e/sway/noctalia_v5.py \
+              --binary target/debug/ezwallpaper \
+              --artifact-dir artifacts/noctalia-sway-e2e \
+            2>&1 | tee artifacts/noctalia-sway-e2e/test.log
+      - name: Preserve raw actual framebuffer evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-noctalia-5.2.1-sway-dual-evidence
+          path: artifacts/noctalia-sway-e2e/
           if-no-files-found: warn
 
   platform-tests:
