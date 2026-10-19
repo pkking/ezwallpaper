@@ -97,9 +97,9 @@ The `Sway headless visual E2E` job additionally runs `tests/e2e/sway/dual.py` on
 
 It writes `artifacts/sway-dual-e2e/dual-result.json`, compositor log and before/after PPM+PNG screenshots as PR CI artifacts. Missing output, incorrect geometry, wrong pixels, changed unaffected output or failure to restore the test-only compositor baseline fails the job; absence of a screenshot is never a PASS. The harness never attaches to an ambient user Wayland session. This is real **Sway + swaybg** multi-output compositor evidence, **not** Noctalia IPC, niri, physical monitors, 4K or scaling evidence. A green result has `tested_noctalia: false` and `tested_niri: false`.
 
-**Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 and actual niri two-output pixels still require a separate, compatible isolated runtime and evidence.
+**Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 now has a separate Sway-only virtual-output pixel result below; native niri two-output pixels still require their own isolated runtime and evidence.
 
-## Native Noctalia v5.2.1 + Sway dual-output renderer gate (new; evidence pending)
+## Native Noctalia v5.2.1 + Sway dual-output renderer gate (CI PIXEL_VERIFIED)
 
 A separate `Noctalia v5.2.1 + Sway dual-render E2E` job builds **native**
 [upstream Noctalia v5.2.1](https://github.com/noctalia-dev/noctalia/tree/v5.2.1)
@@ -128,13 +128,51 @@ topology, logs, and source SHA are always uploaded on either outcome.
 A missing shell/protocol/screenshot, wrong pixel colors, failed cleanup or
 missing original ephemeral background is a **failure**, not an opt-out.
 
-**Verification rule:** the existence of this workflow file alone proves nothing.
-A run must finish successfully at the final PR head and its real screenshot
-artifacts must be inspected before classifying Noctalia/Sway/headless as
-`PIXEL_VERIFIED`. Until then it remains **UNASSESSED**. Even on success this
-does **not** establish native niri outputs, any physical monitor, lockscreen,
-hotplug, 4K, output scaling, GPU, SDDM or Plymouth. Upstream niri v26.04's
-production headless limitation remains tracked in Issue #59.
+**Verified CI result (2026-10-19):** [PR #72](https://github.com/pkking/ezwallpaper/pull/72) exact
+tested head `14191ef314d174af9f1a738a125cb87e066fb50b`, merged
+to master as `9dd63622b7f5d539443e3d5a730278598b10e216`.
+[Actions run #39288207357](https://github.com/pkking/ezwallpaper/actions/runs/39288207357)
+completed all **8/8** checks successfully. The actual
+[artifact #12205965202](https://github.com/pkking/ezwallpaper/actions/runs/39288207357/artifacts/12205965202)
+contains `noctalia-result.json` with `status: PASS`, native Noctalia
+v5.2.1 (source `6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4`),
+Sway 1.10.1, output topology and native IPC acknowledgement.
+
+Independent PNG inspection confirms exact fixture RGB across the complete
+76,800 pixels of **each** screenshot:
+
+| Stage | HEADLESS-1 (320×240) | HEADLESS-2 (240×320) |
+|---|---|---|
+| First | Red (232,36,42), pixel fraction 1.0 | Blue (35,78,216), 1.0 |
+| Simultaneous | Red, 1.0 | Blue, 1.0 |
+| After single-output rotation | Green (26,182,91), 1.0 | Blue unchanged, 1.0 |
+| After shell exit | Original black baseline | Original black baseline |
+
+The artifact includes all PNG/PPM captures, `sway.log`,
+`noctalia.log`, source-build log, shell version, topology and test command log.
+The native log records both outputs and all three uploaded fixture textures;
+the JSON records `cleanup.noctalia=TERMINATED`,
+`cleanup.sway=TERMINATED`, and
+`cleanup.wallpapers=ORIGINAL_EPHEMERAL_BASELINE`.
+This establishes `PIXEL_VERIFIED` for this **specific native Noctalia
+v5.2.1 + headless Sway dual-output environment**, with its strict `>=0.90`
+threshold preserved.
+
+**Failure and safety provenance:** the preceding
+[run #39284018628](https://github.com/pkking/ezwallpaper/actions/runs/39284018628)
+failed for legitimate `HEADLESS-2` pixel mismatch: a new Noctalia
+installation displayed its full-screen first-run welcome overlay.
+The test's private `[shell].setup_wizard_enabled=false` config removed the
+onboarding overlay without disabling Noctalia wallpaper surfaces,
+replacing the setter or reducing pixel assertions. Native shell
+warnings for optional services (system D-Bus/PipeWire) were not silently
+treated as failures of wallpaper rendering.
+
+**Scope boundary:** these results do **not** establish native niri
+virtual output support, real monitors, 4K, fractional scaling, physical GPU,
+hotplug, lockscreen, SDDM, Plymouth or all other Noctalia versions.
+Those remain **UNASSESSED** under
+[Issue #59](https://github.com/pkking/ezwallpaper/issues/59).
 
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
