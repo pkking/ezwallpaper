@@ -22,6 +22,10 @@ from run import E2EFailure, parse_ppm, run, solid_png
 CONFIG = """[shell]
 offline_mode = true
 telemetry_enabled = false
+# v5.2.1 opens its first-run welcome overlay by default; it obscures
+# the HEADLESS-2 framebuffer. Disable only this test-owned setup UI,
+# without muting wallpaper rendering or loosening pixel assertions.
+setup_wizard_enabled = false
 polkit_agent = false
 clipboard_enabled = false
 
