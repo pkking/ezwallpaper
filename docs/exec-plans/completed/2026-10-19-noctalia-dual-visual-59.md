@@ -1,7 +1,7 @@
 # 2026-10-19-noctalia-dual-visual-59: reversible dual-output visual evidence
 
 Issue: #59
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-19
 Last checkpoint: 2026-10-19
@@ -35,28 +35,28 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/agents/desktop-
 
 ## Acceptance criteria
 
-- [ ] Non-interactive/headless, wrong DE, invalid outputs, missing restoration baseline and declined confirmation all fail before changing wallpapers.
-- [ ] Two independent output paths and actual screenshots produce quantified per-screen color coverage and distinguish IPC readback from measured pixels.
-- [ ] Restore both outputs even after partial apply/screenshot failure; restoration errors are reported, never hidden.
-- [ ] Offline injected-runner tests cover success, partial failure, restore failure, invalid frames and consent rejection; CI runs tests without opening any compositor.
-- [ ] README/evidence doc classifies this as opt-in, not evidence that the test was executed on physical niri.
-- [ ] Final PR head receives all required CI checks before merge.
+- [x] Non-interactive/headless, wrong DE, invalid outputs, missing restoration baseline and declined confirmation all fail before changing wallpapers.
+- [x] Two independent output paths and actual screenshots produce quantified per-screen color coverage and distinguish IPC readback from measured pixels.
+- [x] Restore both outputs even after partial apply/screenshot failure; restoration errors are reported, never hidden.
+- [x] Offline injected-runner tests cover success, partial failure, restore failure, invalid frames and consent rejection; CI runs tests without opening any compositor.
+- [x] README/evidence doc classifies this as opt-in, not evidence that the test was executed on physical niri.
+- [x] Final PR head receives all required CI checks before merge.
 
 ## Implementation slices
 
 - [x] 1. Add a Python stdlib-only, opt-in double-output verification and recovery helper.
 - [x] 2. Add deterministic fake-tool and PPM parser tests; integrate with Linux offline CI (pending actual CI execution).
 - [x] 3. Document exact opt-in verification protocol, result vocabulary and remaining manual/isolated gaps.
-- [ ] 4. Verify final-head GitHub CI and merge/record outcome; keep Issue #59 open for isolated compositor/physical acceptance.
+- [x] 4. Verify final-head GitHub CI and merge/record outcome; keep Issue #59 open for isolated compositor/physical acceptance.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline verifier safety | `python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v` | no host desktop commands | pending |
-| Rust quality | `cargo fmt --all -- --check` / strict Clippy | unchanged production code | pending |
-| Code tests | `cargo test --workspace --all-targets` | no Rust regressions | pending |
-| CLI contract | offline CLI and Noctalia fake adapter | distinct path outcomes | pending |
+| Offline verifier safety | `python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v` | no host desktop commands | PASS in PR #68 head CI |
+| Rust quality | `cargo fmt --all -- --check` / strict Clippy | unchanged production code | PASS in PR #68 head CI |
+| Code tests | `cargo test --workspace --all-targets` | no Rust regressions | PASS in PR #68 head CI |
+| CLI contract | offline CLI and Noctalia fake adapter | distinct path outcomes | PASS mock contract in PR #68 CI |
 | Real screenshot | Explicitly opt-in niri Wayland test account | measured screen color fractions, restoration status | UNASSESSED |
 
 ## Decision gates
@@ -65,6 +65,7 @@ None: helper is optional, never invoked by default CI on a real desktop and cann
 
 ## Evidence log
 
+- 2026-10-19: Verified final PR #68 head 072fc84f90e5b50959ddd02be25ed6401ad13cb8 at https://github.com/pkking/ezwallpaper/actions/runs/39221243009: 7/7 jobs passed, including the new offline Noctalia mock tests. PR #68 squash-merged to master as a6d2f0bd402bfc79a1a85a175ef83bfa4c59f589. This is NOT live niri screenshot evidence.
 - 2026-10-19: Added `scripts/verify_noctalia_live.py`, `tests/test_noctalia_live_verification.py`, the Rust CI's mock-only test invocation, and opt-in documentation. Code is NOT claimed tested until PR CI completes.
 - 2026-10-19: inspected master SHA and last green CI; observed Issue #59 open, no PRs open. No local Cargo or real niri compositor available; all actual desktop pixel evidence is UNASSESSED.
 
@@ -74,11 +75,11 @@ None: helper is optional, never invoked by default CI on a real desktop and cann
 
 ## Resume from here
 
-Open the Issue #59 PR targeting master; inspect the resulting CI run and fix any failures before merge.
+Start the next Issue #59 slice: first verify upstream niri 26.04 headless multi-output capabilities and Noctalia startup requirements, then create a new active execution plan for isolated compositor screenshot CI. Do not claim rendered niri pixels without running the compositor.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: UNASSESSED until a user-authorized real niri session runs the helper
+Final commit: a6d2f0bd402bfc79a1a85a175ef83bfa4c59f589 (PR #68 squash merge)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39221243009 (final PR head 072fc84f90e5b50959ddd02be25ed6401ad13cb8; 7/7 jobs passed)
+E2E artifact: PR #68 offline mock CI only; real niri dual-output screenshot artifacts UNASSESSED
 Remaining unassessed items: headless niri/Noctalia isolated compositor CI; physical 4K + portrait dual output; lockscreen and hotplug.
