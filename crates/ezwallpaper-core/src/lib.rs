@@ -215,12 +215,13 @@ impl WallpaperManager {
                     if !seen_directories.contains(&resolved) {
                         pending.push(resolved);
                     }
-                } else if resolved.is_file()
-                    && is_image_path(&path)
-                    && !assets.contains_key(&resolved)
-                {
-                    let asset = self.verify_asset("local", &resolved)?;
-                    assets.insert(resolved, asset);
+                } else if resolved.is_file() && is_image_path(&path) {
+                    if let std::collections::btree_map::Entry::Vacant(vacant) =
+                        assets.entry(resolved.clone())
+                    {
+                        let asset = self.verify_asset("local", &resolved)?;
+                        vacant.insert(asset);
+                    }
                 }
             }
         }
