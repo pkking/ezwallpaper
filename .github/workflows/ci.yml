@@ -241,6 +241,19 @@ jobs:
             libtomlplusplus-dev libical-dev nlohmann-json3-dev libstb-dev \
             libgl1-mesa-dri libgbm1 libegl1 libgles2 \
             fonts-dejavu-core
+      - name: Install pinned upstream Wayland protocols 1.47 for Noctalia v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 1.47 https://github.com/wayland-mirror/wayland-protocols.git /tmp/wayland-protocols-1.47
+          git -C /tmp/wayland-protocols-1.47 describe --tags --exact-match | grep -Fx 1.47
+          # Full 1.47 staging protocols include ext-background-effect-v1.
+          # Trixie's apt package omits that XML. Never patch Noctalia upstream.
+          test -f /tmp/wayland-protocols-1.47/staging/ext-background-effect/ext-background-effect-v1.xml
+          meson setup /tmp/wayland-protocols-1.47/build \
+            /tmp/wayland-protocols-1.47 -Dtests=false --prefix=/usr/local
+          meson install -C /tmp/wayland-protocols-1.47/build
+          PKG_CONFIG_PATH=/usr/local/share/pkgconfig pkg-config --modversion wayland-protocols | grep -Fx 1.47
       - name: Verify offline Noctalia/Sway fixture rejection
         run: python3 -m unittest discover -s tests -p 'test_noctalia_sway_helpers.py' -v
       - name: Build actual CLI
@@ -259,7 +272,7 @@ jobs:
           git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
           grep -Fx '6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4' artifacts/noctalia-sway-e2e/upstream-commit.txt
           (cd /tmp/noctalia-v5.2.1 && \
-            meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
+            PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
             meson compile -C build-ci -j 2 noctalia) \
             2>&1 | tee artifacts/noctalia-sway-e2e/upstream-build.log
           /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
