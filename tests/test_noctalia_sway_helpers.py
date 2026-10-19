@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "e2e" / "sway"))
-from noctalia_v5 import assert_readback, check_shell_version, topology_from_json
+from noctalia_v5 import CONFIG, assert_readback, check_shell_version, topology_from_json
 from dual import GEOMETRY, pixel_fraction
 from run import E2EFailure, solid_png, parse_ppm
 
@@ -18,6 +18,16 @@ def topology(name2="HEADLESS-2", second_width=240):
 
 
 class NativeNoctaliaHarnessTests(unittest.TestCase):
+    def test_native_wallpaper_fixture_does_not_open_first_run_overlay(self):
+        # Welcome-to-Noctalia is a full-screen layer surface on HEADLESS-2:
+        # it can hide >98% of real wallpaper pixels on first launch.
+        # Use the v5.2.1 documented opt-out; retain wallpaper rendering.
+        import tomllib
+        config = tomllib.loads(CONFIG)
+        self.assertIs(config["shell"]["setup_wizard_enabled"], False)
+        self.assertIs(config["wallpaper"]["enabled"], True)
+        self.assertIs(config["lockscreen"]["enabled"], False)
+
     def test_pinned_version(self):
         self.assertEqual(check_shell_version("noctalia v5.2.1 (v5.2.1)\n"), "noctalia v5.2.1 (v5.2.1)")
 
