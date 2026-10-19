@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "owner": "ezwallpaper",
+  "outputs": [
+    {
+      "name": "DP-1",
+      "dir": "/home/REPLACE_ME/Pictures/wallpapers/landscape",
+      "recursive": true
+    },
+    {
+      "name": "HDMI-A-1",
+      "dir": "/home/REPLACE_ME/Pictures/wallpapers/portrait",
+      "recursive": true
+    }
+  ]
+}
