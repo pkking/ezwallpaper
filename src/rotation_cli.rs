@@ -162,7 +162,7 @@ fn default_state_path() -> Result<PathBuf> {
             return Ok(root.join("ezwallpaper/rotation-v1.json"));
         }
         let home = dirs::home_dir().ok_or_else(|| anyhow!("HOME directory unavailable"))?;
-        return Ok(home.join(".local/state/ezwallpaper/rotation-v1.json"));
+        Ok(home.join(".local/state/ezwallpaper/rotation-v1.json"))
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -313,6 +313,7 @@ fn run_with_adapter(
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&lock_path)
             .context("cannot open rotation lock")?;
         file.lock_exclusive()
