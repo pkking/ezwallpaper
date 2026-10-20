@@ -26,7 +26,7 @@ from run import E2EFailure, parse_ppm, run, solid_png
 
 NIRI_PR_COMMIT = "7fd585dd44ed67644977dd9561bb6e8b3837f8f7"
 # Disable startup UI/animations only inside the private disposable compositor.
-NIRI_CONFIG = "animations { off }\nhotkey-overlay { skip-at-startup }\n"
+NIRI_CONFIG = "animations {\n    off\n}\nhotkey-overlay {\n    skip-at-startup\n}\n"
 
 
 def require_pinned_source(value: str) -> str:

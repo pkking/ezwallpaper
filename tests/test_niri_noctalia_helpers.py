@@ -93,7 +93,7 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
         self.assertFalse(native["shell"]["setup_wizard_enabled"])
         self.assertTrue(native["wallpaper"]["enabled"])
         self.assertFalse(native["lockscreen"]["enabled"])
-        self.assertIn("skip-at-startup", NIRI_CONFIG)
+        # KDL child nodes must be separated from the closing brace by a newline.\n        self.assertIn("animations {\\n    off\\n}", NIRI_CONFIG)\n        self.assertIn("hotkey-overlay {\\n    skip-at-startup\\n}", NIRI_CONFIG)
 
     def test_no_niri_live_required_by_unit_tests(self):
         # The test suite only validates fixtures and parser contracts.

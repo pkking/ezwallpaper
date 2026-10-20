@@ -67,6 +67,8 @@ No additional authorization for a disposable, unprivileged, CI-only upstream PR 
 
 - 2026-10-20: verified master `1c91a50`, #59 final checkpoint and completed #72/#73; niri-wm/niri PR #3800 OPEN, SHA `7fd585dd`. Existing Sway/Noctalia screenshots 100% on Sway only. New niri CI unexecuted.
 - 2026-10-20: new active plan established before harness/CI implementation; all acceptance pending.
+- 2026-10-20 04:16Z: PR #74 exact HEAD `a9ecb9ca416cb75dfff39499ce34c5ef10f78b80` [CI run 39366287922](https://github.com/pkking/ezwallpaper/actions/runs/39366287922) **FAILED (7/8 jobs SUCCESS, native niri gate FAILURE)**. The pinned upstream niri PR #3800 at `7fd585dd44ed67644977dd9561bb6e8b3837f8f7` compiled successfully in release mode, but native framebuffer execution stopped at `niri validate --config` before compositor startup: KDL parser rejected `animations { off }` because the child node lacked a line separator before `}`. No niri screenshots, IPC topology or cleanup claims can be made from this run. Raw failure [artifact 12240169425](https://github.com/pkking/ezwallpaper/actions/runs/39366287922/artifacts/12240169425) retains upstream build log, version/SHA, test.log, traceback and FAILED result JSON. Sway/Noctalia gate itself passed, but does not prove niri.
+- 2026-10-20: fixed the isolated niri fixture to use multiline KDL child nodes and added an offline regression assertion. Actual `niri validate`, compositor startup and real pixel stages require a **new exact-head CI run**; all still UNASSESSED until observed. Upstream niri PR #3800 independently rechecked OPEN/unmerged at the same pinned SHA.
 
 ## Deviations and discoveries
 
@@ -74,7 +76,7 @@ niri virtual output test requires **unmerged experimental PR #3800**, not the re
 
 ## Resume from here
 
-Implement `tests/e2e/sway/niri_noctalia.py` with deterministic per-output real pixels, owned-session safety and failure receipts, followed by its offline tests.
+Inspect new PR #74 exact-head CI native niri gate after multiline-KDL fix; if it fails, read real logs/JSON/screenshots, fix in the same branch, and retain failing artifacts. Do not merge without 8/8 successful jobs and independently inspected native pixel/IPC/topology/cleanup evidence.
 
 ## Completion
 
