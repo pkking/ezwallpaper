@@ -82,7 +82,7 @@ Continue remaining Issue #59 verification as a **separate active plan** only aft
 
 ## Completion
 
-Final implementation commit: `787e0dbb29124ae10f98d9ecd0b99e5dcf4d67fa` (PR #74 squash merge; exact tested HEAD `d22b7bdd8d2d456460e2492a73e7bb941b1a7a25`)
+Final commit: `787e0dbb29124ae10f98d9ecd0b99e5dcf4d67fa` (PR #74 squash merge; exact tested HEAD `d22b7bdd8d2d456460e2492a73e7bb941b1a7a25`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/39369654636 (8/8 SUCCESS)
 E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39369654636/artifacts/12241308304 (real experimental niri + Noctalia screenshot, IPC, topology, cleanup and versions)
 Remaining unassessed items: released niri production virtual outputs; physical 4K/portrait/scaling GPU, hotplug, lockscreen/PAM, SDDM/Plymouth.
