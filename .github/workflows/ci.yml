@@ -224,7 +224,7 @@ jobs:
     # Trixie provides WirePlumber 0.5 / C++23 and Noctalia's pinned v5.2.1
     # build dependencies; this image is CI-only, not a production dependency.
     container: debian:trixie
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - name: Install native Noctalia build requirements and headless Sway tools
@@ -303,6 +303,51 @@ jobs:
               --binary target/debug/ezwallpaper \
               --artifact-dir artifacts/noctalia-sway-e2e \
             2>&1 | tee artifacts/noctalia-sway-e2e/test.log
+      - name: Validate experimental niri/Noctalia pure helpers
+        run: python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v
+      - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/niri-noctalia-e2e
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get install -y --no-install-recommends \
+            clang libclang-dev libudev-dev libgbm-dev libinput-dev \
+            libdbus-1-dev libsystemd-dev libseat-dev libdisplay-info-dev
+          git clone --depth 1 --branch wip/virtual-outputs \
+            https://github.com/willybarret/niri.git /tmp/niri-virtual-3800
+          git -C /tmp/niri-virtual-3800 rev-parse HEAD | tee artifacts/niri-noctalia-e2e/upstream-commit.txt
+          grep -Fx '7fd585dd44ed67644977dd9561bb6e8b3837f8f7' \
+            artifacts/niri-noctalia-e2e/upstream-commit.txt
+          (cd /tmp/niri-virtual-3800 && \
+            NIRI_BUILD_COMMIT=7fd585dd44ed67644977dd9561bb6e8b3837f8f7 \
+              cargo build --locked --release --no-default-features --features dbus) \
+            2>&1 | tee artifacts/niri-noctalia-e2e/upstream-build.log
+          /tmp/niri-virtual-3800/target/release/niri --version \
+            | tee artifacts/niri-noctalia-e2e/upstream-version.txt
+      - name: Verify real niri + Noctalia dual-output framebuffer
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/tmp/niri-virtual-3800/target/release:/tmp/noctalia-v5.2.1/build-ci:$PATH"
+          export NIRI_SOURCE_SHA="$(cat artifacts/niri-noctalia-e2e/upstream-commit.txt)"
+          export NOCTALIA_SOURCE_SHA="$(cat artifacts/noctalia-sway-e2e/upstream-commit.txt)"
+          chown -R ezw-e2e:ezw-e2e artifacts/niri-noctalia-e2e
+          runuser -u ezw-e2e -- env \
+            PATH="$PATH" NIRI_SOURCE_SHA="$NIRI_SOURCE_SHA" \
+            NOCTALIA_SOURCE_SHA="$NOCTALIA_SOURCE_SHA" EZW_OWNED_DBUS_SESSION=1 \
+            dbus-run-session -- python3 tests/e2e/sway/niri_noctalia.py \
+              --binary target/debug/ezwallpaper \
+              --artifact-dir artifacts/niri-noctalia-e2e \
+            2>&1 | tee artifacts/niri-noctalia-e2e/test.log
+      - name: Always preserve niri source, topology, screenshot and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-niri-pr3800-native-noctalia-dual-evidence
+          path: artifacts/niri-noctalia-e2e/
+          if-no-files-found: warn
+
       - name: Preserve raw actual framebuffer evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
