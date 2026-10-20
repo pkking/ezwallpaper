@@ -4,12 +4,13 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "e2e" / "sway"))
 from dual import GEOMETRY, RGB, pixel_fraction
 from niri_noctalia import (
     NIRI_CONFIG, NIRI_PR_COMMIT, create_two_outputs, niri_topology_from_json,
-    private_env, require_pinned_source,
+    private_env, require_pinned_source, observe_topology,
 )
 from noctalia_v5 import CONFIG, assert_readback
 from run import E2EFailure
@@ -36,6 +37,46 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
 
     def test_valid_niri_output_map_not_sway_array(self):
         self.assertEqual(niri_topology_from_json(outputs()), GEOMETRY)
+
+    def test_virtual_output_removed_then_recreated_requires_exact_native_topology(self):
+        both = outputs()
+        single = json.dumps({
+            "HEADLESS-1": json.loads(both)["HEADLESS-1"],
+        }).encode()
+        only_first = {"HEADLESS-1": GEOMETRY["HEADLESS-1"]}
+        self.assertEqual(niri_topology_from_json(single, only_first), only_first)
+        self.assertEqual(niri_topology_from_json(both, GEOMETRY), GEOMETRY)
+        for wrong, expected in (
+            (both, only_first),         # removal is not yet reflected by IPC
+            (single, GEOMETRY),         # recreation not observed by IPC
+            (outputs(right_width=320), GEOMETRY),
+            (outputs(names=("HEADLESS-1", "DP-1")), GEOMETRY),
+            (b"{}", only_first),
+        ):
+            with self.subTest(wrong=wrong, expected=expected), self.assertRaises(E2EFailure):
+                niri_topology_from_json(wrong, expected)
+
+    def test_native_transition_wait_is_bounded_and_preserves_raw_topology(self):
+        both = outputs()
+        single = json.dumps({"HEADLESS-1": json.loads(both)["HEADLESS-1"]}).encode()
+        only_first = {"HEADLESS-1": GEOMETRY["HEADLESS-1"]}
+        with tempfile.TemporaryDirectory() as temp:
+            artifact = Path(temp)
+            with patch("niri_noctalia.get_outputs", side_effect=[both, single]), \
+                 patch("niri_noctalia.time.sleep", return_value=None):
+                self.assertEqual(
+                    observe_topology({}, only_first, "removed", artifact, timeout=2),
+                    {"HEADLESS-1": [320, 240]},
+                )
+            saved = json.loads((artifact / "topology-removed.json").read_text())
+            self.assertEqual(set(saved), {"HEADLESS-1"})
+        with tempfile.TemporaryDirectory() as temp:
+            with patch("niri_noctalia.get_outputs", return_value=both), \
+                 patch("niri_noctalia.time.monotonic", side_effect=[0, 0, 0.25]), \
+                 patch("niri_noctalia.time.sleep", return_value=None):
+                with self.assertRaisesRegex(E2EFailure, "did not converge"):
+                    observe_topology({}, only_first, "removed", Path(temp), timeout=0.1)
+            self.assertTrue((Path(temp) / "topology-removed.json").exists())
 
     def test_fail_closed_on_wrong_output_topology(self):
         for bad in (
