@@ -45,7 +45,7 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 
 ## Implementation slices
 
-- [ ] 1. Extend pinned niri harness with strict topology transitions and virtual-output lifecycle capture; add offline rejection tests.
+- [x] 1. Extend pinned niri harness with strict topology transitions and virtual-output lifecycle capture; add offline rejection tests (implemented, CI result pending).
 - [ ] 2. Run exact-head native CI; inspect screenshot/IPC/topology/results/logs and repair actual failures on existing PR.
 - [ ] 3. Squash implementation via GitHub API only after evidence verification; independently archive and reconcile scoped README/technical documentation in a new PR, verify and merge it.
 
@@ -64,15 +64,16 @@ None for disposable nonroot CI-only experimental compositor tests; request human
 
 ## Evidence log
 
-- 2026-10-20: prior #74 final CI + artifact proves static dual native pixels only; #75 archive merged. niri upstream #3800 still OPEN/unmerged at pinned source. This new virtual lifecycle is not yet executed; no hotplug results claimed.
+- 2026-10-20: prior #74 final CI + artifact proves static dual native pixels only; #75 archive merged. niri upstream #3800 still OPEN/unmerged at pinned source.
+- 2026-10-20: implementation commits `d25fcfd74c75a0e9b0ed485e0c2d46710de26eff`, `3b293cb2f6170628c859b518d9cdfba772d7c10b` add native virtual removal/recreation with bounded topology polling and offline negative cases. **Not yet run in CI**; no virtual lifecycle result claimed.
 
 ## Deviations and discoveries
 
-None yet. Preserve failures and new upstream discoveries here rather than silently changing acceptance.
+The original static two-output E2E already has a pinned build and native session isolation. Reuse it, add bounded IPC transition checks, and demand explicit blue re-apply after recreation rather than inferring Noctalia persistence. Preserve failures and new upstream discoveries here rather than silently changing acceptance.
 
 ## Resume from here
 
-Commit incremental virtual remove/recreate lifecycle and offline fail-closed tests on `agent/niri-virtual-hotplug-noctalia-59`; then create a linked PR and inspect actual native E2E run/artifacts before claiming virtual lifecycle PASS. No physical display access.
+Create linked implementation PR for `agent/niri-virtual-hotplug-noctalia-59`; inspect its exact-head CI including offline topology suite and real niri/Noctalia artifact. Repair any failures on same branch and never claim physical hotplug.
 
 ## Completion
 
