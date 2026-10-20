@@ -97,7 +97,7 @@ The `Sway headless visual E2E` job additionally runs `tests/e2e/sway/dual.py` on
 
 It writes `artifacts/sway-dual-e2e/dual-result.json`, compositor log and before/after PPM+PNG screenshots as PR CI artifacts. Missing output, incorrect geometry, wrong pixels, changed unaffected output or failure to restore the test-only compositor baseline fails the job; absence of a screenshot is never a PASS. The harness never attaches to an ambient user Wayland session. This is real **Sway + swaybg** multi-output compositor evidence, **not** Noctalia IPC, niri, physical monitors, 4K or scaling evidence. A green result has `tested_noctalia: false` and `tested_niri: false`.
 
-**Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 now has a separate Sway-only virtual-output pixel result below; native niri two-output pixels still require their own isolated runtime and evidence.
+**Why not claim upstream niri headless CI?** The official niri v26.04 `src/main.rs` calls `State::new` with its headless flag **false**; `src/backend/headless.rs` is explicitly a backend for internal tests. A regular niri binary is not switched to multi-output headless mode by `NIRI_BACKEND=headless`. As of 2026-10-19, upstream [niri PR #3800](https://github.com/niri-wm/niri/pull/3800) implementing virtual outputs is still unmerged. Its fork cannot be silently required by this project. Use the [tagged v26.04 main](https://github.com/niri-wm/niri/blob/v26.04/src/main.rs), [headless backend](https://github.com/niri-wm/niri/blob/v26.04/src/backend/headless.rs) and upstream PR for re-evaluation. Native Noctalia v5.2.1 has separately bounded Sway pixel evidence, and the exact experimental niri PR #3800 virtual-output pixel evidence is recorded below. This does not validate a released niri binary.
 
 ## Native Noctalia v5.2.1 + Sway dual-output renderer gate (CI PIXEL_VERIFIED)
 
@@ -174,6 +174,25 @@ hotplug, lockscreen, SDDM, Plymouth or all other Noctalia versions.
 Those remain **UNASSESSED** under
 [Issue #59](https://github.com/pkking/ezwallpaper/issues/59).
 
+## Native Noctalia v5.2.1 + experimental niri PR #3800 dual-output CI (PIXEL_VERIFIED)
+
+**Scope-qualified evidence, 2026-10-20:** Implementation [PR #74](https://github.com/pkking/ezwallpaper/pull/74), final tested head `d22b7bdd8d2d456460e2492a73e7bb941b1a7a25`, [GitHub Actions #39369654636](https://github.com/pkking/ezwallpaper/actions/runs/39369654636) **8/8 SUCCESS**, squash merged into master as `787e0dbb29124ae10f98d9ecd0b99e5dcf4d67fa`. Real [artifact #12241308304](https://github.com/pkking/ezwallpaper/actions/runs/39369654636/artifacts/12241308304) contains PNG/PPM screenshots, a structured verdict, native Noctalia/niri logs, original background screenshots, niri output topology, build/source versions and cleanup results.
+
+CI **builds niri only from the unmerged [upstream PR #3800](https://github.com/niri-wm/niri/pull/3800) experiment**, pinned to commit `7fd585dd44ed67644977dd9561bb6e8b3837f8f7`; this does **not** constitute production or released niri virtual-output support. Native Noctalia v5.2.1 is separately pinned to `6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4`. The harness reuses the Sway/Noctalia fixture and real P6 sampled-pixel checks, but runs the actual **niri** compositor, not Sway, using `NIRI_BACKEND=headless`. Test-owned unprivileged processes, private D-Bus, HOME, XDG_RUNTIME_DIR and compositor/IPC sockets prevent mutation of any real desktop. No production ezwallpaper CLI or setter behavior changes.
+
+| Stage | niri HEADLESS-1 320×240 | niri HEADLESS-2 240×320 |
+|---|---|---|
+| First native apply + readback | Red (232,36,42), 1.0 RGB coverage | Blue (35,78,216), 1.0 |
+| Simultaneous two-output screenshots | Red, 1.0 | Blue, 1.0 |
+| Rotate HEADLESS-1 only | Green (26,182,91), 1.0 | Blue unchanged, 1.0 |
+| After stopping owned Noctalia | Original compositor baseline restored | Original compositor baseline restored |
+
+The actual screenshots were independently checked after CI: the six fixture PNG/PPM pairs agreed and all 76,800 pixels of each displayed fixture screenshot matched its expected color. The hard-gated threshold remains **>=0.90 sampled pixel coverage** with RGB tolerance ±9; a command's successful exit or native IPC readback alone cannot pass the screenshot gate. Topology is read from niri's own IPC output-mode map, with screenshot dimensions checked independently. Native Noctalia IPC returns exact per-output paths, both initial compositor baselines are recovered pixel-for-pixel, and both owned niri/Noctalia processes are terminated. Logs/JSON provide provenance rather than merely trusting test script success.
+
+**Failure provenance:** the earlier [run #39366287922](https://github.com/pkking/ezwallpaper/actions/runs/39366287922) failed after the experimental niri source compiled: the ephemeral KDL fixture syntax failed `niri validate` before screenshot capture. The [failed artifact #12240169425](https://github.com/pkking/ezwallpaper/actions/runs/39366287922/artifacts/12240169425) is retained. Multiline KDL plus a pure offline regression assertion fixed this without disabling compositor/pixel assertions; the final CI result above is separate evidence.
+
+**Strict boundary:** `PIXEL_VERIFIED` means only **native Noctalia v5.2.1 + niri PR #3800 at pinned experimental source SHA** inside this disposable dual-headless compositor. Released niri, real physical 4K/portrait/mixed DPI, GPU, fractional scaling, physical hotplug, PAM/lockscreen, SDDM/Plymouth and day-to-day desktop lifecycle are all **UNASSESSED**. No fork was distributed or approved as a supported release. Keep [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) open for those independently verified tiers.
+
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
 **Scope:** a user-invoked check in a disposable, interactive niri session; it is not an unattended CI claim or evidence for every physical display. The helper tests the native Noctalia v5 path setter and then independently samples actual `grim` framebuffer PPM bytes for **two named outputs**. A path match without matching screenshot pixels is a failure, not success.
@@ -200,7 +219,7 @@ Those remain **UNASSESSED** under
 python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v
 ```
 
-This first slice of #59 explicitly leaves isolated niri + Noctalia virtual-output CI, tested desktop versions, dual physical-output observation and screen-lock scenarios **UNASSESSED**. The earlier Sway visual E2E cannot substitute for those results.
+The separate automated experiment above now verifies only the pinned niri PR #3800 virtual outputs, not released niri or a user's session. Real physical display and screen-lock scenarios remain **UNASSESSED**; neither Sway nor experimental niri CI can substitute for them.
 
 ## Running the automated contract test locally
 
