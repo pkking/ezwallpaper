@@ -42,7 +42,7 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 
 ## Implementation slices
 
-- [ ] Extend isolated native niri E2E and offline parser/negative tests.
+- [x] Extend isolated native niri E2E and offline parser/negative tests; implementation committed, unverified until CI.
 - [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; repair same PR branch on failures.
 - [ ] Merge implementation through API only after verified, create independent archive PR with scoped README/evidence, verify its latest-head CI and squash merge, update Issue checkpoint.
 
@@ -61,7 +61,8 @@ None for isolated experimental software rendering only. Explicit human opt-in an
 
 ## Evidence log
 
-- 2026-10-21: prior niri virtual lifecycle #76 and archive #77 merged; fractional scaling proof is not yet run. This plan precedes code changes.
+- 2026-10-21: prior niri virtual lifecycle #76 and archive #77 merged; fractional scaling proof is not yet run. This plan preceded code changes.
+- 2026-10-21: implementation commits `60495a5b0f7e612d74278ac16c49134e3f76c8d7`, `4da9d95cefe42875286257c9ddb7462b73afa0af`, `33b239e875bee06b36b9fbcb1ad0343131cbaa74` add real 1.25→1.0 virtual scale + pixel captures and offline fail-closed IPC/geometry tests. **CI not yet run**; no fractional virtual render result claimed.
 
 ## Deviations and discoveries
 
@@ -69,7 +70,7 @@ None yet; new scale IPC behavior must be recorded from actual niri job output ra
 
 ## Resume from here
 
-Implement scale IPC parser and real two-output scale/reset pixel stages in `agent/niri-fractional-scale-e2e-59`, add negative fixtures, create linked PR, then inspect exact-head CI. Never claim physical validation.
+Create a PR from `agent/niri-fractional-scale-e2e-59` linked to this plan and Issue #59. Inspect its exact-head offline and native E2E CI, diagnose failures from logs/artifacts on the same branch, and verify real scale and screenshots before API merge. Never claim physical validation.
 
 ## Completion
 
