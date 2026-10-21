@@ -33,7 +33,9 @@ def scaled_outputs(left=1.25, right=1.0):
     """Actual niri-like two-output IPC map at fractional/normal scales."""
     data = json.loads(outputs())
     for name, scale in (("HEADLESS-1", left), ("HEADLESS-2", right)):
-        data[name]["scale"] = scale
+        # Mirrors actual niri JSON from failed CI artifact #12360805727:
+        # scale is nested inside logical, never the output top-level object.
+        data[name]["logical"]["scale"] = scale
         mode = data[name]["modes"][data[name]["current_mode"]]
         data[name]["logical"]["width"] = round(mode["width"] / scale)
         data[name]["logical"]["height"] = round(mode["height"] / scale)
@@ -105,6 +107,22 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
         )
         self.assertEqual(restored["HEADLESS-1"]["logical"], [320, 240])
 
+    def test_real_niri_ipc_shape_has_logical_scale_not_root_scale(self):
+        # Exact structural schema observed in artifact #12360805727; no
+        # fabricated top-level scale key may satisfy the regression gate.
+        raw = json.loads(scaled_outputs(1.25, 1.0))
+        for name in GEOMETRY:
+            self.assertNotIn("scale", raw[name])
+            self.assertIn("scale", raw[name]["logical"])
+        expected = {"HEADLESS-1": 1.25, "HEADLESS-2": 1.0}
+        got = fractional_scale_from_json(json.dumps(raw).encode(), expected)
+        self.assertEqual(got["HEADLESS-1"]["scale"], 1.25)
+        fabricated = json.loads(scaled_outputs())
+        fabricated["HEADLESS-1"]["scale"] = 1.25
+        fabricated["HEADLESS-1"]["logical"].pop("scale")
+        with self.assertRaises(E2EFailure):
+            fractional_scale_from_json(json.dumps(fabricated).encode(), expected)
+
     def test_fractional_scale_ipc_rejects_stale_and_ambiguous_outputs(self):
         expected = {"HEADLESS-1": 1.25, "HEADLESS-2": 1.0}
         base = json.loads(scaled_outputs())
@@ -115,11 +133,11 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
         invalid.append(swapped)
         for bad_scale in ("1.25", True, None, float("nan"), float("inf"), 0, -2):
             bad = json.loads(scaled_outputs())
-            bad["HEADLESS-1"]["scale"] = bad_scale
+            bad["HEADLESS-1"]["logical"]["scale"] = bad_scale
             invalid.append(bad)
-        for logical in (None, {}, {"width": True, "height": 192},
-                        {"width": 257, "height": 192},
-                        {"width": "256", "height": 192}):
+        for logical in (None, {}, {"width": True, "height": 192, "scale": 1.25},
+                        {"width": 257, "height": 192, "scale": 1.25},
+                        {"width": "256", "height": 192, "scale": 1.25}):
             bad = json.loads(scaled_outputs())
             bad["HEADLESS-1"]["logical"] = logical
             invalid.append(bad)
