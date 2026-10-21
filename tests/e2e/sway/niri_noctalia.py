@@ -35,12 +35,16 @@ def require_pinned_source(value: str) -> str:
     return value.strip()
 
 
-def niri_topology_from_json(data: bytes) -> dict[str, tuple[int, int]]:
-    """Use niri's native JSON output map (not Sway's list/current_mode API)."""
+def niri_topology_from_json(
+    data: bytes, expected: dict[str, tuple[int, int]] | None = None,
+) -> dict[str, tuple[int, int]]:
+    """Require the exact named active output set and native current modes."""
+    if expected is None:
+        expected = GEOMETRY
     try:
         outputs = json.loads(data)
-        if not isinstance(outputs, dict) or set(outputs) != set(GEOMETRY):
-            raise ValueError("expected exactly two named niri outputs")
+        if not isinstance(outputs, dict) or set(outputs) != set(expected):
+            raise ValueError(f"expected precisely {sorted(expected)}, got {sorted(outputs) if isinstance(outputs, dict) else type(outputs).__name__}")
         topology = {}
         for name, item in outputs.items():
             if not isinstance(item, dict) or item.get("logical") is None:
@@ -51,7 +55,7 @@ def niri_topology_from_json(data: bytes) -> dict[str, tuple[int, int]]:
                 raise ValueError(f"invalid niri current mode: {name}")
             mode = modes[index]
             size = (mode.get("width"), mode.get("height"))
-            if size != GEOMETRY[name]:
+            if size != expected[name]:
                 raise ValueError(f"wrong niri mode for {name}: {size!r}")
             topology[name] = size
         return topology
@@ -135,6 +139,79 @@ def create_two_outputs(env: dict) -> dict:
     raise E2EFailure(f"niri two virtual outputs not ready: {last}")
 
 
+def observe_topology(env: dict, expected: dict[str, tuple[int, int]],
+                     stage: str, artifact: Path, timeout: float = 20) -> dict:
+    """Poll actual niri IPC until exactly the expected active outputs exist.
+
+    No cached topology or time-based sleeps substitute for native confirmation.
+    Write the received JSON evidence even when it does not yet match.
+    """
+    deadline, last = time.monotonic() + timeout, "no niri IPC"
+    while time.monotonic() < deadline:
+        try:
+            raw = get_outputs(env)
+            (artifact / f"topology-{stage}.json").write_bytes(raw + b"\n")
+            matched = niri_topology_from_json(raw, expected)
+            return {name: list(geometry) for name, geometry in matched.items()}
+        except E2EFailure as error:
+            last = str(error)
+        time.sleep(0.2)
+    raise E2EFailure(f"niri topology {stage} did not converge: {last}")
+
+
+def virtual_output_lifecycle(binary: Path, fixtures: dict[str, Path],
+                             artifact: Path, env: dict, result: dict) -> None:
+    """CI-only virtual remove/re-add, not physical monitor hotplug proof."""
+    name = "HEADLESS-2"
+    trace = artifact / "virtual-output-events.log"
+    with trace.open("w", encoding="utf-8") as record:
+        before = observe_topology(env, GEOMETRY, "before-removal", artifact)
+        result["virtual_output_events"].append({"stage": "before-removal", "topology": before})
+        removed = run(["niri", "msg", "remove-virtual-output", name], env=env, timeout=8)
+        record.write(removed.stdout.decode(errors="replace") + "\n")
+        record.flush()
+        if f"Removed virtual output: {name}" not in removed.stdout.decode(errors="replace"):
+            raise E2EFailure("native niri did not acknowledge virtual removal")
+        remaining = {"HEADLESS-1": GEOMETRY["HEADLESS-1"]}
+        single = observe_topology(env, remaining, "removed", artifact)
+        result["virtual_output_events"].append({"stage": "removed", "topology": single})
+        assert_readback(native_get("HEADLESS-1", env), fixtures["green"])
+        ratio = capture("HEADLESS-1", "virtual-removed", artifact, env, RGB["green"], threshold=0.90)
+        result["stages"].append({"stage": "virtual-removed", "output": "HEADLESS-1",
+                                 "color": "green", "ipc_path_verified": True,
+                                 "pixel_fraction": round(ratio, 4)})
+        absent_snapshot = artifact / "unexpected-removed-output.ppm"
+        try:
+            run(["grim", "-o", name, "-t", "ppm", str(absent_snapshot)], env=env, timeout=8)
+        except E2EFailure as error:
+            record.write("expected absent-output screenshot failure: " + str(error) + "\n")
+            record.flush()
+        else:
+            raise E2EFailure("removed HEADLESS-2 remained screenshot-addressable")
+        if absent_snapshot.exists() and absent_snapshot.stat().st_size:
+            raise E2EFailure("removed output unexpectedly left framebuffer screenshot bytes")
+        width, height = GEOMETRY[name]
+        created = run(["niri", "msg", "create-virtual-output", "--name", name,
+                       "--width", str(width), "--height", str(height),
+                       "--refresh-rate", "60"], env=env, timeout=8)
+        record.write(created.stdout.decode(errors="replace") + "\n")
+        record.flush()
+        if f"Created virtual output: {name}" not in created.stdout.decode(errors="replace"):
+            raise E2EFailure("native niri did not acknowledge virtual recreation")
+        restored = observe_topology(env, GEOMETRY, "recreated", artifact)
+        result["virtual_output_events"].append({"stage": "recreated", "topology": restored})
+        # Explicit reapplication: no unverified claim that Noctalia persists a
+        # wallpaper across dynamic output destruction/recreation automatically.
+        apply(binary, name, fixtures["blue"], env)
+        for output, color in (("HEADLESS-1", "green"), ("HEADLESS-2", "blue")):
+            assert_readback(native_get(output, env), fixtures[color])
+            ratio = capture(output, "virtual-recreated", artifact, env,
+                            RGB[color], threshold=0.90)
+            result["stages"].append({"stage": "virtual-recreated", "output": output,
+                                     "color": color, "ipc_path_verified": True,
+                                     "pixel_fraction": round(ratio, 4)})
+
+
 def baseline(output: str, tag: str, folder: Path, env: dict) -> tuple[int, int, int]:
     screenshot = folder / f"{tag}-{output}.ppm"
     run(["grim", "-o", output, "-t", "ppm", str(screenshot)], env=env, timeout=8)
@@ -153,6 +230,7 @@ def execute(binary: Path, artifact: Path) -> int:
         "compositor": "niri PR #3800 experimental headless virtual outputs",
         "tested_niri": True, "released_niri_verified": False,
         "physical_displays_verified": False, "hotplug_verified": False,
+        "virtual_output_lifecycle_verified": False, "virtual_output_events": [],
         "lockscreen_verified": False, "gpu_4k_verified": False,
         "noctalia_version": None, "niri_version": None, "niri_source_commit": None,
         "noctalia_source_commit": os.getenv("NOCTALIA_SOURCE_SHA"),
@@ -211,12 +289,14 @@ def execute(binary: Path, artifact: Path) -> int:
                         result["stages"].append({"stage": "rotated", "output": name,
                                                  "color": color, "ipc_path_verified": True,
                                                  "pixel_fraction": round(ratio, 4)})
+                    virtual_output_lifecycle(binary, fixtures, artifact, env, result)
                 owned_stop(shell, "Noctalia")
                 shell = None
                 result["cleanup"]["noctalia"] = "TERMINATED"
                 for name, rgb in baselines.items():
                     capture(name, "baseline-after", artifact, env, rgb, threshold=THRESHOLD)
                 result["cleanup"]["wallpapers"] = "ORIGINAL_EPHEMERAL_BASELINE"
+                result["virtual_output_lifecycle_verified"] = True
                 result["status"] = "PASS"
     except Exception as error:
         result["reason"] = f"{type(error).__name__}: {error}"
