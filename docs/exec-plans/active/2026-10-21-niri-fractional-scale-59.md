@@ -43,16 +43,16 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 ## Implementation slices
 
 - [x] Extend isolated native niri E2E and offline parser/negative tests; implementation committed, unverified until CI.
-- [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; first exact-head run FAILED 7/8, real root cause fixed on same branch, new run pending.
+- [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; first and second exact-head runs FAILED 7/8; second helper raw IPC assertion fixed in commit `9be19b4`; new exact-head run pending.
 - [ ] Merge implementation through API only after verified, create independent archive PR with scoped README/evidence, verify its latest-head CI and squash merge, update Issue checkpoint.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | PENDING (first exact-head suite success, parser corrected after) |
-| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | FAILED at scale-before due to wrong JSON field, fix pending CI |
-| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | FAILED 7/8 on initial head; revalidate fixed HEAD |
+| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | FAILED 14/15 on second run #39643122692; saved raw IPC assertion corrected, new exact-head CI pending |
+| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | UNASSESSED after second run stopped in pure helpers; native fractional frames still require successful rerun |
+| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | FAILED 7/8 on first and second HEADs; third exact-head run pending |
 | Physical scale/GPU/4K/hotplug | separate consented physical test | independent hardware proof | UNASSESSED |
 
 ## Decision gates
@@ -69,9 +69,11 @@ None for isolated experimental software rendering only. Explicit human opt-in an
 - **First CI FAILED, preserved**: [run #39628759647](https://github.com/pkking/ezwallpaper/actions/runs/39628759647) at PR #78 HEAD `0fc28a5aa23a414782dc593e115dda2a74dc3b15`: 7/8 jobs SUCCESS, native Noctalia/niri E2E FAILED before scale change because harness read `output.scale`. [Failure artifact #12360805727](https://github.com/pkking/ezwallpaper/actions/runs/39628759647/artifacts/12360805727) raw `topology-scale-before.json` proves actual native niri structure nests `logical.scale=1.0` for both active outputs. The first nine preexisting virtual/pixel stages all reported 1.0 color fraction, but new scale stages not executed, `virtual_fractional_scale_verified=false`, and `wallpapers` cleanup was not separately recorded on this failing path. Never cite this as fractional-scale PASS.
 - Fixed JSON path to `logical.scale` in parser at commit `b13ff090a387753838efbbe7fa2b7cc39bbabda4`, and updated offline fixture to mirror actual niri output and reject synthetic top-level `scale` at `96a18d123853c841d7b61a693964bdb82632177e`. Retain expected scale values, logical geometry checks and >=0.90 pixel threshold; do not weaken validation. Re-run exact-HEAD CI and diagnose any further runtime differences.
 
+- **Second CI FAILED, preserved**: [run #39643122692](https://github.com/pkking/ezwallpaper/actions/runs/39643122692) at exact HEAD `c1b303c11069872f12a0e364f9e50bd9f82dfbae`: 7/8 jobs SUCCESS, native Noctalia/niri job failed in `Validate experimental niri/Noctalia pure helpers`, 14/15 tests passed and `test_fractional_scale_wait_reads_real_ipc_then_fails_closed` raised `KeyError: 'scale'` at `tests/test_niri_noctalia_helpers.py:173`. The test correctly parses `got["HEADLESS-1"]["scale"]`, but incorrectly read saved *raw IPC* `saved["HEADLESS-1"]["scale"]`; actual raw path is `saved["HEADLESS-1"]["logical"]["scale"]`. Corrected that single assertion on the same PR branch in commit `9be19b40357c4746b89a459cce4a62f16f54f575`, without altering threshold, test execution, or production behavior. This run did not prove fractional-scale native rendering. Await exact-HEAD CI and independently inspect new raw IPC, PNG/PPM, native Noctalia output, baseline and cleanup evidence before merging.
+
 ## Resume from here
 
-Review the exact final PR #78 HEAD and fresh CI after correcting `output.scale` to real `logical.scale`; inspect native niri E2E full traceback, 4 new screenshot PNG/PPM pairs, geometry JSON, original baselines and cleanup from fresh artifact. Repair any remaining native discrepancies in same branch, never merge without 8/8 and artifact evidence. Never claim physical validation.
+Inspect fresh exact-head CI after correcting both the parser `output.scale` and saved raw IPC assertion to `logical.scale`; verify all 15 offline helpers pass, inspect native niri E2E full traceback, 4 new screenshot PNG/PPM pairs, geometry JSON, original baselines and cleanup from fresh artifact. Repair any remaining native discrepancies in same branch, never merge without 8/8 and artifact evidence. Never claim physical validation.
 
 ## Completion
 
