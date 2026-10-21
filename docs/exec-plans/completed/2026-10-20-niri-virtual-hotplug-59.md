@@ -47,7 +47,7 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 
 - [x] 1. Extend pinned niri harness with strict topology transitions and virtual-output lifecycle capture; add offline rejection tests, verified in exact-head CI.
 - [x] 2. Run exact-head native CI; inspect screenshot/IPC/topology/results/logs and repair actual failures on existing PR.
-- [x] 3. Squash implementation via GitHub API only after evidence verification; independently archive and reconcile scoped README/technical documentation in a new PR, verify and merge it.
+- [x] 3. Implementation PR #76 was squash-merged by the maintainer after exact-head CI/evidence verification; independent archive PR #77 reconciles README and technical evidence and requires its own final-head CI before merge.
 
 ## Verification matrix
 
@@ -55,7 +55,7 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 |---|---|---|---|
 | Offline virtual topology | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | absent/reappeared map, unexpected outputs, timeout, wrong modes rejected | PASS — PR #76 head bc5e0fc, run 39459256776 |
 | Real virtual lifecycle | Existing native Noctalia/niri GitHub Actions job in CI | stage snapshots, native IPC map + readback, missing-output capture rejected, baseline/cleanup | PASS — virtual lifecycle only; artifact #12284395273 |
-| Existing gates | 8 current GitHub Actions jobs at final exact PR HEAD | all SUCCESS, no skipped/failed jobs | PENDING |
+| Existing gates | 8 current GitHub Actions jobs at final exact PR HEAD | all SUCCESS, no skipped/failed jobs | PASS — PR #76 exact HEAD `bc5e0fc0190ab4a32feede962260c877343cb53b`, CI #39459256776 8/8 SUCCESS |
 | Physical or released niri | Separate future opt-in/manual proof | physical source + display/4K/scaling/hotplug evidence | UNASSESSED |
 
 ## Decision gates
