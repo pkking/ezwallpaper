@@ -253,7 +253,7 @@ def observe_fractional_scale(env: dict, expected: dict[str, float],
     while time.monotonic() < deadline:
         try:
             raw = get_outputs(env)
-            (artifact / f"topology-{stage}.json").write_bytes(raw + b"\\n")
+            (artifact / f"topology-{stage}.json").write_bytes(raw + b"\n")
             return fractional_scale_from_json(raw, expected)
         except E2EFailure as error:
             last = str(error)
@@ -273,7 +273,7 @@ def virtual_fractional_scale(binary: Path, fixtures: dict[str, Path],
     with trace.open("w", encoding="utf-8") as log:
         changed = run(["niri", "msg", "output", "HEADLESS-1", "scale", "1.25"],
                       env=env, timeout=8)
-        log.write("scale 1.25: " + changed.stdout.decode(errors="replace") + "\\n")
+        log.write("scale 1.25: " + changed.stdout.decode(errors="replace") + "\n")
         log.flush()
         topology = observe_fractional_scale(env, {"HEADLESS-1": 1.25,
                                                    "HEADLESS-2": 1.0},
@@ -288,7 +288,7 @@ def virtual_fractional_scale(binary: Path, fixtures: dict[str, Path],
                                      "pixel_fraction": round(ratio, 4)})
         reset = run(["niri", "msg", "output", "HEADLESS-1", "scale", "1.0"],
                     env=env, timeout=8)
-        log.write("scale reset 1.0: " + reset.stdout.decode(errors="replace") + "\\n")
+        log.write("scale reset 1.0: " + reset.stdout.decode(errors="replace") + "\n")
         log.flush()
         restored = observe_fractional_scale(env, baseline_scales, "scale-reset", artifact)
         result["fractional_scale_events"].append({"stage": "reset", "topology": restored})
