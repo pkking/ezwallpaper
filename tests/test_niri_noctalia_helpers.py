@@ -170,7 +170,7 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
                 got = observe_fractional_scale({}, expected, "scale-125", artifact, timeout=3)
             self.assertEqual(got["HEADLESS-1"]["scale"], 1.25)
             saved = json.loads((artifact / "topology-scale-125.json").read_text())
-            self.assertEqual(saved["HEADLESS-1"]["scale"], 1.25)
+            self.assertEqual(saved["HEADLESS-1"]["logical"]["scale"], 1.25)
         with tempfile.TemporaryDirectory() as temp:
             with patch("niri_noctalia.get_outputs", return_value=scaled_outputs(1.0, 1.0)), \
                  patch("niri_noctalia.time.monotonic", side_effect=[0, 0, 0.2]), \
