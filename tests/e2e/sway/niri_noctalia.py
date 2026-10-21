@@ -227,14 +227,17 @@ def fractional_scale_from_json(data: bytes, expected: dict[str, float]) -> dict:
         topology = {}
         for name, mode in physical.items():
             out = outputs[name]
-            scale = out.get("scale")
-            if type(scale) not in (int, float) or not math.isfinite(scale):
-                raise ValueError(f"nonfinite or nonnumeric niri scale: {name}")
-            if abs(scale - expected[name]) > 0.0001:
-                raise ValueError(f"unexpected niri scale for {name}: {scale}")
             logical = out.get("logical")
             if not isinstance(logical, dict):
                 raise ValueError(f"missing logical output: {name}")
+            # niri msg --json outputs (pinned experimental #3800) stores the
+            # compositor scale under logical.scale, NOT as output.scale.
+            # Verified against failed CI artifact #12360805727 raw IPC JSON.
+            scale = logical.get("scale")
+            if type(scale) not in (int, float) or not math.isfinite(scale) or scale <= 0:
+                raise ValueError(f"nonfinite or nonnumeric niri logical scale: {name}")
+            if abs(scale - expected[name]) > 0.0001:
+                raise ValueError(f"unexpected niri logical scale for {name}: {scale}")
             dimension = (logical.get("width"), logical.get("height"))
             if any(type(x) is not int or x <= 0 for x in dimension):
                 raise ValueError(f"invalid logical geometry for {name}: {dimension}")
