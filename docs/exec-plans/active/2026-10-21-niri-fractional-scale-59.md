@@ -43,16 +43,16 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 ## Implementation slices
 
 - [x] Extend isolated native niri E2E and offline parser/negative tests; implementation committed, unverified until CI.
-- [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; repair same PR branch on failures.
+- [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; first exact-head run FAILED 7/8, real root cause fixed on same branch, new run pending.
 - [ ] Merge implementation through API only after verified, create independent archive PR with scoped README/evidence, verify its latest-head CI and squash merge, update Issue checkpoint.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | PENDING |
-| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | UNASSESSED |
-| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | PENDING |
+| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | PENDING (first exact-head suite success, parser corrected after) |
+| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | FAILED at scale-before due to wrong JSON field, fix pending CI |
+| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | FAILED 7/8 on initial head; revalidate fixed HEAD |
 | Physical scale/GPU/4K/hotplug | separate consented physical test | independent hardware proof | UNASSESSED |
 
 ## Decision gates
@@ -66,11 +66,12 @@ None for isolated experimental software rendering only. Explicit human opt-in an
 
 ## Deviations and discoveries
 
-None yet; new scale IPC behavior must be recorded from actual niri job output rather than assumed.
+- **First CI FAILED, preserved**: [run #39628759647](https://github.com/pkking/ezwallpaper/actions/runs/39628759647) at PR #78 HEAD `0fc28a5aa23a414782dc593e115dda2a74dc3b15`: 7/8 jobs SUCCESS, native Noctalia/niri E2E FAILED before scale change because harness read `output.scale`. [Failure artifact #12360805727](https://github.com/pkking/ezwallpaper/actions/runs/39628759647/artifacts/12360805727) raw `topology-scale-before.json` proves actual native niri structure nests `logical.scale=1.0` for both active outputs. The first nine preexisting virtual/pixel stages all reported 1.0 color fraction, but new scale stages not executed, `virtual_fractional_scale_verified=false`, and `wallpapers` cleanup was not separately recorded on this failing path. Never cite this as fractional-scale PASS.
+- Fixed JSON path to `logical.scale` in parser at commit `b13ff090a387753838efbbe7fa2b7cc39bbabda4`, and updated offline fixture to mirror actual niri output and reject synthetic top-level `scale` at `96a18d123853c841d7b61a693964bdb82632177e`. Retain expected scale values, logical geometry checks and >=0.90 pixel threshold; do not weaken validation. Re-run exact-HEAD CI and diagnose any further runtime differences.
 
 ## Resume from here
 
-Create a PR from `agent/niri-fractional-scale-e2e-59` linked to this plan and Issue #59. Inspect its exact-head offline and native E2E CI, diagnose failures from logs/artifacts on the same branch, and verify real scale and screenshots before API merge. Never claim physical validation.
+Review the exact final PR #78 HEAD and fresh CI after correcting `output.scale` to real `logical.scale`; inspect native niri E2E full traceback, 4 new screenshot PNG/PPM pairs, geometry JSON, original baselines and cleanup from fresh artifact. Repair any remaining native discrepancies in same branch, never merge without 8/8 and artifact evidence. Never claim physical validation.
 
 ## Completion
 
