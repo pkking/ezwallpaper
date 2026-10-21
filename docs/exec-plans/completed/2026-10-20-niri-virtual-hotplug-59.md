@@ -1,10 +1,10 @@
 # 2026-10-20-niri-virtual-hotplug-59: pinned experimental niri output lifecycle with native Noctalia
 
 Issue: #59
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-20
-Last checkpoint: 2026-10-20
+Last checkpoint: 2026-10-21
 
 ## Objective
 
@@ -37,25 +37,25 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 
 ## Acceptance criteria
 
-- [ ] Pure offline positive and negative tests prove one-output removal and two-output recreation topology acceptance/rejection and timeout fail-closed, with source-pin and isolated-session checks preserved.
-- [ ] The actual experimental niri compositor and native Noctalia under CI complete removal/recreation while remaining output renders unchanged, require no screenshot of absent output, then real two-output pixels and native path IPC after explicit reapplication.
-- [ ] Artifact includes native niri topology at every transition, real before/after screenshots (PNG and PPM), versions, complete logs, machine-readable verdict and original-ephemeral-baseline/process-cleanup checks. No false physical hotplug claim.
-- [ ] All final PR-head required checks and all applicable CI jobs PASS, final real artifacts independently inspected; failure evidence retained.
-- [ ] Issue #59 remains OPEN, all physical/released/4K/scaling/hotplug/lockscreen/PAM/SDDM/Plymouth remain UNASSESSED. Archive this plan only after final implementation CI and evidence are verified.
+- [x] Pure offline positive and negative tests prove one-output removal and two-output recreation topology acceptance/rejection and timeout fail-closed, with source-pin and isolated-session checks preserved.
+- [x] The actual experimental niri compositor and native Noctalia under CI complete removal/recreation while remaining output renders unchanged, require no screenshot of absent output, then real two-output pixels and native path IPC after explicit reapplication.
+- [x] Artifact includes native niri topology at every transition, real before/after screenshots (PNG and PPM), versions, complete logs, machine-readable verdict and original-ephemeral-baseline/process-cleanup checks. No false physical hotplug claim.
+- [x] All final PR-head required checks and all applicable CI jobs PASS, final real artifacts independently inspected; failure evidence retained.
+- [x] Issue #59 remains OPEN, all physical/released/4K/scaling/hotplug/lockscreen/PAM/SDDM/Plymouth remain UNASSESSED. Archive this plan only after final implementation CI and evidence are verified.
 
 ## Implementation slices
 
-- [x] 1. Extend pinned niri harness with strict topology transitions and virtual-output lifecycle capture; add offline rejection tests (implemented, CI result pending).
-- [ ] 2. Run exact-head native CI; inspect screenshot/IPC/topology/results/logs and repair actual failures on existing PR.
-- [ ] 3. Squash implementation via GitHub API only after evidence verification; independently archive and reconcile scoped README/technical documentation in a new PR, verify and merge it.
+- [x] 1. Extend pinned niri harness with strict topology transitions and virtual-output lifecycle capture; add offline rejection tests, verified in exact-head CI.
+- [x] 2. Run exact-head native CI; inspect screenshot/IPC/topology/results/logs and repair actual failures on existing PR.
+- [x] 3. Implementation PR #76 was squash-merged by the maintainer after exact-head CI/evidence verification; independent archive PR #77 reconciles README and technical evidence and requires its own final-head CI before merge.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline virtual topology | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | absent/reappeared map, unexpected outputs, timeout, wrong modes rejected | PENDING |
-| Real virtual lifecycle | Existing native Noctalia/niri GitHub Actions job in CI | stage snapshots, native IPC map + readback, missing-output capture rejected, baseline/cleanup | UNASSESSED |
-| Existing gates | 8 current GitHub Actions jobs at final exact PR HEAD | all SUCCESS, no skipped/failed jobs | PENDING |
+| Offline virtual topology | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | absent/reappeared map, unexpected outputs, timeout, wrong modes rejected | PASS — PR #76 head bc5e0fc, run 39459256776 |
+| Real virtual lifecycle | Existing native Noctalia/niri GitHub Actions job in CI | stage snapshots, native IPC map + readback, missing-output capture rejected, baseline/cleanup | PASS — virtual lifecycle only; artifact #12284395273 |
+| Existing gates | 8 current GitHub Actions jobs at final exact PR HEAD | all SUCCESS, no skipped/failed jobs | PASS — PR #76 exact HEAD `bc5e0fc0190ab4a32feede962260c877343cb53b`, CI #39459256776 8/8 SUCCESS |
 | Physical or released niri | Separate future opt-in/manual proof | physical source + display/4K/scaling/hotplug evidence | UNASSESSED |
 
 ## Decision gates
@@ -65,19 +65,21 @@ None for disposable nonroot CI-only experimental compositor tests; request human
 ## Evidence log
 
 - 2026-10-20: prior #74 final CI + artifact proves static dual native pixels only; #75 archive merged. niri upstream #3800 still OPEN/unmerged at pinned source.
-- 2026-10-20: implementation commits `d25fcfd74c75a0e9b0ed485e0c2d46710de26eff`, `3b293cb2f6170628c859b518d9cdfba772d7c10b` add native virtual removal/recreation with bounded topology polling and offline negative cases. **Not yet run in CI**; no virtual lifecycle result claimed.
+- 2026-10-20: implementation commits `d25fcfd74c75a0e9b0ed485e0c2d46710de26eff`, `3b293cb2f6170628c859b518d9cdfba772d7c10b` add native virtual removal/recreation with bounded topology polling and offline negative cases; tested at final PR #76 HEAD `bc5e0fc0190ab4a32feede962260c877343cb53b`.
+- 2026-10-20 17:08 UTC: [Run #39459256776](https://github.com/pkking/ezwallpaper/actions/runs/39459256776) for exact PR #76 HEAD completed **8/8 SUCCESS**. Real native CI job log contains JSON `status: PASS`, `virtual_output_lifecycle_verified: true`, `hotplug_verified: false`, source niri commit `7fd585dd44ed67644977dd9561bb6e8b3837f8f7`, native Noctalia v5.2.1 `6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4`. The `virtual_output_events` show native IPC topology `(HEADLESS-1 320×240, HEADLESS-2 240×320)` → `(HEADLESS-1 320×240)` → restored two-output layout. All nine real framebuffer stages recorded `pixel_fraction: 1.0`: initial red/blue, simultaneous red/blue, rotated green/unchanged blue, green during HEADLESS-2 removal and green/blue after re-creation. Native IPC path acknowledgments were asserted, absent-output grim capture expected to fail; result cleanup records `noctalia=TERMINATED`, `niri=TERMINATED`, `wallpapers=ORIGINAL_EPHEMERAL_BASELINE`. Real screenshot PNG/PPM, JSON, topology and logs retained in [artifact #12284395273](https://github.com/pkking/ezwallpaper/actions/runs/39459256776/artifacts/12284395273). This is **virtual** output lifecycle only; no physical display was attached.
+- 2026-10-21 03:35 UTC: User merged [PR #76](https://github.com/pkking/ezwallpaper/pull/76); GitHub API verified `merged: true` and master merge commit `aa0647a3c5349306c61332c25e44820bb97e7573`.
 
 ## Deviations and discoveries
 
-The original static two-output E2E already has a pinned build and native session isolation. Reuse it, add bounded IPC transition checks, and demand explicit blue re-apply after recreation rather than inferring Noctalia persistence. Preserve failures and new upstream discoveries here rather than silently changing acceptance.
+The user merged implementation #76 after full CI and real evidence inspection. The archive remains a separate completion-only PR; the original static two-output E2E already has a pinned build and native session isolation. Reuse it, add bounded IPC transition checks, and demand explicit blue re-apply after recreation rather than inferring Noctalia persistence. Preserve failures and new upstream discoveries here rather than silently changing acceptance.
 
 ## Resume from here
 
-Create linked implementation PR for `agent/niri-virtual-hotplug-noctalia-59`; inspect its exact-head CI including offline topology suite and real niri/Noctalia artifact. Repair any failures on same branch and never claim physical hotplug.
+After archiving this plan and evidence documentation, verify the **new archive PR** exact-head CI (all eight jobs SUCCESS) and then squash merge through the GitHub API. After merge verify master and update Issue #59 checkpoint. Continue unassessed physical/released features only under separate scoped opt-in work.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `aa0647a3c5349306c61332c25e44820bb97e7573` (PR #76 merge; final tested HEAD `bc5e0fc0190ab4a32feede962260c877343cb53b`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39459256776 (8/8 SUCCESS)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39459256776/artifacts/12284395273 (native experimental niri/Noctalia virtual lifecycle logs, screenshot PNG/PPM, topology, readback/cleanup)
 Remaining unassessed items: released niri virtual outputs; physical 4K/GPU/portrait/mixed scaling, actual monitor hotplug, lockscreen/PAM, SDDM/Plymouth.

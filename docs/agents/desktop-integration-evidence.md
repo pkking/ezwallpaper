@@ -193,6 +193,23 @@ The actual screenshots were independently checked after CI: the six fixture PNG/
 
 **Strict boundary:** `PIXEL_VERIFIED` means only **native Noctalia v5.2.1 + niri PR #3800 at pinned experimental source SHA** inside this disposable dual-headless compositor. Released niri, real physical 4K/portrait/mixed DPI, GPU, fractional scaling, physical hotplug, PAM/lockscreen, SDDM/Plymouth and day-to-day desktop lifecycle are all **UNASSESSED**. No fork was distributed or approved as a supported release. Keep [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) open for those independently verified tiers.
 
+## Experimental niri PR #3800 native Noctalia virtual-output lifecycle CI (VERIFIED)
+
+The **[implementation PR #76](https://github.com/pkking/ezwallpaper/pull/76)** extends the prior static niri framebuffer test with a genuine *virtual output* removal/re-creation event while **native Noctalia v5.2.1 remains running**. The upstream compositor is built only for disposable CI from the **unmerged experimental** [niri PR #3800](https://github.com/niri-wm/niri/pull/3800), pinned at `7fd585dd44ed67644977dd9561bb6e8b3837f8f7`. Do not infer that production niri supports this feature. The test never accesses a physical monitor, interactive login session or privileged desktop.
+
+**Provenance:** PR #76 tested HEAD `bc5e0fc0190ab4a32feede962260c877343cb53b`, merged to master `aa0647a3c5349306c61332c25e44820bb97e7573` on 2026-10-21, [CI #39459256776](https://github.com/pkking/ezwallpaper/actions/runs/39459256776) all **8/8 SUCCESS**. The native GitHub Actions job log contains real fixture verdict JSON `status: PASS`, `virtual_output_lifecycle_verified: true`, and `hotplug_verified: false`. [Artifact #12284395273](https://github.com/pkking/ezwallpaper/actions/runs/39459256776/artifacts/12284395273) retains machine-readable stages, native niri/Noctalia source SHAs, three IPC topology snapshots, event logs, real PNG/PPM frames and restoration/owned-process cleanup evidence.
+
+| Native observation | HEADLESS-1 | HEADLESS-2 |
+|---|---|---|
+| Before virtual removal | 320×240, green wallpaper | 240×320, blue wallpaper |
+| After `niri msg remove-virtual-output HEADLESS-2` | 320×240 remains, real green pixels at 1.0 sampled color fraction | Absent from niri IPC; `grim -o HEADLESS-2` must fail |
+| After `niri msg create-virtual-output` at 240×320 and explicit blue reapplication | Green pixels and exact Noctalia path | Blue pixels and exact Noctalia path |
+| After stopping owned Noctalia | Original ephemeral compositor background restored | Original ephemeral compositor background restored |
+
+The original red/blue, simultaneous red/blue, green/blue rotation, removal and recreation produce **nine** separate real framebuffer stage results, all recording `pixel_fraction: 1.0`. The hard-gated threshold is unchanged at `>=0.90` with RGB tolerance ±9. The niri IPC map is required to transition **two named active outputs → HEADLESS-1 only → two named active outputs**, with geometry independently checked. Missing native acknowledgments, unexpected third output, stale topology, incorrectly capturable removed output, wrong native Noctalia IPC path or mismatched PNG/PPM pixels fail the CI job. Native shell and compositor must terminate and original test-owned background baselines must be restored; the recorded result confirms `cleanup.noctalia=TERMINATED`, `cleanup.niri=TERMINATED`, `cleanup.wallpapers=ORIGINAL_EPHEMERAL_BASELINE`.
+
+**Do not conflate virtual lifecycle with physical hotplug.** This CI gate explicitly re-applies the blue wallpaper when the second virtual output is re-created; it does **not** establish Noctalia's automatic wallpaper persistence across plug events. Official/released niri, physical 4K or mixed-resolution/GPU/DPI/scaling, hardware hotplug, lockscreen/PAM, SDDM/Plymouth and persistent daily-user sessions remain **UNASSESSED**. [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) stays OPEN.
+
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
 **Scope:** a user-invoked check in a disposable, interactive niri session; it is not an unattended CI claim or evidence for every physical display. The helper tests the native Noctalia v5 path setter and then independently samples actual `grim` framebuffer PPM bytes for **two named outputs**. A path match without matching screenshot pixels is a failure, not success.
