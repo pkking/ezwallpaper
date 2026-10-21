@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import stat
@@ -212,6 +213,94 @@ def virtual_output_lifecycle(binary: Path, fixtures: dict[str, Path],
                                      "pixel_fraction": round(ratio, 4)})
 
 
+def fractional_scale_from_json(data: bytes, expected: dict[str, float]) -> dict:
+    """Validate native niri physical modes, scale and logical size together.
+
+    No command exit, cached compositor state or mock acknowledgement counts as
+    a fractional-scale result.
+    """
+    physical = niri_topology_from_json(data, GEOMETRY)
+    try:
+        outputs = json.loads(data)
+        if set(expected) != set(GEOMETRY):
+            raise ValueError("expected exactly two explicitly named scales")
+        topology = {}
+        for name, mode in physical.items():
+            out = outputs[name]
+            scale = out.get("scale")
+            if type(scale) not in (int, float) or not math.isfinite(scale):
+                raise ValueError(f"nonfinite or nonnumeric niri scale: {name}")
+            if abs(scale - expected[name]) > 0.0001:
+                raise ValueError(f"unexpected niri scale for {name}: {scale}")
+            logical = out.get("logical")
+            if not isinstance(logical, dict):
+                raise ValueError(f"missing logical output: {name}")
+            dimension = (logical.get("width"), logical.get("height"))
+            if any(type(x) is not int or x <= 0 for x in dimension):
+                raise ValueError(f"invalid logical geometry for {name}: {dimension}")
+            size = (round(mode[0] / scale), round(mode[1] / scale))
+            if dimension != size:
+                raise ValueError(f"unexpected logical geometry for {name}: {dimension} != {size}")
+            topology[name] = {"mode": list(mode), "logical": list(dimension), "scale": scale}
+        return topology
+    except (ValueError, TypeError, KeyError, AttributeError, ZeroDivisionError) as error:
+        raise E2EFailure(f"invalid niri fractional-scale topology: {error}") from error
+
+
+def observe_fractional_scale(env: dict, expected: dict[str, float],
+                             stage: str, artifact: Path, timeout: float = 20) -> dict:
+    deadline, last = time.monotonic() + timeout, "no native IPC outputs"
+    while time.monotonic() < deadline:
+        try:
+            raw = get_outputs(env)
+            (artifact / f"topology-{stage}.json").write_bytes(raw + b"\\n")
+            return fractional_scale_from_json(raw, expected)
+        except E2EFailure as error:
+            last = str(error)
+        time.sleep(0.2)
+    raise E2EFailure(f"native niri fractional scale {stage} did not converge: {last}")
+
+
+def virtual_fractional_scale(binary: Path, fixtures: dict[str, Path],
+                             artifact: Path, env: dict, result: dict) -> None:
+    """Render both true compositor outputs after changing only first scale.
+
+    Does not establish GPU, physical mixed-DPI, or released-niri behavior.
+    """
+    baseline_scales = {"HEADLESS-1": 1.0, "HEADLESS-2": 1.0}
+    observe_fractional_scale(env, baseline_scales, "scale-before", artifact)
+    trace = artifact / "fractional-scale-events.log"
+    with trace.open("w", encoding="utf-8") as log:
+        changed = run(["niri", "msg", "output", "HEADLESS-1", "scale", "1.25"],
+                      env=env, timeout=8)
+        log.write("scale 1.25: " + changed.stdout.decode(errors="replace") + "\\n")
+        log.flush()
+        topology = observe_fractional_scale(env, {"HEADLESS-1": 1.25,
+                                                   "HEADLESS-2": 1.0},
+                                            "scale-125", artifact)
+        result["fractional_scale_events"].append({"stage": "scaled", "topology": topology})
+        for output, color in (("HEADLESS-1", "green"), ("HEADLESS-2", "blue")):
+            assert_readback(native_get(output, env), fixtures[color])
+            ratio = capture(output, "scale-125", artifact, env, RGB[color],
+                            threshold=0.90)
+            result["stages"].append({"stage": "scale-125", "output": output,
+                                     "color": color, "ipc_path_verified": True,
+                                     "pixel_fraction": round(ratio, 4)})
+        reset = run(["niri", "msg", "output", "HEADLESS-1", "scale", "1.0"],
+                    env=env, timeout=8)
+        log.write("scale reset 1.0: " + reset.stdout.decode(errors="replace") + "\\n")
+        log.flush()
+        restored = observe_fractional_scale(env, baseline_scales, "scale-reset", artifact)
+        result["fractional_scale_events"].append({"stage": "reset", "topology": restored})
+        for output, color in (("HEADLESS-1", "green"), ("HEADLESS-2", "blue")):
+            assert_readback(native_get(output, env), fixtures[color])
+            ratio = capture(output, "scale-reset", artifact, env, RGB[color],
+                            threshold=0.90)
+            result["stages"].append({"stage": "scale-reset", "output": output,
+                                     "color": color, "ipc_path_verified": True,
+                                     "pixel_fraction": round(ratio, 4)})
+
+
 def baseline(output: str, tag: str, folder: Path, env: dict) -> tuple[int, int, int]:
     screenshot = folder / f"{tag}-{output}.ppm"
     run(["grim", "-o", output, "-t", "ppm", str(screenshot)], env=env, timeout=8)
@@ -231,6 +320,8 @@ def execute(binary: Path, artifact: Path) -> int:
         "tested_niri": True, "released_niri_verified": False,
         "physical_displays_verified": False, "hotplug_verified": False,
         "virtual_output_lifecycle_verified": False, "virtual_output_events": [],
+        "virtual_fractional_scale_verified": False, "physical_fractional_scale_verified": False,
+        "fractional_scale_events": [],
         "lockscreen_verified": False, "gpu_4k_verified": False,
         "noctalia_version": None, "niri_version": None, "niri_source_commit": None,
         "noctalia_source_commit": os.getenv("NOCTALIA_SOURCE_SHA"),
@@ -290,6 +381,7 @@ def execute(binary: Path, artifact: Path) -> int:
                                                  "color": color, "ipc_path_verified": True,
                                                  "pixel_fraction": round(ratio, 4)})
                     virtual_output_lifecycle(binary, fixtures, artifact, env, result)
+                    virtual_fractional_scale(binary, fixtures, artifact, env, result)
                 owned_stop(shell, "Noctalia")
                 shell = None
                 result["cleanup"]["noctalia"] = "TERMINATED"
@@ -297,6 +389,7 @@ def execute(binary: Path, artifact: Path) -> int:
                     capture(name, "baseline-after", artifact, env, rgb, threshold=THRESHOLD)
                 result["cleanup"]["wallpapers"] = "ORIGINAL_EPHEMERAL_BASELINE"
                 result["virtual_output_lifecycle_verified"] = True
+                result["virtual_fractional_scale_verified"] = True
                 result["status"] = "PASS"
     except Exception as error:
         result["reason"] = f"{type(error).__name__}: {error}"
