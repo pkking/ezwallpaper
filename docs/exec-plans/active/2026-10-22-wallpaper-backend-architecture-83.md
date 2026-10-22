@@ -37,11 +37,11 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/README.md; 
 
 ## Acceptance criteria (this architecture PR)
 
-- [ ] New ADR 0010 records dependency directions, object-safe adapter interface, capability discrimination (global-only vs per-output), output IDs, apply evidence levels, backend lifecycle, detection policy and explicit no-fallback semantics; decision explicitly grounded in #83.
-- [ ] Canonical architecture.svg and docs/architecture.md are updated **together in this PR**, accurately separating existing CLI integration from **planned** adapter trait+registry+individual implementations.
-- [ ] README links ADR 0010 and explains current Noctalia-only rotation versus planned portable migration with honest compatibility boundary.
+- [x] New ADR 0010 records dependency directions, object-safe adapter interface, capability discrimination (global-only vs per-output), output IDs, apply evidence levels, backend lifecycle, detection policy and explicit no-fallback semantics; decision explicitly grounded in #83.
+- [x] Canonical architecture.svg and docs/architecture.md are updated **together in this PR**, accurately separating existing CLI integration from **planned** adapter trait+registry+individual implementations.
+- [x] README links ADR 0010 and explains current Noctalia-only rotation versus planned portable migration with honest compatibility boundary.
 - [ ] Exact-head eight CI jobs including agent plan/diagram integrity, fmt, Clippy, tests and Windows/macOS all SUCCESS; no observed result claimed before running.
-- [ ] No modifications to Rust runtime code, default CLI behavior, storage or timers in this decision slice.
+- [x] No modifications to Rust runtime code, default CLI behavior, storage or timers in this decision slice.
 
 ## Follow-on implementation slices (new linked PRs under #83; not part of this PR)
 
@@ -64,6 +64,7 @@ User explicitly approved **Adapter Pattern** and rejected a single large desktop
 
 ## Evidence log
 
+- 2026-10-22: ADR 0010 written at docs/adr/0010-wallpaper-backend-adapter-contract.md in commit `6b17df5e357fbe715df5237409c488db1fff3aa8`; canonical SVG updated with dashed PLANNED interface/adapters and existing implemented CLI at `4db93c3e813535b3792e910682f346e3d92d7808`; architecture.md synchronized at `cc9aefb587edae4e5a080b886ee22f2c76744b99`; README linked and accurately scoped in commit `884ff6ece2995fefe73bb889f7940e3f662bb74e`. No Rust source/CLI/runtime change and no CI result yet.
 - 2026-10-22: repo source inspection at master `950370647a74a24917b5cc1342eee8917ef3ddc9`, #82 HEAD `aa6aa64c5e3f9ba0b8d348f6844a536e1a63eafd` CI still in progress. User approved adapter pattern; created Issue #83 and dedicated branch from master. No new architecture PR CI yet.
 
 ## Deviations and discoveries
@@ -72,7 +73,7 @@ None. If current #82 changes the pre-migration rotation contract, rebase/scoped 
 
 ## Resume from here
 
-Commit ADR 0010, synchronized architecture.svg, architecture.md and README to this dedicated branch; open single-Issue PR; inspect exact-head CI and correct same branch if needed. Do not start B1 code while #82 is unmerged.
+Open architecture-only PR with Issue #83 and this active plan metadata, then inspect its exact HEAD eight-job CI and check that changed files include ADR 0010 plus canonical architecture.svg and architecture.md. Fix only within this branch if needed, merge after success and report the implementation B1 follow-up as PLANNED (do not silently claim port exists).
 
 ## Completion
 
