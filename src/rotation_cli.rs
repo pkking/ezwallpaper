@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
 
-use crate::backend::{require_acknowledged_outputs, registry, ApplyStatus, WallpaperBackend};
+use crate::backend::{registry, require_acknowledged_outputs, ApplyStatus, WallpaperBackend};
 
 const MAX_PROFILE_BYTES: u64 = 256 * 1024;
 const MAX_STATE_BYTES: u64 = 2 * 1024 * 1024;
@@ -431,7 +431,11 @@ fn run_with_backend_interval(
         let selected = backend
             .as_deref_mut()
             .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
-        let names = profile.outputs.iter().map(|o| o.name.clone()).collect::<Vec<_>>();
+        let names = profile
+            .outputs
+            .iter()
+            .map(|o| o.name.clone())
+            .collect::<Vec<_>>();
         require_acknowledged_outputs(selected, &names)?;
     }
     // The on-disk state format stays exactly schema v1. Only non-default
@@ -986,8 +990,12 @@ mod tests {
             attempted: bool,
         }
         impl WallpaperBackend for Ineligible {
-            fn id(&self) -> &'static str { "test-ineligible" }
-            fn capabilities(&self) -> BackendCapabilities { self.caps }
+            fn id(&self) -> &'static str {
+                "test-ineligible"
+            }
+            fn capabilities(&self) -> BackendCapabilities {
+                self.caps
+            }
             fn apply(&mut self, _name: &str, _path: &Path) -> Result<ApplyStatus> {
                 self.attempted = true;
                 bail!("ineligible backend must not apply")
@@ -1004,13 +1012,23 @@ mod tests {
             },
         ] {
             let (_dir, profile, state) = fixture();
-            let mut backend = Ineligible { caps, attempted: false };
+            let mut backend = Ineligible {
+                caps,
+                attempted: false,
+            };
             let result = run_with_backend_interval(
-                &profile, &state, None, false, true,
+                &profile,
+                &state,
+                None,
+                false,
+                true,
                 RotationClock::simulated(60, 3_600),
                 Some(&mut backend),
             );
-            assert!(result.is_err(), "ineligible backend cannot serve multi-output rotation");
+            assert!(
+                result.is_err(),
+                "ineligible backend cannot serve multi-output rotation"
+            );
             assert!(!backend.attempted);
             assert!(!state.exists());
             assert!(!state_lock_path(&state).exists());
@@ -1029,7 +1047,11 @@ mod tests {
         fs::write(&profile, changed).expect("rewrite fixture");
         let mut backend = NoctaliaBackend;
         let result = run_with_backend_interval(
-            &profile, &state, None, false, true,
+            &profile,
+            &state,
+            None,
+            false,
+            true,
             RotationClock::simulated(60, 3_600),
             Some(&mut backend),
         );
