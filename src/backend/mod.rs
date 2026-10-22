@@ -18,12 +18,22 @@ pub enum ApplyStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputScope {
+    /// Reserved for future global wallpaper adapters, exercised by offline tests.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "global-only adapter is a future independent PR")
+    )]
     GlobalOnly,
     PerOutput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Acknowledgement {
+    /// Reserved for adapters that cannot satisfy acknowledged rotation.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "submit-only adapter is a future independent PR")
+    )]
     CommandAccepted,
     ExactPathReadback,
 }
