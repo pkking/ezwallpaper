@@ -346,7 +346,10 @@ fn run_with_adapter_interval(
     // periods use a qualified identity, so old hourly state remains readable;
     // sharing the same --state file across periods fails closed.
     if interval_minutes != 60 {
-        profile.identity = format!("ezwallpaper-interval:{interval_minutes}:{}", profile.identity);
+        profile.identity = format!(
+            "ezwallpaper-interval:{interval_minutes}:{}",
+            profile.identity
+        );
     }
     let epoch = epoch_override.map_or_else(
         || match clock_seconds {
