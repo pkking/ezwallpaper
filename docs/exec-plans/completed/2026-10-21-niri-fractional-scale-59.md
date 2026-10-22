@@ -1,10 +1,10 @@
 # 2026-10-21-niri-fractional-scale-59: native Noctalia virtual fractional-scale framebuffer evidence
 
 Issue: #59
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-21
-Last checkpoint: 2026-10-21
+Last checkpoint: 2026-10-22
 
 ## Objective
 
@@ -34,25 +34,25 @@ AGENTS.md; README.md; Cargo.toml; docs/architecture.md; docs/adr/0001-core-cli-b
 
 ## Acceptance criteria
 
-- [ ] Offline fail-closed parser tests accept exact before/after modes/scales/logical dimensions and reject stale scale, bool/NaN/inf/string, inactive/missing/third output and wrong logical/physical mode.
-- [ ] Native test transitions scale 1.0 → 1.25 → 1.0, observes niri IPC, native Noctalia paths and independent actual PNG+PPM screenshots on both outputs at both stages.
-- [ ] Original physical-free virtual lifecycle and clean baseline/owned-process teardown remain passing. The CI verdict never equates virtual fractional scaling to physical mixed-DPI support.
-- [ ] Final PR exact-head 8/8 CI including required checks SUCCESS; preserve raw artifacts and independently inspect stages/JSON/logs before merge.
-- [ ] Record source SHAs, real CI links and classification; keep Issue #59 OPEN and real 4K/GPU, physical mixed DPI/scaling/hotplug, lockscreen/PAM, SDDM/Plymouth UNASSESSED; archive in independent completion PR.
+- [x] Offline fail-closed parser tests accept exact before/after modes/scales/logical dimensions and reject stale scale, bool/NaN/inf/string, inactive/missing/third output and wrong logical/physical mode.
+- [x] Native test transitions scale 1.0 → 1.25 → 1.0, observes niri IPC, native Noctalia paths and independent actual PNG+PPM screenshots on both outputs at both stages.
+- [x] Original physical-free virtual lifecycle and clean baseline/owned-process teardown remain passing. The CI verdict never equates virtual fractional scaling to physical mixed-DPI support.
+- [x] Final PR exact-head 8/8 CI including required checks SUCCESS; preserve raw artifacts and independently inspect stages/JSON/logs before merge.
+- [x] Record source SHAs, real CI links and classification; keep Issue #59 OPEN and real 4K/GPU, physical mixed DPI/scaling/hotplug, lockscreen/PAM, SDDM/Plymouth UNASSESSED; archive in independent completion PR.
 
 ## Implementation slices
 
-- [x] Extend isolated native niri E2E and offline parser/negative tests; implementation committed, unverified until CI.
-- [ ] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; first and second exact-head runs FAILED 7/8; second helper raw IPC assertion fixed in commit `9be19b4`; new exact-head run pending.
-- [ ] Merge implementation through API only after verified, create independent archive PR with scoped README/evidence, verify its latest-head CI and squash merge, update Issue checkpoint.
+- [x] Extend isolated native niri E2E and offline parser/negative tests; latest-head offline 15 helper tests passed in #39658921993.
+- [x] Run exact-head CI and inspect actual native screenshot/IPC/cleanup evidence; failures retained in #39628759647 and #39643122692, final HEAD `746ae067fa8922d860b193d202279b9d408388b7` passed #39658921993 8/8; raw native artifact #12376415061 independently inspected.
+- [x] Merge implementation through API only after verified (squash merged to `6f642add095da37aad871b02eaab6607d8a4d06d`); independent documentation/archive PR and its latest-head CI remain separate merge gate.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | FAILED 14/15 on second run #39643122692; saved raw IPC assertion corrected, new exact-head CI pending |
-| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | UNASSESSED after second run stopped in pure helpers; native fractional frames still require successful rerun |
-| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | FAILED 7/8 on first and second HEADs; third exact-head run pending |
+| Pure IPC parser | `python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v` | correct scale/logical mode accepted and malformed/stale rejected | PASS — all 15 offline helpers in exact HEAD #39658921993 |
+| Native fractional virtual test | pinned niri + Noctalia v5 GitHub Actions job | real IPC, 4 new PPM/PNG screenshots and cleanup | PASS — verified in real native artifact #12376415061 at exact HEAD #39658921993 |
+| Full PR-head CI | all existing 8 jobs | all SUCCESS at same latest SHA | PASS — 8/8 SUCCESS, latest HEAD `746ae067fa8922d860b193d202279b9d408388b7`, run #39658921993 |
 | Physical scale/GPU/4K/hotplug | separate consented physical test | independent hardware proof | UNASSESSED |
 
 ## Decision gates
@@ -62,9 +62,11 @@ None for isolated experimental software rendering only. Explicit human opt-in an
 ## Evidence log
 
 - 2026-10-21: prior niri virtual lifecycle #76 and archive #77 merged; fractional scaling proof is not yet run. This plan preceded code changes.
-- 2026-10-21: implementation commits `60495a5b0f7e612d74278ac16c49134e3f76c8d7`, `4da9d95cefe42875286257c9ddb7462b73afa0af`, `33b239e875bee06b36b9fbcb1ad0343131cbaa74` add real 1.25→1.0 virtual scale + pixel captures and offline fail-closed IPC/geometry tests. **CI not yet run**; no fractional virtual render result claimed.
+- 2026-10-21: implementation commits `60495a5b0f7e612d74278ac16c49134e3f76c8d7`, `4da9d95cefe42875286257c9ddb7462b73afa0af`, `33b239e875bee06b36b9fbcb1ad0343131cbaa74` added real 1.25→1.0 virtual scale + pixel captures and offline fail-closed IPC/geometry tests. Their initial CI failures and corrections are retained below; final-head result is documented separately.
 
 ## Deviations and discoveries
+
+**Final validation after corrections:** [PR #78](https://github.com/pkking/ezwallpaper/pull/78) HEAD `746ae067fa8922d860b193d202279b9d408388b7` passed [run #39658921993](https://github.com/pkking/ezwallpaper/actions/runs/39658921993) 8/8 SUCCESS and all eight checks; 15/15 offline helpers. [Artifact #12376415061](https://github.com/pkking/ezwallpaper/actions/runs/39658921993/artifacts/12376415061) contains niri IPC topologies `topology-scale-before.json` (both 1.0), `topology-scale-125.json` (HEADLESS-1 physical 320x240 / logical 256x192 / scale 1.25 and HEADLESS-2 unchanged 240x320 / scale 1.0), `topology-scale-reset.json` (both 1.0); four new scale/reset pairs of PNG and PPM match pixel for pixel and fixture green/blue at all sampled locations (1.0 vs 0.90 threshold), 13 total native framebuffer stages, per-output IPC readback, original before/after ephemeral baseline bytes identical and process groups TERMINATED, result `status: PASS`, `virtual_fractional_scale_verified: true`, `physical_fractional_scale_verified: false`, `hotplug_verified: false`, `released_niri_verified: false`. Source pins: niri PR #3800 `7fd585dd44ed67644977dd9561bb6e8b3837f8f7`, Noctalia v5.2.1 `6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4`. On 2026-10-22 UTC direct GitHub API squash merged PR #78 as `6f642add095da37aad871b02eaab6607d8a4d06d`; master verified. No physical tests occurred; keep all such validation UNASSESSED.
 
 - **First CI FAILED, preserved**: [run #39628759647](https://github.com/pkking/ezwallpaper/actions/runs/39628759647) at PR #78 HEAD `0fc28a5aa23a414782dc593e115dda2a74dc3b15`: 7/8 jobs SUCCESS, native Noctalia/niri E2E FAILED before scale change because harness read `output.scale`. [Failure artifact #12360805727](https://github.com/pkking/ezwallpaper/actions/runs/39628759647/artifacts/12360805727) raw `topology-scale-before.json` proves actual native niri structure nests `logical.scale=1.0` for both active outputs. The first nine preexisting virtual/pixel stages all reported 1.0 color fraction, but new scale stages not executed, `virtual_fractional_scale_verified=false`, and `wallpapers` cleanup was not separately recorded on this failing path. Never cite this as fractional-scale PASS.
 - Fixed JSON path to `logical.scale` in parser at commit `b13ff090a387753838efbbe7fa2b7cc39bbabda4`, and updated offline fixture to mirror actual niri output and reject synthetic top-level `scale` at `96a18d123853c841d7b61a693964bdb82632177e`. Retain expected scale values, logical geometry checks and >=0.90 pixel threshold; do not weaken validation. Re-run exact-HEAD CI and diagnose any further runtime differences.
@@ -73,11 +75,11 @@ None for isolated experimental software rendering only. Explicit human opt-in an
 
 ## Resume from here
 
-Inspect fresh exact-head CI after correcting both the parser `output.scale` and saved raw IPC assertion to `logical.scale`; verify all 15 offline helpers pass, inspect native niri E2E full traceback, 4 new screenshot PNG/PPM pairs, geometry JSON, original baselines and cleanup from fresh artifact. Repair any remaining native discrepancies in same branch, never merge without 8/8 and artifact evidence. Never claim physical validation.
+Verify this completion-only archive PR's own **current latest HEAD** CI 8/8 SUCCESS, review docs and exact artifact links, and squash merge with GitHub API `expected_head_sha`. Verify `master` contains this completed plan and lacks the active path, publish Issue #59 checkpoint keeping physical/released features UNASSESSED and Issue OPEN.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `6f642add095da37aad871b02eaab6607d8a4d06d` (implementation PR #78 squash merge; tested HEAD `746ae067fa8922d860b193d202279b9d408388b7`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39658921993 (8/8 SUCCESS at exact HEAD)
+E2E artifact: https://github.com/pkking/ezwallpaper/actions/runs/39658921993/artifacts/12376415061 (raw IPC topology, real PNG/PPM, JSON result, Noctalia/niri logs and baseline cleanup)
 Remaining unassessed items: released niri, physical 4K/GPU/mixed DPI/scaling/hotplug, lockscreen/PAM, SDDM/Plymouth.
