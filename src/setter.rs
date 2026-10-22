@@ -1,10 +1,13 @@
 //! Desktop integration adapter discovery. Pure detection can be tested headlessly.
 use anyhow::{anyhow, bail, Context, Result};
+use crate::backend::command_available;
+use crate::backend::noctalia::{apply_noctalia, noctalia_ipc, validate_connector};
+pub use crate::backend::ApplyStatus;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Setter {
@@ -104,14 +107,6 @@ impl Adapter {
             Self::Unavailable => "unavailable",
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ApplyStatus {
-    Submitted,
-    LaunchedUnverified,
-    /// Readback matches the requested path; actual compositor pixels are unassessed.
-    PathObserved,
 }
 
 /// The result describes *available integration paths*, not a proven wallpaper change.
@@ -313,77 +308,6 @@ impl Capability {
     }
 }
 
-/// Output identifiers must be a single IPC token, not arbitrary command fragments.
-fn validate_connector(connector: &str) -> Result<()> {
-    if connector.is_empty()
-        || !connector
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
-    {
-        bail!("invalid Noctalia output connector: expected a single alphanumeric/.-_ token");
-    }
-    Ok(())
-}
-
-/// Bounded execution; a v5 CLI must be reachable, not merely installed.
-fn noctalia_ipc(args: &[&str]) -> Result<String> {
-    let mut child = Command::new("noctalia")
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .context("failed to launch Noctalia v5 IPC")?;
-    let deadline = Instant::now() + Duration::from_secs(5);
-    loop {
-        if child
-            .try_wait()
-            .context("failed to poll Noctalia IPC")?
-            .is_some()
-        {
-            let result = child
-                .wait_with_output()
-                .context("failed to read Noctalia IPC")?;
-            if !result.status.success() {
-                bail!("Noctalia IPC exited with status {}", result.status);
-            }
-            return String::from_utf8(result.stdout)
-                .context("Noctalia IPC returned non-UTF8 output");
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            bail!("Noctalia IPC timed out after 5 seconds");
-        }
-        thread::sleep(Duration::from_millis(20));
-    }
-}
-
-fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
-    let path_str = path
-        .to_str()
-        .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
-    // v5 IPC joins argv tokens into a string; line endings cannot be compared
-    // safely against the wallpaper-get single-line response.
-    if path_str.contains('\n') || path_str.contains('\r') {
-        bail!("Noctalia wallpaper paths cannot contain newlines");
-    }
-    let mut set_args = vec!["msg", "wallpaper-set"];
-    let mut get_args = vec!["msg", "wallpaper-get"];
-    if let Some(connector) = output {
-        validate_connector(connector)?;
-        set_args.push(connector);
-        get_args.push(connector);
-    }
-    set_args.push(path_str);
-    noctalia_ipc(&set_args)?;
-    let observed = noctalia_ipc(&get_args)?;
-    if observed.trim_end_matches(&['\r', '\n'][..]) != path_str {
-        bail!("Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)");
-    }
-    Ok(())
-}
-
 fn file_uri(path: &Path) -> Result<String> {
     url::Url::from_file_path(path)
         .map(|uri| uri.to_string())
@@ -445,30 +369,6 @@ fn checked_command(command: &str, args: &[&str]) -> Result<()> {
         bail!("{} exited with status {}", command, result);
     }
     Ok(())
-}
-
-fn command_available(command: &str) -> bool {
-    let path = match env::var_os("PATH") {
-        Some(path) => path,
-        None => return false,
-    };
-    env::split_paths(&path).any(|folder: PathBuf| {
-        let candidate = folder.join(command);
-        match candidate.metadata() {
-            Ok(metadata) if metadata.is_file() => {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    metadata.permissions().mode() & 0o111 != 0
-                }
-                #[cfg(not(unix))]
-                {
-                    true
-                }
-            }
-            _ => false,
-        }
-    })
 }
 
 #[cfg(test)]
