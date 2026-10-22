@@ -346,7 +346,7 @@ fn run_with_adapter_interval(
     // periods use a qualified identity, so old hourly state remains readable;
     // sharing the same --state file across periods fails closed.
     if interval_minutes != 60 {
-        profile.identity = format!("{}#interval-minutes={interval_minutes}", profile.identity);
+        profile.identity = format!("ezwallpaper-interval:{interval_minutes}:{}", profile.identity);
     }
     let epoch = epoch_override.map_or_else(
         || match clock_seconds {
@@ -842,8 +842,24 @@ mod tests {
             serde_json::from_slice(&fs::read(&alternate).expect("nondefault state"))
                 .expect("version 1");
         assert_eq!(tagged.schema_version, 1);
-        assert!(tagged.profile.ends_with("#interval-minutes=30"));
+        assert!(tagged.profile.starts_with("ezwallpaper-interval:30:"));
         assert_eq!(tagged.outputs["DP-1"].last_epoch, Some(2));
+        // A real profile path ending in an old-style suffix can never alias
+        // the tagged interval identity, which has a non-path prefix.
+        let colliding_filename = profile.with_file_name("profile.json#interval-minutes=30");
+        fs::copy(&profile, &colliding_filename).expect("second profile with suffix-like name");
+        assert!(run_with_adapter_interval(
+            &colliding_filename,
+            &alternate,
+            None,
+            false,
+            false,
+            60,
+            Some(3_600),
+            |_, _| panic!("distinct canonical profile must not access tagged state"),
+        )
+        .is_err());
+
         assert!(run_with_adapter_interval(
             &profile,
             &alternate,
