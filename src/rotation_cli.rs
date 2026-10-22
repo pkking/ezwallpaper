@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
 
-use crate::setter::{ApplyStatus, Capability, Setter};
+use crate::backend::{require_acknowledged_outputs, registry, ApplyStatus, WallpaperBackend};
 
 const MAX_PROFILE_BYTES: u64 = 256 * 1024;
 const MAX_STATE_BYTES: u64 = 2 * 1024 * 1024;
@@ -313,17 +313,20 @@ pub fn run_rotation(
         Some(path) => path.to_path_buf(),
         None => default_state_path()?,
     };
-    run_with_adapter_interval(
+    // Preview must remain offline and independent of any desktop session.
+    let mut backend = if apply {
+        Some(registry::rotation_backend()?)
+    } else {
+        None
+    };
+    run_with_backend_interval(
         profile_path,
         &state,
         epoch_override,
         force,
         apply,
         RotationClock::realtime(interval_minutes),
-        |output, path| {
-            let capability = Capability::detect_with(Setter::Noctalia, Some(output))?;
-            capability.apply(path)
-        },
+        backend.as_deref_mut(),
     )
 }
 
@@ -347,8 +350,34 @@ fn run_with_adapter(
     )
 }
 
-/// Accept an injected Unix timestamp for deterministic offline clock tests.
-/// Production always passes None and reads the real UTC clock.
+/// Test-only callback adapter keeps the old fake IPC/state fixtures unchanged.
+#[cfg(test)]
+struct CallbackBackend<F> {
+    apply_fn: F,
+}
+
+#[cfg(test)]
+impl<F> WallpaperBackend for CallbackBackend<F>
+where
+    F: FnMut(&str, &Path) -> Result<ApplyStatus>,
+{
+    fn id(&self) -> &'static str {
+        "offline-acknowledged-fixture"
+    }
+    fn capabilities(&self) -> crate::backend::BackendCapabilities {
+        crate::backend::BackendCapabilities {
+            scope: crate::backend::OutputScope::PerOutput,
+            acknowledgement: crate::backend::Acknowledgement::ExactPathReadback,
+        }
+    }
+    fn apply(&mut self, output: &str, path: &Path) -> Result<ApplyStatus> {
+        (self.apply_fn)(output, path)
+    }
+}
+
+/// Existing unit callers supply a fake adapter. Production routes exclusively
+/// through the object-safe port below, never a concrete desktop setter.
+#[cfg(test)]
 fn run_with_adapter_interval(
     profile_path: &Path,
     state_path: &Path,
@@ -356,7 +385,31 @@ fn run_with_adapter_interval(
     force: bool,
     apply: bool,
     clock: RotationClock,
-    mut setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
+    setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
+) -> Result<Vec<RotationOutcome>> {
+    let mut backend = CallbackBackend { apply_fn: setter };
+    run_with_backend_interval(
+        profile_path,
+        state_path,
+        epoch_override,
+        force,
+        apply,
+        clock,
+        Some(&mut backend),
+    )
+}
+
+/// The controller owns state transitions, not desktop transport. One backend
+/// instance services the full transaction; capabilities are checked before
+/// lock/state-directory creation or any IPC.
+fn run_with_backend_interval(
+    profile_path: &Path,
+    state_path: &Path,
+    epoch_override: Option<i64>,
+    force: bool,
+    apply: bool,
+    clock: RotationClock,
+    mut backend: Option<&mut dyn WallpaperBackend>,
 ) -> Result<Vec<RotationOutcome>> {
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -365,6 +418,13 @@ fn run_with_adapter_interval(
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
     let mut profile = load_profile(profile_path)?;
+    if apply {
+        let selected = backend
+            .as_deref_mut()
+            .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
+        let names = profile.outputs.iter().map(|o| o.name.clone()).collect::<Vec<_>>();
+        require_acknowledged_outputs(selected, &names)?;
+    }
     // The on-disk state format stays exactly schema v1. Only non-default
     // periods use a qualified identity, so old hourly state remains readable;
     // sharing the same --state file across periods fails closed.
@@ -430,9 +490,12 @@ fn run_with_adapter_interval(
             if Some(&current_id) != proposed.content_id.as_ref() {
                 bail!("wallpaper content changed after planning; no state committed");
             }
-            let outcome = setter(&output.name, path)?;
+            let selected = backend
+                .as_deref_mut()
+                .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
+            let outcome = selected.apply(&output.name, path)?;
             if outcome != ApplyStatus::PathObserved {
-                bail!("rotation not acknowledged by Noctalia path readback");
+                bail!("rotation not acknowledged by exact wallpaper path readback");
             }
             observed = true;
             let new_state = proposed
