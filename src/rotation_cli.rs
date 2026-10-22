@@ -313,7 +313,14 @@ fn run_with_adapter(
     setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
 ) -> Result<Vec<RotationOutcome>> {
     run_with_adapter_interval(
-        profile_path, state_path, epoch_override, force, apply, 60, None, setter,
+        profile_path,
+        state_path,
+        epoch_override,
+        force,
+        apply,
+        60,
+        None,
+        setter,
     )
 }
 
@@ -579,10 +586,18 @@ mod tests {
 
         // 30 minutes, one minute, seven minutes and 90 minutes all work.
         for (seconds, minutes, expected) in [
-            (0, 30, 0), (1_799, 30, 0), (1_800, 30, 1),
-            (3_599, 30, 1), (3_600, 30, 2), (86_400, 30, 48),
-            (59, 1, 0), (60, 1, 1), (419, 7, 0), (420, 7, 1),
-            (5_399, 90, 0), (5_400, 90, 1),
+            (0, 30, 0),
+            (1_799, 30, 0),
+            (1_800, 30, 1),
+            (3_599, 30, 1),
+            (3_600, 30, 2),
+            (86_400, 30, 48),
+            (59, 1, 0),
+            (60, 1, 1),
+            (419, 7, 0),
+            (420, 7, 1),
+            (5_399, 90, 0),
+            (5_400, 90, 1),
         ] {
             assert_eq!(
                 utc_bucket_for_seconds(seconds, minutes).expect("valid UTC bucket"),
@@ -601,7 +616,13 @@ mod tests {
         let mut failed_path = None;
         // A failed first apply must never publish a state.
         let rejected = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_799),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_799),
             |name, path| {
                 assert_eq!(name, "DP-1");
                 failed_path = Some(path.to_path_buf());
@@ -614,7 +635,13 @@ mod tests {
         // Same bucket with identical candidate pool proposes the same file.
         let mut first_paths = Vec::new();
         let first = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_799),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_799),
             |name, path| {
                 first_paths.push((name.to_string(), path.to_path_buf()));
                 Ok(ApplyStatus::PathObserved)
@@ -622,13 +649,22 @@ mod tests {
         )
         .expect("retry acknowledged");
         assert_eq!(first_paths.len(), 2);
-        assert_eq!(first_paths[0].1, failed_path.expect("original failed proposal"));
+        assert_eq!(
+            first_paths[0].1,
+            failed_path.expect("original failed proposal")
+        );
         assert!(first.iter().all(|outcome| outcome.epoch == 0));
         assert!(first.iter().all(|outcome| outcome.applied_path_observed));
 
         let mut repeat_calls = 0;
         let repeated = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_799),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_799),
             |_, _| {
                 repeat_calls += 1;
                 bail!("already-acknowledged bucket must not reapply")
@@ -636,14 +672,22 @@ mod tests {
         )
         .expect("same half-hour is idempotent");
         assert_eq!(repeat_calls, 0);
-        assert!(repeated.iter().all(|x| x.decision == RotationDecision::AlreadyApplied));
+        assert!(repeated
+            .iter()
+            .all(|x| x.decision == RotationDecision::AlreadyApplied));
 
         // Next boundary: acknowledge first output, fail the second output;
         // retry can apply only the unacknowledged second candidate.
         let mut second_failed_path = None;
         let mut calls = 0;
         let partial = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_800),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_800),
             |name, path| {
                 calls += 1;
                 if name == "HDMI-A-1" {
@@ -663,7 +707,13 @@ mod tests {
         let mut retried_names = Vec::new();
         let mut retried_path = None;
         let next = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_800),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_800),
             |name, path| {
                 retried_names.push(name.to_string());
                 retried_path = Some(path.to_path_buf());
@@ -679,7 +729,13 @@ mod tests {
         // Clock rollback must not rewind state; skipped bucket is not replayed.
         let mut other_calls = 0;
         let backward = run_with_adapter_interval(
-            &profile, &state, None, false, true, 30, Some(1_700),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            30,
+            Some(1_700),
             |_, _| {
                 other_calls += 1;
                 bail!("rollback cannot reapply")
@@ -687,9 +743,17 @@ mod tests {
         )
         .expect("clock rollback unchanged");
         assert_eq!(other_calls, 0);
-        assert!(backward.iter().all(|o| o.decision == RotationDecision::AlreadyApplied));
+        assert!(backward
+            .iter()
+            .all(|o| o.decision == RotationDecision::AlreadyApplied));
         let missed = run_with_adapter_interval(
-            &profile, &state, None, false, false, 30, Some(7_200),
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            30,
+            Some(7_200),
             |_, _| panic!("read-only missed-tick preview must not touch Noctalia"),
         )
         .expect("missed timer tick selects current bucket only");
@@ -701,7 +765,13 @@ mod tests {
         let (_dir, profile, state) = fixture();
         let mut calls = 0;
         run_with_adapter_interval(
-            &profile, &state, None, false, true, 60, Some(3_600),
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            60,
+            Some(3_600),
             |_, _| {
                 calls += 1;
                 Ok(ApplyStatus::PathObserved)
@@ -711,7 +781,10 @@ mod tests {
         assert_eq!(calls, 2);
         let before = fs::read(&state).expect("legacy state bytes");
         let old: SavedState = serde_json::from_slice(&before).expect("old v1 state");
-        assert_eq!(old.profile, profile.canonicalize().expect("canonical").to_string_lossy());
+        assert_eq!(
+            old.profile,
+            profile.canonicalize().expect("canonical").to_string_lossy()
+        );
         assert!(!serde_json::from_slice::<serde_json::Value>(&before)
             .expect("legacy JSON")
             .as_object()
@@ -721,7 +794,13 @@ mod tests {
         for different in [1, 30, 90] {
             let mut attempted_apply = false;
             let failed = run_with_adapter_interval(
-                &profile, &state, None, false, true, different, Some(3_600),
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                different,
+                Some(3_600),
                 |_, _| {
                     attempted_apply = true;
                     bail!("different period must reject old state first")
@@ -733,28 +812,49 @@ mod tests {
         }
         // Legacy hourly CLI can still reuse the identical v1 state.
         let repeated = run_with_adapter_interval(
-            &profile, &state, None, false, false, 60, Some(3_600),
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            60,
+            Some(3_600),
             |_, _| panic!("preview never touches setter"),
         )
         .expect("old hour readable after incompatible attempt");
-        assert!(repeated.iter().all(|o| o.decision == RotationDecision::AlreadyApplied));
+        assert!(repeated
+            .iter()
+            .all(|o| o.decision == RotationDecision::AlreadyApplied));
 
         let alternate = state.with_file_name("half-hour.json");
         run_with_adapter_interval(
-            &profile, &alternate, None, false, true, 30, Some(3_600),
+            &profile,
+            &alternate,
+            None,
+            false,
+            true,
+            30,
+            Some(3_600),
             |_, _| Ok(ApplyStatus::PathObserved),
         )
         .expect("separate state for nondefault period");
-        let tagged: SavedState = serde_json::from_slice(
-            &fs::read(&alternate).expect("nondefault state"),
-        ).expect("version 1");
+        let tagged: SavedState =
+            serde_json::from_slice(&fs::read(&alternate).expect("nondefault state"))
+                .expect("version 1");
         assert_eq!(tagged.schema_version, 1);
         assert!(tagged.profile.ends_with("#interval-minutes=30"));
         assert_eq!(tagged.outputs["DP-1"].last_epoch, Some(2));
         assert!(run_with_adapter_interval(
-            &profile, &alternate, None, false, false, 7, Some(3_600),
+            &profile,
+            &alternate,
+            None,
+            false,
+            false,
+            7,
+            Some(3_600),
             |_, _| panic!("period switch cannot apply"),
-        ).is_err());
+        )
+        .is_err());
     }
 
     #[test]
@@ -762,7 +862,13 @@ mod tests {
         let (_dir, profile, state) = fixture();
         for bad in [0, u64::MAX] {
             let result = run_with_adapter_interval(
-                &profile, &state, None, false, true, bad, Some(10_000),
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                bad,
+                Some(10_000),
                 |_, _| panic!("invalid period cannot call IPC"),
             );
             assert!(result.is_err());
