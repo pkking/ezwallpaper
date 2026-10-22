@@ -65,17 +65,18 @@ User approved strict Adapter Pattern. No approval to change default setter/OS su
 
 ## Evidence log
 
+- 2026-10-22: first B1 [PR #86](https://github.com/pkking/ezwallpaper/pull/86) exact initial HEAD `f2ba048174f06899f67fd4da95dbd21cbd3d5df0` [CI #39822496728](https://github.com/pkking/ezwallpaper/actions/runs/39822496728) FAILED: Rust quality `cargo fmt --check` showed 18 source formatting hunks; Rust and platform builds failed with E0597 (owned `Option<Box<dyn WallpaperBackend>>` shortened borrow via `as_deref_mut`). Read real job logs, rewrote apply/preview paths to keep owned Box live through scoped `as_mut()`, then applied rustfmt-proposed hunks in the same branch. No tests disabled, no change to per-output state semantics. New exact-HEAD CI will be required. Earlier failure remains evidence, **not** a passing result.
 - 2026-10-22: implementation authored from independent branch: `src/backend/mod.rs` object-safe trait/capabilities + strict per-output exact-readback preflight, `src/backend/registry.rs` Noctalia-only non-fallback selection, `src/backend/noctalia.rs` original bounded v5 IPC/connector validation; `src/setter.rs` compatibility facade now delegates Noctalia protocol to the same module; `src/rotation_cli.rs` injects `WallpaperBackend` and validates all named outputs before lock/IPC while keeping legacy fake-adapter tests and the unchanged #82 minute epoch/state; `src/main.rs` registers backend module. Added fake GlobalOnly/CommandAccepted refusal tests and tests/test_adapter_boundaries.py static dependency guard. Updated canonical SVG, architecture.md and README (Noctalia B1 now implemented, remaining DE modules PLANNED). **No Rust source CI observed yet**.
 - 2026-10-22: architecture PR #84 exact final HEAD `d4b9dcc5df69ac94a76e5246d694ae041992e31b`, CI [#39817701897](https://github.com/pkking/ezwallpaper/actions/runs/39817701897) **8/8 SUCCESS**; GitHub API squash merged to master `3b0bf1aae87d2df46fa0d29e87c4cd64634b097e`; B1 can target master.
 - 2026-10-22: initialized branch `agent/wallpaper-backend-noctalia-port-83` at #84 head `d4b9dcc5df69ac94a76e5246d694ae041992e31b`, new master already includes #82. #84/#85 native Noctalia jobs still in progress; no B1 code or CI verified.
 
 ## Deviations and discoveries
 
-None yet.
+CI revealed an E0597 trait-object borrow lifetime mistake in the initial adapter scope; fixed by keeping the owned Box alive for the entire backend call and separating apply/preview branches. First run's Rust format check also failed; original rustfmt output used as authoritative formatting changes.
 
 ## Resume from here
 
-Open B1 PR from `agent/wallpaper-backend-noctalia-port-83` against latest master, inspect exact-HEAD CI Rust quality/Clippy/tests/native E2E, diagnose and fix original branch until 8/8 SUCCESS; only then API squash merge. No physical desktop writes.
+Read PR #86 latest HEAD's new Actions CI (previous initial #39822496728 failed E0597 + rustfmt), inspect Rust quality/Clippy, unit tests, native Noctalia+Sway and cross-platform jobs; repair same branch until final latest-head 8/8 SUCCESS. Only then GitHub API squash merge and archive; no real desktop writes.
 
 ## Completion
 
