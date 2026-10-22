@@ -1,19 +1,23 @@
 //! Noctalia v5 is the first concrete wallpaper backend. Never start swaybg.
+use super::{Acknowledgement, ApplyStatus, BackendCapabilities, OutputScope, WallpaperBackend};
 use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
-use super::{Acknowledgement, ApplyStatus, BackendCapabilities, OutputScope, WallpaperBackend};
 
 pub struct NoctaliaBackend;
 
 impl NoctaliaBackend {
     /// Match legacy explicit Noctalia detection, including XDG_SESSION_TYPE priority.
     pub(crate) fn available() -> bool {
-        if !cfg!(target_os = "linux") { return false; }
-        let session = env::var("XDG_SESSION_TYPE").unwrap_or_default().to_ascii_lowercase();
+        if !cfg!(target_os = "linux") {
+            return false;
+        }
+        let session = env::var("XDG_SESSION_TYPE")
+            .unwrap_or_default()
+            .to_ascii_lowercase();
         let wayland = match session.as_str() {
             "wayland" => true,
             "x11" => false,
@@ -23,14 +27,18 @@ impl NoctaliaBackend {
     }
 }
 impl WallpaperBackend for NoctaliaBackend {
-    fn id(&self) -> &'static str { "noctalia-v5" }
+    fn id(&self) -> &'static str {
+        "noctalia-v5"
+    }
     fn capabilities(&self) -> BackendCapabilities {
         BackendCapabilities {
             scope: OutputScope::PerOutput,
             acknowledgement: Acknowledgement::ExactPathReadback,
         }
     }
-    fn validate_output(&self, output: &str) -> Result<()> { validate_connector(output) }
+    fn validate_output(&self, output: &str) -> Result<()> {
+        validate_connector(output)
+    }
     fn apply(&mut self, output: &str, path: &Path) -> Result<ApplyStatus> {
         if !path.is_file() {
             bail!("wallpaper path is not a regular file: {}", path.display());
