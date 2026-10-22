@@ -224,12 +224,23 @@ fn atomic_save(path: &Path, state: &SavedState) -> Result<()> {
     Ok(())
 }
 
-fn current_utc_epoch() -> Result<i64> {
+/// UTC-only, absolute Unix minute buckets. The legacy hourly epoch is the
+/// N=60 case exactly: floor(unix_seconds / 3600). Neither DST nor local-time
+/// changes can create a duplicate bucket.
+fn utc_bucket_for_seconds(seconds: u64, interval_minutes: u64) -> Result<i64> {
+    let span = interval_minutes
+        .checked_mul(60)
+        .filter(|&value| value != 0)
+        .ok_or_else(|| anyhow!("rotation interval must be positive minutes without overflow"))?;
+    i64::try_from(seconds / span).context("rotation UTC bucket overflows signed epoch")
+}
+
+fn current_utc_epoch(interval_minutes: u64) -> Result<i64> {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .context("system clock is before Unix epoch")?
         .as_secs();
-    i64::try_from(seconds / 3600).context("UTC hour epoch overflow")
+    utc_bucket_for_seconds(seconds, interval_minutes)
 }
 
 fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
@@ -269,17 +280,22 @@ pub fn run_rotation(
     epoch_override: Option<i64>,
     force: bool,
     apply: bool,
+    interval_minutes: u64,
 ) -> Result<Vec<RotationOutcome>> {
+    // Reject an invalid period before creating even a default state directory.
+    utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
         Some(path) => path.to_path_buf(),
         None => default_state_path()?,
     };
-    run_with_adapter(
+    run_with_adapter_interval(
         profile_path,
         &state,
         epoch_override,
         force,
         apply,
+        interval_minutes,
+        None,
         |output, path| {
             let capability = Capability::detect_with(Setter::Noctalia, Some(output))?;
             capability.apply(path)
@@ -287,19 +303,51 @@ pub fn run_rotation(
     )
 }
 
+#[cfg(test)]
 fn run_with_adapter(
     profile_path: &Path,
     state_path: &Path,
     epoch_override: Option<i64>,
     force: bool,
     apply: bool,
+    setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
+) -> Result<Vec<RotationOutcome>> {
+    run_with_adapter_interval(
+        profile_path, state_path, epoch_override, force, apply, 60, None, setter,
+    )
+}
+
+/// Accept an injected Unix timestamp for deterministic offline clock tests.
+/// Production always passes None and reads the real UTC clock.
+fn run_with_adapter_interval(
+    profile_path: &Path,
+    state_path: &Path,
+    epoch_override: Option<i64>,
+    force: bool,
+    apply: bool,
+    interval_minutes: u64,
+    clock_seconds: Option<u64>,
     mut setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
 ) -> Result<Vec<RotationOutcome>> {
+    // Validate before lock/state creation, including preview-only --epoch.
+    utc_bucket_for_seconds(0, interval_minutes)?;
     if apply && epoch_override.is_some() {
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
-    let profile = load_profile(profile_path)?;
-    let epoch = epoch_override.map_or_else(current_utc_epoch, Ok)?;
+    let mut profile = load_profile(profile_path)?;
+    // The on-disk state format stays exactly schema v1. Only non-default
+    // periods use a qualified identity, so old hourly state remains readable;
+    // sharing the same --state file across periods fails closed.
+    if interval_minutes != 60 {
+        profile.identity = format!("{}#interval-minutes={interval_minutes}", profile.identity);
+    }
+    let epoch = epoch_override.map_or_else(
+        || match clock_seconds {
+            Some(seconds) => utc_bucket_for_seconds(seconds, interval_minutes),
+            None => current_utc_epoch(interval_minutes),
+        },
+        Ok,
+    )?;
     let state_path = if state_path.is_absolute() {
         state_path.to_path_buf()
     } else {
