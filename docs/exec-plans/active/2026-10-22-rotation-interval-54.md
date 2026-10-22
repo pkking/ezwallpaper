@@ -32,21 +32,21 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/exec-plans/TEMP
 - For N != 60, the persisted `profile` identity (same existing JSON schema v1 string field, **no new key/version**) is qualified with a stable non-default interval suffix. A non-hourly run with a state file used by hourly runs or by a different interval must **fail closed**; user selects a separate --state PATH or makes an explicit independent migration. No automatic deletion/migration/overwrite.
 - Lock & atomic state publication behavior is unchanged; a failed IPC result never acknowledges a choice. With the same immutable candidate set and unchanged state, same-bucket retry selects the same candidate. Successful first-output state remains committed if second output fails; rerun only retries the second output. A changed pool between failures can change the pending proposal; do not promise durable reservation of unacknowledged content across pool mutations in this slice.
 - Manual --force is a deliberate override, not the retry mechanism. No new user device operations in tests. Never call IPC or create state/lock paths in dry-run.
-- No new architectural subsystem, Core/CLI division, stored schema or external integration; no ADR or SVG change needed, because this extends the already accepted ADR 0009 UTC-bucket CLI policy inside the existing rotation boundary. Document the profile identity isolation and limitations in README.
+- No new architectural subsystem, Core/CLI division, stored schema or external integration. Clarify the existing ADR 0009 time policy and record its explicit Diagram impact: none rationale; the already-canonical architecture SVG remains unchanged because CLI/Core/state/desktop edges do not change. Document the profile identity isolation and limitations in README.
 
 ## Acceptance criteria
 
-- [ ] Additive CLI --interval-minutes opt-in, 60 minute default, explicit preview bucket index; zero and overflow rejected fail-closed.
-- [ ] Deterministic UTC fake-clock tests for 1, 7, 30, 60, 90-minute periods, adjacent boundaries, UTC day and DST-independent intervals, rollback/missed ticks.
-- [ ] Offline fake Noctalia acknowledgement tests: same 30-minute bucket restart/retry no extra switch, failure does not commit, two-output partial failure resumes only unacknowledged output, concurrent applies still serialize.
-- [ ] Existing hourly persisted state v1 exactly compatible; mixing a non-default interval with old state (or another non-default period) fails without changing accepted state. Empty/single pool degraded reporting unchanged.
-- [ ] Update README with explicit --interval-minutes 30 preview/apply examples and distinct state recommendation for nondefault interval, --force disclaimer, strict IPC vs real pixels evidence, no implicit timers.
+- [x] Additive CLI --interval-minutes opt-in, 60 minute default, explicit preview bucket index; zero and overflow rejected fail-closed (authored, pending CI).
+- [x] Deterministic UTC fake-clock tests for 1, 7, 30, 60, 90-minute periods, adjacent boundaries, UTC day and DST-independent intervals, rollback/missed ticks (authored, pending CI).
+- [x] Offline fake Noctalia acknowledgement tests: same 30-minute bucket restart/retry no extra switch, failure does not commit, two-output partial failure resumes only unacknowledged output, existing concurrent apply fixture still applies (authored, pending CI).
+- [x] Existing hourly persisted state v1 exactly compatible; mixing a non-default interval with old state (or another non-default period) fails without changing accepted state. Empty/single pool degraded reporting unchanged (authored, pending CI).
+- [x] Update README with explicit --interval-minutes 30 preview/apply examples and distinct state recommendation for nondefault interval, --force disclaimer, strict IPC vs real pixels evidence, no implicit timers; amend ADR 0009 without changing architecture.svg (authored, pending CI).
 - [ ] Final PR HEAD all 8 CI jobs and required checks SUCCESS, record truthful HEAD/run and protect Issue #54 OPEN. Archive implementation plan in a separate future PR after actual verification.
 
 ## Implementation slices
 
-- [ ] 1. Exact UTC bucket helper, opt-in CLI flag and period-separated state identity without schema migration.
-- [ ] 2. Fake-clock, retry, crash/partial/concurrency/legacy-state regression tests; offline CLI argument contracts and README.
+- [x] 1. Exact UTC bucket helper, opt-in CLI flag and period-separated state identity without schema migration (code committed; CI pending).
+- [x] 2. Fake-clock, retry, crash/partial/concurrency/legacy-state regression tests; offline CLI argument contracts, README and existing ADR 0009 clarification (code committed; CI pending).
 - [ ] 3. Inspect exact-HEAD GitHub CI and artifacts, repair on same branch; squash merge through GitHub API only when all checks pass and evidence is valid; separate archival PR and Issue checkpoint.
 
 ## Verification matrix
@@ -65,6 +65,7 @@ No new human decision: feature is additive opt-in, hourly default unchanged, no 
 
 ## Evidence log
 
+- 2026-10-22: implementation commits `d66070199596749d815aecefbd9533e9563c711c` UTC bucket and state isolation, `54045f65778bc0cc491521bc796ed689bb7ec975` opt-in CLI flag, `1b49a66f6cdfc644c5a6fb52ba5c69c9e5155ffe` fake-clock/partial retry/legacy tests, `4010a69d95201d29901c10c80d71d6a8e45ba9c9` CLI parsing tests, `5294f35952b9ed998595ca7ef89a1f39947fc493` README and `40f40f5059cdf5be7f2e523066c602ca88f49820` ADR 0009 note. **Not yet validated by CI**.
 - 2026-10-22: verified master `950370647a74a24917b5cc1342eee8917ef3ddc9`, Issue #54 and dotfiles#84, existing rotation Core and CLI state. Created branch `agent/rotation-configurable-interval-54` from master. No CI claims for new code.
 
 ## Deviations and discoveries
@@ -73,7 +74,7 @@ The existing documented '--force' option deliberately bypasses same-epoch idempo
 
 ## Resume from here
 
-Implement interval flag and period scoping on current branch; add deterministic Rust fixture tests, update README and plan, open linked PR, inspect exact-head full 8/8 CI and repair failures. No real desktop writes.
+Open linked PR from `agent/rotation-configurable-interval-54`, then inspect its exact-head Rust quality/test/CLI 8/8 CI, fix failures on same branch and validate on final revision. On success merge through GitHub API squash(expected_head_sha) and archive separately. No real desktop writes.
 
 ## Completion
 
