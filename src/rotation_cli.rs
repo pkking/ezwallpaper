@@ -272,6 +272,31 @@ fn state_lock_path(path: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
+/// Group the real or simulated clock parameters without weakening the
+/// repository's strict Clippy lint configuration.
+#[derive(Clone, Copy)]
+struct RotationClock {
+    interval_minutes: u64,
+    observed_seconds: Option<u64>,
+}
+
+impl RotationClock {
+    fn realtime(interval_minutes: u64) -> Self {
+        Self {
+            interval_minutes,
+            observed_seconds: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn simulated(interval_minutes: u64, observed_seconds: u64) -> Self {
+        Self {
+            interval_minutes,
+            observed_seconds: Some(observed_seconds),
+        }
+    }
+}
+
 /// A dry-run never creates the state/lock directory. Real apply holds a lock
 /// across planning, Noctalia readback and atomic per-output acknowledgement.
 pub fn run_rotation(
@@ -294,8 +319,7 @@ pub fn run_rotation(
         epoch_override,
         force,
         apply,
-        interval_minutes,
-        None,
+        RotationClock::realtime(interval_minutes),
         |output, path| {
             let capability = Capability::detect_with(Setter::Noctalia, Some(output))?;
             capability.apply(path)
@@ -318,8 +342,7 @@ fn run_with_adapter(
         epoch_override,
         force,
         apply,
-        60,
-        None,
+        RotationClock::realtime(60),
         setter,
     )
 }
@@ -332,10 +355,10 @@ fn run_with_adapter_interval(
     epoch_override: Option<i64>,
     force: bool,
     apply: bool,
-    interval_minutes: u64,
-    clock_seconds: Option<u64>,
+    clock: RotationClock,
     mut setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
 ) -> Result<Vec<RotationOutcome>> {
+    let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
     utc_bucket_for_seconds(0, interval_minutes)?;
     if apply && epoch_override.is_some() {
@@ -352,7 +375,7 @@ fn run_with_adapter_interval(
         );
     }
     let epoch = epoch_override.map_or_else(
-        || match clock_seconds {
+        || match clock.observed_seconds {
             Some(seconds) => utc_bucket_for_seconds(seconds, interval_minutes),
             None => current_utc_epoch(interval_minutes),
         },
@@ -624,8 +647,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_799),
+            RotationClock::simulated(30, 1_799),
             |name, path| {
                 assert_eq!(name, "DP-1");
                 failed_path = Some(path.to_path_buf());
@@ -643,8 +665,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_799),
+            RotationClock::simulated(30, 1_799),
             |name, path| {
                 first_paths.push((name.to_string(), path.to_path_buf()));
                 Ok(ApplyStatus::PathObserved)
@@ -666,8 +687,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_799),
+            RotationClock::simulated(30, 1_799),
             |_, _| {
                 repeat_calls += 1;
                 bail!("already-acknowledged bucket must not reapply")
@@ -689,8 +709,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_800),
+            RotationClock::simulated(30, 1_800),
             |name, path| {
                 calls += 1;
                 if name == "HDMI-A-1" {
@@ -715,8 +734,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_800),
+            RotationClock::simulated(30, 1_800),
             |name, path| {
                 retried_names.push(name.to_string());
                 retried_path = Some(path.to_path_buf());
@@ -737,8 +755,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(1_700),
+            RotationClock::simulated(30, 1_700),
             |_, _| {
                 other_calls += 1;
                 bail!("rollback cannot reapply")
@@ -755,8 +772,7 @@ mod tests {
             None,
             false,
             false,
-            30,
-            Some(7_200),
+            RotationClock::simulated(30, 7_200),
             |_, _| panic!("read-only missed-tick preview must not touch Noctalia"),
         )
         .expect("missed timer tick selects current bucket only");
@@ -773,8 +789,7 @@ mod tests {
             None,
             false,
             true,
-            60,
-            Some(3_600),
+            RotationClock::simulated(60, 3_600),
             |_, _| {
                 calls += 1;
                 Ok(ApplyStatus::PathObserved)
@@ -802,8 +817,7 @@ mod tests {
                 None,
                 false,
                 true,
-                different,
-                Some(3_600),
+                RotationClock::simulated(different, 3_600),
                 |_, _| {
                     attempted_apply = true;
                     bail!("different period must reject old state first")
@@ -820,8 +834,7 @@ mod tests {
             None,
             false,
             false,
-            60,
-            Some(3_600),
+            RotationClock::simulated(60, 3_600),
             |_, _| panic!("preview never touches setter"),
         )
         .expect("old hour readable after incompatible attempt");
@@ -836,8 +849,7 @@ mod tests {
             None,
             false,
             true,
-            30,
-            Some(3_600),
+            RotationClock::simulated(30, 3_600),
             |_, _| Ok(ApplyStatus::PathObserved),
         )
         .expect("separate state for nondefault period");
@@ -857,8 +869,7 @@ mod tests {
             None,
             false,
             false,
-            60,
-            Some(3_600),
+            RotationClock::simulated(60, 3_600),
             |_, _| panic!("distinct canonical profile must not access tagged state"),
         )
         .is_err());
@@ -869,8 +880,7 @@ mod tests {
             None,
             false,
             false,
-            7,
-            Some(3_600),
+            RotationClock::simulated(7, 3_600),
             |_, _| panic!("period switch cannot apply"),
         )
         .is_err());
@@ -886,8 +896,7 @@ mod tests {
                 None,
                 false,
                 true,
-                bad,
-                Some(10_000),
+                RotationClock::simulated(bad, 10_000),
                 |_, _| panic!("invalid period cannot call IPC"),
             );
             assert!(result.is_err());
