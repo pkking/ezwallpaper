@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="700" viewBox="0 0 1060 700" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="850" viewBox="0 0 1060 850" role="img" aria-labelledby="title desc">
   <title id="title">ezwallpaper Core and CLI architecture</title>
-  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest, a Rust API and pure content-ID rotation proposals; the opt-in CLI now wraps rotation in a locked state file with per-output Noctalia v5 path readback; live dual-output pixel verification and source replenishment are planned. The CLI consumes Core and sets wallpapers through operating system APIs and external programs; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
-  <rect width="1060" height="700" fill="#f8fafc"/>
+  <desc id="desc">Bing, Pexels, Wallhaven SFW and local files (including optional root-confined recursive catalogs) feed the headless Rust Core; opt-in image decoding and derivation produce safe static output. Core exposes local assets, a JSON manifest, a Rust API and pure content-ID rotation proposals; the opt-in CLI now wraps rotation in a locked state file with per-output Noctalia v5 path readback; isolated virtual dual-output pixel validation exists while physical display verification and automatic source replenishment remain unassessed. The CLI consumes Core and sets wallpapers through currently implemented operating system APIs and external programs; a CLI-owned WallpaperBackend interface, registry and per-desktop modules are planned, not yet implemented; third-party applications and scripts can also consume the assets. Future garbage collection and source extensions are planned. The opt-in, isolated Core-owned CAS implements import, inspect, export and verified listing; CLI emits a separate JSON store inventory v1.</desc>
+  <rect width="1060" height="850" fill="#f8fafc"/>
   <text x="36" y="44" fill="#0f172a" font-family="system-ui, sans-serif" font-size="26" font-weight="700">ezwallpaper architecture</text>
   <text x="36" y="69" fill="#475569" font-family="system-ui, sans-serif" font-size="15">Source acquisition and asset management are independent of desktop integration.</text>
   <rect x="26" y="90" width="1008" height="355" rx="15" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
@@ -42,18 +42,32 @@
     <path d="M271 496 L277 503 L283 496"/>
     <path d="M788 496 L794 503 L800 496"/>
   </g>
-  <rect x="26" y="507" width="1008" height="157" rx="15" fill="#eff6ff" stroke="#475569" stroke-width="2"/>
+  <rect x="26" y="507" width="1008" height="281" rx="15" fill="#eff6ff" stroke="#475569" stroke-width="2"/>
   <text x="50" y="536" fill="#334155" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Consumers</text>
   <rect x="51" y="552" width="612" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="357" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">ezwallpaper CLI</text>
-  <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">OS / DE / WM setter + opt-in rotation state</text>
-  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Noctalia IPC + locked state · other OS/DE setters</text>
+  <text x="357" y="601" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Implemented: setter.rs + Noctalia-only rotation</text>
+  <text x="357" y="622" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Other OS/DE apply paths do not yet share rotation</text>
   <rect x="686" y="552" width="323" height="96" rx="11" fill="#fff" stroke="#475569" stroke-width="1.7"/>
   <text x="847" y="579" fill="#1e293b" font-family="system-ui, sans-serif" font-size="19" font-weight="700" text-anchor="middle">Third-party consumers</text>
   <text x="847" y="603" fill="#475569" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Rust apps · scripts · services</text>
   <text x="847" y="624" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Consume assets / manifests</text>
-  <path d="M48 685 H88" stroke="#15803d" stroke-width="2"/>
-  <text x="96" y="689" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Implemented capability</text>
-  <path d="M295 685 H335" stroke="#15803d" stroke-width="2" stroke-dasharray="7 5"/>
-  <text x="343" y="689" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Planned, not yet implemented</text>
+  <!-- The port, registry and individual backends below are the approved target,
+       NOT implemented source modules at this architecture decision revision. -->
+  <path d="M357 648 V670" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <path d="M351 663 L357 670 L363 663" fill="none" stroke="#64748b" stroke-width="2"/>
+  <rect x="51" y="674" width="407" height="95" rx="10" fill="#fff" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="254" y="696" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="700" text-anchor="middle">PLANNED • CLI-owned interface</text>
+  <text x="254" y="721" fill="#334155" font-family="system-ui, sans-serif" font-size="18" font-weight="650" text-anchor="middle">WallpaperBackend port</text>
+  <text x="254" y="745" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Capabilities · Registry · typed readback</text>
+  <path d="M458 719 H479" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <path d="M472 713 L479 719 L472 725" fill="none" stroke="#64748b" stroke-width="2"/>
+  <rect x="482" y="674" width="527" height="95" rx="10" fill="#fff" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="746" y="696" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="700" text-anchor="middle">PLANNED • separate desktop adapter modules</text>
+  <text x="746" y="721" fill="#334155" font-family="system-ui, sans-serif" font-size="17" font-weight="650" text-anchor="middle">Noctalia · Plasma · GNOME · Sway</text>
+  <text x="746" y="745" fill="#475569" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Hyprpaper · Portal (global-only) · strict scope checks</text>
+  <path d="M48 809 H88" stroke="#15803d" stroke-width="2"/>
+  <text x="96" y="813" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Implemented capability</text>
+  <path d="M295 809 H335" stroke="#15803d" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="343" y="813" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Planned, not yet implemented</text>
 </svg>

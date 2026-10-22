@@ -73,6 +73,43 @@ New JSON probe/derivative contracts have their own schema version, separate from
 Core now exposes `plan_rotation` for pure per-output, content-ID-based UTC epoch selection. It accepts candidate IDs and an explicit `RotationState` (JSON schema_version 1), removes duplicate candidate IDs, manages a deterministic shuffle bag without adjacent repeats and returns an unchanged/degraded status for repeated epochs, empty or single-current pools. It never calls the clock, reads files, persists state or runs desktop/Noctalia commands. The caller must acknowledge a successful apply before persisting `proposed_state`; returning a plan is not evidence of pixels changing. This isolated Core building block is **implemented**, while CLI profile parsing, cross-process locking, atomic on-disk state, timers, download replenishment and physical dual-output verification remain **planned** under Issues #54 and #59.
 
 
+## Approved cross-desktop Adapter Pattern (ADR 0010; NOT YET IMPLEMENTED)
+
+The existing CLI has a concrete desktop adapter dispatcher in `src/setter.rs`. GNOME/Plasma/Linux-WM/native one-shot `apply` paths are implemented, whereas `src/rotation_cli.rs::run_rotation` still directly constructs a **Noctalia** setter and only commits state when `wallpaper-get` confirms `PathObserved`. The current source has **no** common `WallpaperBackend` trait or backend registry yet. Current Sway and experimental niri/Noctalia virtual-screen CI do not validate GNOME/Plasma/Hyprpaper production rotation.
+
+[ADR 0010](adr/0010-wallpaper-backend-adapter-contract.md), approved under [Issue #83](https://github.com/pkking/ezwallpaper/issues/83), specifies the planned migration:
+
+```text
+                      ezwallpaper-core
+                     (pure, headless)
+                            ▲
+                            │ plan_rotation/content IDs
+                       CLI Rotation Controller
+                     (epochs/lock/state/commit)
+                            │ depends only on interface
+                            ▼
+                WallpaperBackend port (PLANNED)
+            BackendCapabilities + typed ApplyReceipt
+                            ▲
+                            │ provided by tiny registry
+             ┌──────────────┼────────────────┐
+             │              │                │
+      Noctalia adapter  Plasma/GNOME     Sway/Hyprpaper
+        (PLANNED)         (PLANNED)        (PLANNED)
+                           │
+                      Portal (PLANNED, global-only)
+```
+
+Each adapter's *implementation* owns desktop-specific D-Bus, CLI invocation, per-monitor identities, readback, session and renderer lifetime. `Rotation Controller` may never import command/process APIs or concrete DE modules; Core remains strictly independent. Registry may know adapter identifiers/capabilities but must not become another all-desktop command dispatcher.
+
+The minimum capability contract distinguishes **global-only** from **per-output** (with explicit backend-specific output IDs), exact-path readback from mere command acceptance, and whether the adapter owns a persistent renderer. Prior to any mutation the registry/controller must reject a two-output profile routed to a global-only GNOME/Portal adapter. An ambiguous Wayland renderer selection must fail rather than start a competing `swaybg` alongside Noctalia/Hyprpaper.
+
+**Evidence safety:** `Submitted` or `LaunchedUnverified` is insufficient to advance automated rotation state. Only exact-path `PathObserved` qualifies under current semantics; `PixelVerified` requires independently captured compositor/native display evidence. Never manufacture a path-readback for a desktop incapable of reporting one. A single-image/global-only backend can still support opt-in one-shot `apply` with honest `Submitted` status, even if it is not eligible for automated per-monitor rotation.
+
+**Migration sequence:** first a separate architecture-only ADR/diagram PR (this decision); after minute-interval [PR #82](https://github.com/pkking/ezwallpaper/pull/82) is independently verified, extract the CLI-owned trait and move the existing Noctalia implementation to a concrete adapter while maintaining the existing CLI, JSON v1 state, period bucket and per-output acknowledgement behavior; then add Plasma, GNOME, Sway, Hyprpaper and optional Portal one at a time with their own tests. No new support is claimed until each code PR actually merges and independent real integration evidence exists.
+
+The **dashed** new interface and adapter blocks in `docs/architecture.svg` represent the approved *target*, not current executable source. No systemd timers, user profiles, OS desktop settings, native displays or login sessions are mutated by this architecture decision.
+
 ## Opt-in durable Noctalia rotation (ADR 0009)
 
 The CLI `rotate next --profile FILE [--apply] [--json]` consumes separate output pools from a strict versioned JSON profile and calls the pure `plan_rotation` Core API. Default preview is read-only and never modifies desktop or creates state. Explicit `--apply` confines application to the previously implemented Noctalia v5 IPC, holds a cooperating-process advisory file lock, verifies the selected content hash again and atomically persists the acknowledged per-output state only after `PathObserved` readback. Per-output updates preserve confirmed work when a later output fails. State is local to the user (Linux XDG state directory by default), has a versioned profile identity, and is not automatically migrated or cleaned. systemd user service/timer examples are opt-in documentation, not installed or enabled. This boundary retains Noctalia as the rendering authority and does not prove actual niri/dual-display pixels, which require Issue #59. Live provider refills and dynamic output detection remain future work; a trusted user is responsible for disabling competing Noctalia wallpaper automation.
