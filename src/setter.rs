@@ -1,8 +1,8 @@
 //! Desktop integration adapter discovery. Pure detection can be tested headlessly.
-use anyhow::{anyhow, bail, Context, Result};
 use crate::backend::command_available;
 use crate::backend::noctalia::{apply_noctalia, noctalia_ipc, validate_connector};
 pub use crate::backend::ApplyStatus;
+use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 use std::path::Path;
 use std::process::{Command, Stdio};
