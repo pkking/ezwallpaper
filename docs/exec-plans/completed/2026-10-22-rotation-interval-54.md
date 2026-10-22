@@ -1,7 +1,7 @@
 # 2026-10-22-rotation-interval-54: explicit UTC minute-bucket rotation and safe retries
 
 Issue: #54
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-22
 Last checkpoint: 2026-10-22
@@ -36,27 +36,27 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/exec-plans/TEMP
 
 ## Acceptance criteria
 
-- [x] Additive CLI --interval-minutes opt-in, 60 minute default, explicit preview bucket index; zero and overflow rejected fail-closed (authored, pending CI).
-- [x] Deterministic UTC fake-clock tests for 1, 7, 30, 60, 90-minute periods, adjacent boundaries, UTC day and DST-independent intervals, rollback/missed ticks (authored, pending CI).
-- [x] Offline fake Noctalia acknowledgement tests: same 30-minute bucket restart/retry no extra switch, failure does not commit, two-output partial failure resumes only unacknowledged output, existing concurrent apply fixture still applies (authored, pending CI).
-- [x] Existing hourly persisted state v1 exactly compatible; mixing a non-default interval with old state (or another non-default period) fails without changing accepted state. Empty/single pool degraded reporting unchanged (authored, pending CI).
-- [x] Update README with explicit --interval-minutes 30 preview/apply examples and distinct state recommendation for nondefault interval, --force disclaimer, strict IPC vs real pixels evidence, no implicit timers; amend ADR 0009 without changing architecture.svg (authored, pending CI).
-- [ ] Final PR HEAD all 8 CI jobs and required checks SUCCESS, record truthful HEAD/run and protect Issue #54 OPEN. Archive implementation plan in a separate future PR after actual verification.
+- [x] Additive CLI --interval-minutes opt-in, 60 minute default, explicit preview bucket index; zero and overflow rejected fail-closed (verified in exact-head CI #39811585137).
+- [x] Deterministic UTC fake-clock tests for 1, 7, 30, 60, 90-minute periods, adjacent boundaries, UTC day and DST-independent intervals, rollback/missed ticks (verified in exact-head CI #39811585137).
+- [x] Offline fake Noctalia acknowledgement tests: same 30-minute bucket restart/retry no extra switch, failure does not commit, two-output partial failure resumes only unacknowledged output, existing concurrent apply fixture still applies (verified in exact-head CI #39811585137).
+- [x] Existing hourly persisted state v1 exactly compatible; mixing a non-default interval with old state (or another non-default period) fails without changing accepted state. Empty/single pool degraded reporting unchanged (verified in exact-head CI #39811585137).
+- [x] Update README with explicit --interval-minutes 30 preview/apply examples and distinct state recommendation for nondefault interval, --force disclaimer, strict IPC vs real pixels evidence, no implicit timers; amend ADR 0009 without changing architecture.svg (verified in exact-head CI #39811585137).
+- [x] Final PR #82 HEAD `aa6aa64c5e3f9ba0b8d348f6844a536e1a63eafd` 8/8 CI #39811585137 SUCCESS; merged to master as `4cc0bfe11463f1aedb147b0283003971ca3c002d`. This independent archive PR completes the plan; Issue #54 remains OPEN.
 
 ## Implementation slices
 
-- [x] 1. Exact UTC bucket helper, opt-in CLI flag and period-separated state identity without schema migration (code committed; CI pending).
-- [x] 2. Fake-clock, retry, crash/partial/concurrency/legacy-state regression tests; offline CLI argument contracts, README and existing ADR 0009 clarification (code committed; CI pending).
-- [ ] 3. Inspect exact-HEAD GitHub CI and artifacts, repair on same branch; squash merge through GitHub API only when all checks pass and evidence is valid; separate archival PR and Issue checkpoint.
+- [x] 1. Exact UTC bucket helper, opt-in CLI flag and period-separated state identity without schema migration (verified in exact-head CI #39811585137).
+- [x] 2. Fake-clock, retry, crash/partial/concurrency/legacy-state regression tests; offline CLI argument contracts, README and existing ADR 0009 clarification (verified in exact-head CI #39811585137).
+- [x] 3. Inspect exact-head GitHub CI, repair rustfmt/Clippy on original PR branch, confirm 8/8 SUCCESS, GitHub API squash merge PR #82; create this independent archive PR and checkpoint.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
-| Rust Core/CLI and fake clocks | cargo test --workspace --all-targets | current exact HEAD run | PENDING |
-| Rust static | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | #39810022411 FAIL fmt, fixed at `0bfb02f`; latest HEAD pending | PENDING |
-| Offline CLI contract | --help plus wrong intervals and preview | exact HEAD | PENDING |
-| Governance and platforms | 8/8 GitHub checks, including Windows/macOS, plan | exact HEAD | PENDING |
+| Rust Core/CLI and fake clocks | cargo test --workspace --all-targets | #39811585137 Rust tests and CLI smoke SUCCESS | PASS |
+| Rust static | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | #39811585137 Rust quality SUCCESS (earlier #39810022411 fmt failure and #39811079587 Clippy failure were repaired) | PASS |
+| Offline CLI contract | --help plus wrong intervals and preview | #39811585137 Rust tests and CLI smoke SUCCESS | PASS |
+| Governance and platforms | 8/8 GitHub checks, including Windows/macOS, plan | https://github.com/pkking/ezwallpaper/actions/runs/39811585137 | PASS |
 | Real physical desktop | Noctalia/Niri session, timers, user dotfiles | not touched | UNASSESSED |
 
 ## Decision gates
@@ -65,6 +65,7 @@ No new human decision: feature is additive opt-in, hourly default unchanged, no 
 
 ## Evidence log
 
+- 2026-10-22: **final verified** PR #82 HEAD `aa6aa64c5e3f9ba0b8d348f6844a536e1a63eafd` CI [#39811585137](https://github.com/pkking/ezwallpaper/actions/runs/39811585137) **8/8 jobs + 8 check runs SUCCESS** (Rust quality/Clippy/format, Rust tests and CLI smoke, Sway headless, native Noctalia+Sway dual renderer, Windows and macOS tests, agent integrity/contract); GitHub API squash merged to `master` SHA `4cc0bfe11463f1aedb147b0283003971ca3c002d`. All previous fmt and Clippy failures retained in historic runs; no live timer, physical desktop or dotfiles deployment claimed.
 - 2026-10-22: identity hardened in commit `54318cb9f7f1d02b4cfdbdbbe7282ff9c58c2001`: use explicit `ezwallpaper-interval:N:<canonical-profile-path>` namespace, which cannot collide with a real canonical absolute profile path; added a suffix-collision regression. Hourly state and JSON schema unchanged. This revision is **not yet CI validated**.
 - 2026-10-22: [PR #82](https://github.com/pkking/ezwallpaper/pull/82) initial HEAD `d65cb6c2301c9a1f009400765829c619bb8b5a3e` triggered [CI #39810022411](https://github.com/pkking/ezwallpaper/actions/runs/39810022411). Rust quality failed on `cargo fmt --check` only; actual rustfmt diff was read from failed job #119933462323 and applied exactly across src/main.rs (5 hunks) and src/rotation_cli.rs (20 hunks) in commits `80d26d1faaebb7e02c2ef2d6b48711b7ba505427`, `0bfb02f71c770d130c15efc310db4c9d9676db8f`. Original head Rust tests/CLI smoke, Sway visual, macOS, integrity and contract checks had already succeeded when observed, but Windows/native E2E were still running; **overall old head FAIL** and must not be presented as pass. New exact-head [CI #39810281204](https://github.com/pkking/ezwallpaper/actions/runs/39810281204) started, at last check PENDING. Do not merge pending revision.
 - 2026-10-22: implementation commits `d66070199596749d815aecefbd9533e9563c711c` UTC bucket and state isolation, `54045f65778bc0cc491521bc796ed689bb7ec975` opt-in CLI flag, `1b49a66f6cdfc644c5a6fb52ba5c69c9e5155ffe` fake-clock/partial retry/legacy tests, `4010a69d95201d29901c10c80d71d6a8e45ba9c9` CLI parsing tests, `5294f35952b9ed998595ca7ef89a1f39947fc493` README and `40f40f5059cdf5be7f2e523066c602ca88f49820` ADR 0009 note. **Not yet validated by CI**.
@@ -76,11 +77,11 @@ The existing documented '--force' option deliberately bypasses same-epoch idempo
 
 ## Resume from here
 
-Review latest PR #82 HEAD and its fresh exact-head CI; initial #39810022411 failed only rustfmt (format diff fixed on branch). Independently check all eight jobs and raw test results, correct same-branch if failure, then squash merge via GitHub API(expected_head_sha=latest SHA) on verified PASS. Separate completion archive PR and Issue #54 checkpoint. No real desktop writes.
+Review this independent documentation-only archive PR's own latest HEAD CI 8/8; after SUCCESS GitHub API squash merge with expected HEAD, verify master contains completed plan and no active file, post Issue #54 checkpoint, then continue adapter Issue #83 independently. No real desktop writes.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: offline fixture only; real Noctalia desktop unassessed
+Final commit: `4cc0bfe11463f1aedb147b0283003971ca3c002d` (squash merge PR #82; tested HEAD `aa6aa64c5e3f9ba0b8d348f6844a536e1a63eafd`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39811585137 — 8/8 SUCCESS
+E2E artifact: existing Noctalia+Sway virtual-headless E2E CI job passed; no physical desktop/timer evidence
 Remaining unassessed items: source pool mutation between failed attempts, real display output lifecycle, automatic refill, hardware sessions/timers, lockscreen, 4K/GPU, live deployment.
