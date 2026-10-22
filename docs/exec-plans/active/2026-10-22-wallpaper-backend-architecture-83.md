@@ -35,7 +35,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/README.md; 
 - Preflight tests deterministic/offline and command injection-safe; each real DE backend requires separate CI/physical evidence. A future production multi-output migration must not permit state publication on a mere subprocess exit 0.
 - Keep all future-specific parts visually dashed on diagram; the actual existing `setter.rs` integration and Noctalia-only rotation marked implemented, not the abstract registry.
 
-## Acceptance criteria (this architecture PR)
+## Acceptance criteria
 
 - [x] New ADR 0010 records dependency directions, object-safe adapter interface, capability discrimination (global-only vs per-output), output IDs, apply evidence levels, backend lifecycle, detection policy and explicit no-fallback semantics; decision explicitly grounded in #83.
 - [x] Canonical architecture.svg and docs/architecture.md are updated **together in this PR**, accurately separating existing CLI integration from **planned** adapter trait+registry+individual implementations.
@@ -43,7 +43,9 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/README.md; 
 - [ ] Exact-head eight CI jobs including agent plan/diagram integrity, fmt, Clippy, tests and Windows/macOS all SUCCESS; no observed result claimed before running.
 - [x] No modifications to Rust runtime code, default CLI behavior, storage or timers in this decision slice.
 
-## Follow-on implementation slices (new linked PRs under #83; not part of this PR)
+## Implementation slices
+
+This first PR covers documentation only; B1–B3 remain follow-on code PRs.
 
 - [ ] B1: after #82 settles, extract object-safe `WallpaperBackend` contract and `BackendCapabilities` + tiny registry in CLI, extract Noctalia adapter, inject it into Rotation Controller with fake implementation tests, no behavior change.
 - [ ] B2: migrate existing desktop `apply` paths one adapter at a time; Plasma (per-screen), GNOME (global-only), Sway/swaybg, Hyprpaper, optional Portal as global-only; independent evidence per backend, not an all-at-once rewrite.
@@ -64,6 +66,7 @@ User explicitly approved **Adapter Pattern** and rejected a single large desktop
 
 ## Evidence log
 
+- 2026-10-22: initial PR #84 exact HEAD `e92684d871c1a6c05b1e40e50a045500d6aa69b4`, CI #39816995247 had Agent plan integrity FAILED with `Plan missing section: Acceptance criteria` because noncanonical headings were used; amended both headings to match `scripts/validate_agent_plan.py` exactly, keeping failed CI evidence. First PR also became outdated against new master after #82 merged; resolve merge conflict without losing #82 minute-interval docs before any merge.
 - 2026-10-22: ADR 0010 written at docs/adr/0010-wallpaper-backend-adapter-contract.md in commit `6b17df5e357fbe715df5237409c488db1fff3aa8`; canonical SVG updated with dashed PLANNED interface/adapters and existing implemented CLI at `4db93c3e813535b3792e910682f346e3d92d7808`; architecture.md synchronized at `cc9aefb587edae4e5a080b886ee22f2c76744b99`; README linked and accurately scoped in commit `884ff6ece2995fefe73bb889f7940e3f662bb74e`. No Rust source/CLI/runtime change and no CI result yet.
 - 2026-10-22: repo source inspection at master `950370647a74a24917b5cc1342eee8917ef3ddc9`, #82 HEAD `aa6aa64c5e3f9ba0b8d348f6844a536e1a63eafd` CI still in progress. User approved adapter pattern; created Issue #83 and dedicated branch from master. No new architecture PR CI yet.
 
