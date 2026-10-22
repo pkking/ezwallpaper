@@ -54,7 +54,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/exec-plans/TEMP
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
 | Rust Core/CLI and fake clocks | cargo test --workspace --all-targets | current exact HEAD run | PENDING |
-| Rust static | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | exact HEAD | PENDING |
+| Rust static | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | #39810022411 FAIL fmt, fixed at `0bfb02f`; latest HEAD pending | PENDING |
 | Offline CLI contract | --help plus wrong intervals and preview | exact HEAD | PENDING |
 | Governance and platforms | 8/8 GitHub checks, including Windows/macOS, plan | exact HEAD | PENDING |
 | Real physical desktop | Noctalia/Niri session, timers, user dotfiles | not touched | UNASSESSED |
@@ -65,6 +65,7 @@ No new human decision: feature is additive opt-in, hourly default unchanged, no 
 
 ## Evidence log
 
+- 2026-10-22: [PR #82](https://github.com/pkking/ezwallpaper/pull/82) initial HEAD `d65cb6c2301c9a1f009400765829c619bb8b5a3e` triggered [CI #39810022411](https://github.com/pkking/ezwallpaper/actions/runs/39810022411). Rust quality failed on `cargo fmt --check` only; actual rustfmt diff was read from failed job #119933462323 and applied exactly across src/main.rs (5 hunks) and src/rotation_cli.rs (20 hunks) in commits `80d26d1faaebb7e02c2ef2d6b48711b7ba505427`, `0bfb02f71c770d130c15efc310db4c9d9676db8f`. Original head Rust tests/CLI smoke, Sway visual, macOS, integrity and contract checks had already succeeded when observed, but Windows/native E2E were still running; **overall old head FAIL** and must not be presented as pass. New exact-head [CI #39810281204](https://github.com/pkking/ezwallpaper/actions/runs/39810281204) started, at last check PENDING. Do not merge pending revision.
 - 2026-10-22: implementation commits `d66070199596749d815aecefbd9533e9563c711c` UTC bucket and state isolation, `54045f65778bc0cc491521bc796ed689bb7ec975` opt-in CLI flag, `1b49a66f6cdfc644c5a6fb52ba5c69c9e5155ffe` fake-clock/partial retry/legacy tests, `4010a69d95201d29901c10c80d71d6a8e45ba9c9` CLI parsing tests, `5294f35952b9ed998595ca7ef89a1f39947fc493` README and `40f40f5059cdf5be7f2e523066c602ca88f49820` ADR 0009 note. **Not yet validated by CI**.
 - 2026-10-22: verified master `950370647a74a24917b5cc1342eee8917ef3ddc9`, Issue #54 and dotfiles#84, existing rotation Core and CLI state. Created branch `agent/rotation-configurable-interval-54` from master. No CI claims for new code.
 
@@ -74,7 +75,7 @@ The existing documented '--force' option deliberately bypasses same-epoch idempo
 
 ## Resume from here
 
-Open linked PR from `agent/rotation-configurable-interval-54`, then inspect its exact-head Rust quality/test/CLI 8/8 CI, fix failures on same branch and validate on final revision. On success merge through GitHub API squash(expected_head_sha) and archive separately. No real desktop writes.
+Review latest PR #82 HEAD and its fresh exact-head CI; initial #39810022411 failed only rustfmt (format diff fixed on branch). Independently check all eight jobs and raw test results, correct same-branch if failure, then squash merge via GitHub API(expected_head_sha=latest SHA) on verified PASS. Separate completion archive PR and Issue #54 checkpoint. No real desktop writes.
 
 ## Completion
 
