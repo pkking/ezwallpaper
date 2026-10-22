@@ -53,10 +53,16 @@ pub fn require_acknowledged_outputs(
 ) -> Result<()> {
     let caps = backend.capabilities();
     if caps.scope != OutputScope::PerOutput {
-        bail!("backend {} cannot rotate named outputs (global-only)", backend.id());
+        bail!(
+            "backend {} cannot rotate named outputs (global-only)",
+            backend.id()
+        );
     }
     if caps.acknowledgement != Acknowledgement::ExactPathReadback {
-        bail!("backend {} lacks exact-path readback for rotation", backend.id());
+        bail!(
+            "backend {} lacks exact-path readback for rotation",
+            backend.id()
+        );
     }
     for output in outputs {
         backend.validate_output(output)?;
@@ -94,9 +100,14 @@ mod tests {
     use super::*;
     struct GlobalOnly;
     impl WallpaperBackend for GlobalOnly {
-        fn id(&self) -> &'static str { "global-only-fixture" }
+        fn id(&self) -> &'static str {
+            "global-only-fixture"
+        }
         fn capabilities(&self) -> BackendCapabilities {
-            BackendCapabilities { scope: OutputScope::GlobalOnly, acknowledgement: Acknowledgement::ExactPathReadback }
+            BackendCapabilities {
+                scope: OutputScope::GlobalOnly,
+                acknowledgement: Acknowledgement::ExactPathReadback,
+            }
         }
         fn apply(&mut self, _output: &str, _path: &Path) -> Result<ApplyStatus> {
             panic!("invalid scope must fail before apply")
@@ -104,9 +115,14 @@ mod tests {
     }
     struct NoReadback;
     impl WallpaperBackend for NoReadback {
-        fn id(&self) -> &'static str { "submit-only-fixture" }
+        fn id(&self) -> &'static str {
+            "submit-only-fixture"
+        }
         fn capabilities(&self) -> BackendCapabilities {
-            BackendCapabilities { scope: OutputScope::PerOutput, acknowledgement: Acknowledgement::CommandAccepted }
+            BackendCapabilities {
+                scope: OutputScope::PerOutput,
+                acknowledgement: Acknowledgement::CommandAccepted,
+            }
         }
         fn apply(&mut self, _output: &str, _path: &Path) -> Result<ApplyStatus> {
             panic!("no-readback backend must fail before apply")
