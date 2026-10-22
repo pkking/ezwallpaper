@@ -12,7 +12,7 @@ Introduce a **private CLI-owned, object-safe** `WallpaperBackend` interface, cap
 
 ## Non-goals
 
-No new GNOME, Plasma, Sway, Hyprpaper or Portal implementation; no new user-facing `rotate --setter auto`; no changing default setter, scheduler, lockfile/schema/identity, shuffle, credential, downloader, real Wayland desktop or timers. Avoid a giant registry `match` or OS commands in Core/controller. No physical display validation. No merge of #84/#85 until their latest-head own CI passes.
+No new GNOME, Plasma, Sway, Hyprpaper or Portal implementation; no new user-facing `rotate --setter auto`; no changing default setter, scheduler, lockfile/schema/identity, shuffle, credential, downloader, real Wayland desktop or timers. Avoid a giant registry `match` or OS commands in Core/controller. No physical display validation. No merge of #85 until its latest-head own CI passes; architecture #84 is independently merged.
 
 ## Must-read context
 
@@ -21,7 +21,7 @@ AGENTS.md; Issue #83 checkpoint; ADR 0010; current #84 architecture PR and #85 a
 ## Current facts
 
 - Implementation #82 already merged to master SHA `4cc0bfe11463f1aedb147b0283003971ca3c002d` after 8/8 exact HEAD CI #39811585137; interval is opt-in, default 60. Noctalia currently hardcoded in `rotation_cli.rs` apply callback.
-- Architecture PR #84 head `d4b9dcc5df69ac94a76e5246d694ae041992e31b` (contains ADR 0010 and canonical SVG) was 7/8 SUCCESS with Noctalia E2E in progress at B1 start. To avoid depending on an unmerged code change, this B1 branch is **stacked** from #84 and must target #84's branch until #84 merges; retarget B1 to master after merge, and verify latest HEAD CI again.
+- Architecture PR #84 final tested head `d4b9dcc5df69ac94a76e5246d694ae041992e31b` passed 8/8 CI #39817701897 and was **squash MERGED** master as `3b0bf1aae87d2df46fa0d29e87c4cd64634b097e`. B1 branch originated from #84 before its merge, and now targets master, with the architecture diff already present in master; retain B1's own latest-HEAD 8/8 CI gate.
 - Existing `setter.rs` uses `validate_connector`, `noctalia_ipc`, `apply_noctalia` for one-shot `ezwallpaper apply --setter noctalia`, with exact-path `wallpaper-get` readback and 5-second bounded subprocess.
 - Rotation controller validates selected content ID, preserves strict `PathObserved` gate before per-output durable state commit and respects profile identity and advisory lock. Its offline tests use injected setter closure; retain these tests via fake adapter.
 
@@ -44,10 +44,10 @@ AGENTS.md; Issue #83 checkpoint; ADR 0010; current #84 architecture PR and #85 a
 
 ## Implementation slices
 
-- [ ] Extract minimal object-safe backend port/capability validation and Noctalia v5 concrete adapter into separate Rust modules, plus registry.
-- [ ] Refactor controller to depend on injected backend interface, reuse via legacy setter, add fake global-only/Submitted/partial failure tests.
-- [ ] Synchronize docs/architecture.svg, docs/architecture.md, README implementation statuses. Run and repair actual CI.
-- [ ] Once #84 merges, change base of this stacked PR to master, verify conflicts/CI and merge through GitHub API only after full pass; publish Issue checkpoint and independent archive.
+- [x] Extract minimal object-safe backend port/capability validation and Noctalia v5 concrete adapter into separate Rust modules, plus registry (source authored, pending CI).
+- [x] Refactor controller to depend on injected backend interface, reuse via legacy setter, add fake global-only/Submitted/partial failure tests (source authored, pending CI).
+- [x] Synchronize docs/architecture.svg, docs/architecture.md, README implementation statuses and add static boundary regression test (source authored, pending CI).
+- [ ] Open B1 PR against master (architecture #84 already merged), inspect its own exact HEAD 8/8 CI, repair any failures on this branch and squash merge through API only after full pass; publish Issue checkpoint and independent archive.
 
 ## Verification matrix
 
@@ -65,6 +65,8 @@ User approved strict Adapter Pattern. No approval to change default setter/OS su
 
 ## Evidence log
 
+- 2026-10-22: implementation authored from independent branch: `src/backend/mod.rs` object-safe trait/capabilities + strict per-output exact-readback preflight, `src/backend/registry.rs` Noctalia-only non-fallback selection, `src/backend/noctalia.rs` original bounded v5 IPC/connector validation; `src/setter.rs` compatibility facade now delegates Noctalia protocol to the same module; `src/rotation_cli.rs` injects `WallpaperBackend` and validates all named outputs before lock/IPC while keeping legacy fake-adapter tests and the unchanged #82 minute epoch/state; `src/main.rs` registers backend module. Added fake GlobalOnly/CommandAccepted refusal tests and tests/test_adapter_boundaries.py static dependency guard. Updated canonical SVG, architecture.md and README (Noctalia B1 now implemented, remaining DE modules PLANNED). **No Rust source CI observed yet**.
+- 2026-10-22: architecture PR #84 exact final HEAD `d4b9dcc5df69ac94a76e5246d694ae041992e31b`, CI [#39817701897](https://github.com/pkking/ezwallpaper/actions/runs/39817701897) **8/8 SUCCESS**; GitHub API squash merged to master `3b0bf1aae87d2df46fa0d29e87c4cd64634b097e`; B1 can target master.
 - 2026-10-22: initialized branch `agent/wallpaper-backend-noctalia-port-83` at #84 head `d4b9dcc5df69ac94a76e5246d694ae041992e31b`, new master already includes #82. #84/#85 native Noctalia jobs still in progress; no B1 code or CI verified.
 
 ## Deviations and discoveries
@@ -73,7 +75,7 @@ None yet.
 
 ## Resume from here
 
-Create backend modules, migrate controller without changing state/period mechanics, adapt tests, then open stacked PR against `agent/wallpaper-backend-architecture-83`; CI and retarget to master after #84 independently merges.
+Open B1 PR from `agent/wallpaper-backend-noctalia-port-83` against latest master, inspect exact-HEAD CI Rust quality/Clippy/tests/native E2E, diagnose and fix original branch until 8/8 SUCCESS; only then API squash merge. No physical desktop writes.
 
 ## Completion
 
