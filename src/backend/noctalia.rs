@@ -119,4 +119,3 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
     }
     Ok(())
 }
-
