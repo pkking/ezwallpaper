@@ -313,21 +313,30 @@ pub fn run_rotation(
         Some(path) => path.to_path_buf(),
         None => default_state_path()?,
     };
-    // Preview must remain offline and independent of any desktop session.
-    let mut backend = if apply {
-        Some(registry::rotation_backend()?)
+    // Preview remains offline and independent of any desktop session.
+    // Keep the Box alive for exactly the duration of the borrowed trait port.
+    if apply {
+        let mut backend = registry::rotation_backend()?;
+        run_with_backend_interval(
+            profile_path,
+            &state,
+            epoch_override,
+            force,
+            true,
+            RotationClock::realtime(interval_minutes),
+            Some(backend.as_mut()),
+        )
     } else {
-        None
-    };
-    run_with_backend_interval(
-        profile_path,
-        &state,
-        epoch_override,
-        force,
-        apply,
-        RotationClock::realtime(interval_minutes),
-        backend.as_deref_mut(),
-    )
+        run_with_backend_interval(
+            profile_path,
+            &state,
+            epoch_override,
+            force,
+            false,
+            RotationClock::realtime(interval_minutes),
+            None,
+        )
+    }
 }
 
 #[cfg(test)]
