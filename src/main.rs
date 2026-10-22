@@ -166,7 +166,7 @@ enum CliCommand {
 
 #[derive(Subcommand, Debug)]
 enum RotateOperation {
-    /// Plan the current hourly wallpaper choice, optionally apply via Noctalia v5 IPC.
+    /// Plan the current UTC-minute bucket wallpaper choice, optionally apply via Noctalia v5 IPC.
     Next {
         /// Versioned JSON profile declaring Noctalia outputs and local image pools.
         #[arg(long)]
@@ -183,9 +183,12 @@ enum RotateOperation {
         /// Replan even if this UTC epoch has already been acknowledged.
         #[arg(long)]
         force: bool,
-        /// Override the UTC hour for deterministic preview; not available with --apply.
+        /// Override the UTC interval bucket for deterministic preview; not available with --apply.
         #[arg(long)]
         epoch: Option<i64>,
+        /// Positive UTC bucket interval in minutes; omitted retains the legacy hourly behavior.
+        #[arg(long, default_value_t = 60)]
+        interval_minutes: u64,
         /// Print machine-readable output, separately versioned from wallpaper manifest.
         #[arg(long)]
         json: bool,
@@ -360,11 +363,13 @@ fn main() -> Result<()> {
                     dry_run: _,
                     force,
                     epoch,
+                    interval_minutes,
                     json,
                 },
         }) => {
-            let results =
-                rotation_cli::run_rotation(profile, state.as_deref(), *epoch, *force, *apply)?;
+            let results = rotation_cli::run_rotation(
+                profile, state.as_deref(), *epoch, *force, *apply, *interval_minutes,
+            )?;
             if *json {
                 println!(
                     "{}",
