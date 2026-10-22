@@ -970,6 +970,66 @@ mod tests {
     }
 
     #[test]
+    fn backend_scope_and_acknowledgement_are_checked_before_state_creation() {
+        use crate::backend::{Acknowledgement, BackendCapabilities, OutputScope};
+        struct Ineligible {
+            caps: BackendCapabilities,
+            attempted: bool,
+        }
+        impl WallpaperBackend for Ineligible {
+            fn id(&self) -> &'static str { "test-ineligible" }
+            fn capabilities(&self) -> BackendCapabilities { self.caps }
+            fn apply(&mut self, _name: &str, _path: &Path) -> Result<ApplyStatus> {
+                self.attempted = true;
+                bail!("ineligible backend must not apply")
+            }
+        }
+        for caps in [
+            BackendCapabilities {
+                scope: OutputScope::GlobalOnly,
+                acknowledgement: Acknowledgement::ExactPathReadback,
+            },
+            BackendCapabilities {
+                scope: OutputScope::PerOutput,
+                acknowledgement: Acknowledgement::CommandAccepted,
+            },
+        ] {
+            let (_dir, profile, state) = fixture();
+            let mut backend = Ineligible { caps, attempted: false };
+            let result = run_with_backend_interval(
+                &profile, &state, None, false, true,
+                RotationClock::simulated(60, 3_600),
+                Some(&mut backend),
+            );
+            assert!(result.is_err(), "ineligible backend cannot serve multi-output rotation");
+            assert!(!backend.attempted);
+            assert!(!state.exists());
+            assert!(!state_lock_path(&state).exists());
+            assert!(!state.parent().expect("state parent").exists());
+        }
+    }
+
+    #[test]
+    fn invalid_native_output_fails_without_spawning_noctalia_or_locking() {
+        use crate::backend::noctalia::NoctaliaBackend;
+        let (_dir, profile, state) = fixture();
+        // Mutate only an isolated fixture; the profile parser accepts names
+        // that cannot become a safe single-token Noctalia connector.
+        let original = fs::read_to_string(&profile).expect("profile fixture");
+        let changed = original.replace("DP-1", "DP-1;untrusted");
+        fs::write(&profile, changed).expect("rewrite fixture");
+        let mut backend = NoctaliaBackend;
+        let result = run_with_backend_interval(
+            &profile, &state, None, false, true,
+            RotationClock::simulated(60, 3_600),
+            Some(&mut backend),
+        );
+        assert!(result.is_err());
+        assert!(!state.exists());
+        assert!(!state_lock_path(&state).exists());
+    }
+
+    #[test]
     fn invalid_profile_is_rejected_without_state_creation() {
         let (_dir, profile, state) = fixture();
         fs::write(
