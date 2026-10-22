@@ -368,7 +368,12 @@ fn main() -> Result<()> {
                 },
         }) => {
             let results = rotation_cli::run_rotation(
-                profile, state.as_deref(), *epoch, *force, *apply, *interval_minutes,
+                profile,
+                state.as_deref(),
+                *epoch,
+                *force,
+                *apply,
+                *interval_minutes,
             )?;
             if *json {
                 println!(
@@ -596,13 +601,17 @@ mod rotate_cli_tests {
         }
         // Legacy invocation keeps hourly buckets. The desired 30-minute
         // dotfiles deployment opts in explicitly rather than changing defaults.
-        let legacy = Args::try_parse_from([
-            "ezwallpaper", "rotate", "next", "--profile", "config.json",
-        ])
-        .expect("default hourly preview parses");
+        let legacy =
+            Args::try_parse_from(["ezwallpaper", "rotate", "next", "--profile", "config.json"])
+                .expect("default hourly preview parses");
         match legacy.command {
             Some(CliCommand::Rotate {
-                operation: RotateOperation::Next { interval_minutes, epoch, .. },
+                operation:
+                    RotateOperation::Next {
+                        interval_minutes,
+                        epoch,
+                        ..
+                    },
             }) => {
                 assert_eq!(interval_minutes, 60);
                 assert_eq!(epoch, None);
@@ -610,15 +619,27 @@ mod rotate_cli_tests {
             _ => panic!("expected legacy rotate next"),
         }
         let opted_in = Args::try_parse_from([
-            "ezwallpaper", "rotate", "next", "--profile", "config.json",
-            "--interval-minutes", "30", "--epoch", "145", "--json",
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--interval-minutes",
+            "30",
+            "--epoch",
+            "145",
+            "--json",
         ])
         .expect("arbitrary positive period and preview bucket parse");
         match opted_in.command {
             Some(CliCommand::Rotate {
-                operation: RotateOperation::Next {
-                    interval_minutes, epoch, json, ..
-                },
+                operation:
+                    RotateOperation::Next {
+                        interval_minutes,
+                        epoch,
+                        json,
+                        ..
+                    },
             }) => {
                 assert_eq!(interval_minutes, 30);
                 assert_eq!(epoch, Some(145));
@@ -627,8 +648,13 @@ mod rotate_cli_tests {
             _ => panic!("expected explicit thirty-minute rotate"),
         }
         assert!(Args::try_parse_from([
-            "ezwallpaper", "rotate", "next", "--profile", "config.json",
-            "--interval-minutes", "garbage",
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--interval-minutes",
+            "garbage",
         ])
         .is_err());
         assert!(Args::try_parse_from(["ezwallpaper", "rotate", "next"]).is_err());
