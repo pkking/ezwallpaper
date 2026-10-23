@@ -82,7 +82,7 @@ B2 implementation is complete and merged. This file is archived by an independen
 
 ## Completion
 
-Final tested implementation HEAD: `2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d`; GitHub API squash merge on master: `ebfc4b3b488c852ef0570dc8580354e5a6013b8d`
+Final commit: `ebfc4b3b488c852ef0570dc8580354e5a6013b8d` (PR #88 squash merge; exact tested HEAD `2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/39919213934 — 8/8 jobs SUCCESS, 8/8 check runs SUCCESS, required 4/4 SUCCESS
 E2E evidence: native Noctalia+Sway artifact #12488025456 (`noctalia-result.json` PASS; 4 stages pixel_fraction=1.0 >= 0.9; ephemeral cleanup complete), experimental niri #12487517064, Sway visual #12485494708, Rust CLI offline #12486897309; these do not prove live GNOME
 Remaining unassessed items: real GNOME desktop, all GNOME multi-output/rotation, Plasma/Sway/Hyprpaper/Portal dedicated backends, physical 4K/GPU/hotplug/PAM, persistent system timer. Issue #83 remains OPEN.
