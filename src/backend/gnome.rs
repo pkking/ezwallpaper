@@ -50,7 +50,12 @@ fn apply_gnome_with(
 ) -> Result<()> {
     let uri = url::Url::from_file_path(path)
         .map(|uri| uri.to_string())
-        .map_err(|_| anyhow!("wallpaper path cannot be encoded as a file URI: {}", path.display()))?;
+        .map_err(|_| {
+            anyhow!(
+                "wallpaper path cannot be encoded as a file URI: {}",
+                path.display()
+            )
+        })?;
     // GSettings accepts a GVariant string; JSON-quoted URI is an escaped string.
     let value = serde_json::to_string(&uri)?;
     if !command(&["set", SCHEMA, "picture-uri", &value])?.success {
@@ -118,14 +123,14 @@ mod tests {
         );
         assert!(backend.validate_output("DP-1").is_err());
         assert!(backend.validate_output("").is_ok());
-        assert!(backend.apply("DP-1", Path::new("/tmp/not-applied.png")).is_err());
-        assert!(
-            crate::backend::require_acknowledged_outputs(
-                &backend,
-                &["DP-1".to_owned(), "HDMI-A-1".to_owned()]
-            )
-            .is_err()
-        );
+        assert!(backend
+            .apply("DP-1", Path::new("/tmp/not-applied.png"))
+            .is_err());
+        assert!(crate::backend::require_acknowledged_outputs(
+            &backend,
+            &["DP-1".to_owned(), "HDMI-A-1".to_owned()]
+        )
+        .is_err());
     }
 
     #[test]
@@ -133,7 +138,10 @@ mod tests {
         let mut calls: Vec<Vec<String>> = Vec::new();
         apply_gnome_with(Path::new("/tmp/wall paper #1.png"), |argv| {
             calls.push(argv.iter().map(|a| (*a).to_owned()).collect());
-            Ok(outcome(true, if argv[0] == "writable" { "true\n" } else { "" }))
+            Ok(outcome(
+                true,
+                if argv[0] == "writable" { "true\n" } else { "" },
+            ))
         })
         .expect("two keys updated");
         assert_eq!(calls.len(), 3);
@@ -150,7 +158,10 @@ mod tests {
             let mut calls = Vec::new();
             apply_gnome_with(Path::new("/tmp/wallpaper.png"), |argv| {
                 calls.push(argv[0].to_owned());
-                Ok(outcome(if argv[0] == "writable" { success } else { true }, response))
+                Ok(outcome(
+                    if argv[0] == "writable" { success } else { true },
+                    response,
+                ))
             })
             .expect("dark key may be absent");
             assert_eq!(calls, ["set", "writable"]);
