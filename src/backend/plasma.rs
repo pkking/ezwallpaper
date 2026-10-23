@@ -112,12 +112,17 @@ mod tests {
     fn global_scope_does_not_allow_named_output_or_rotation() {
         for mut backend in [PlasmaBackend::qdbus6(), PlasmaBackend::qdbus()] {
             assert_eq!(backend.capabilities().scope, OutputScope::GlobalOnly);
-            assert_eq!(backend.capabilities().acknowledgement, Acknowledgement::CommandAccepted);
+            assert_eq!(
+                backend.capabilities().acknowledgement,
+                Acknowledgement::CommandAccepted
+            );
             assert!(backend.validate_output("").is_ok());
             assert!(backend.validate_output("DP-1").is_err());
             assert!(super::super::require_acknowledged_outputs(
-                &backend, &["DP-1".into(), "HDMI-A-1".into()]
-            ).is_err());
+                &backend,
+                &["DP-1".into(), "HDMI-A-1".into()]
+            )
+            .is_err());
             let mut called = false;
             let result = backend.apply_with("DP-1", Path::new("/no-wallpaper.png"), |_, _| {
                 called = true;
@@ -137,19 +142,27 @@ mod tests {
             (PlasmaBackend::qdbus(), "qdbus"),
         ] {
             let mut calls: Vec<(String, Vec<String>)> = Vec::new();
-            let status = backend.apply_with("", &path, |cmd, args| {
-                calls.push((cmd.to_owned(), args.iter().map(|s| (*s).to_owned()).collect()));
-                Ok(())
-            }).expect("fake Plasma accepts global one-shot");
+            let status = backend
+                .apply_with("", &path, |cmd, args| {
+                    calls.push((
+                        cmd.to_owned(),
+                        args.iter().map(|s| (*s).to_owned()).collect(),
+                    ));
+                    Ok(())
+                })
+                .expect("fake Plasma accepts global one-shot");
             assert_eq!(status, ApplyStatus::Submitted);
             assert_eq!(calls.len(), 1);
             assert_eq!(calls[0].0, command);
-            assert_eq!(calls[0].1, vec![
-                "org.kde.plasmashell".to_owned(),
-                "/PlasmaShell".to_owned(),
-                "org.kde.PlasmaShell.evaluateScript".to_owned(),
-                expected.clone(),
-            ]);
+            assert_eq!(
+                calls[0].1,
+                vec![
+                    "org.kde.plasmashell".to_owned(),
+                    "/PlasmaShell".to_owned(),
+                    "org.kde.PlasmaShell.evaluateScript".to_owned(),
+                    expected.clone(),
+                ]
+            );
         }
     }
 
