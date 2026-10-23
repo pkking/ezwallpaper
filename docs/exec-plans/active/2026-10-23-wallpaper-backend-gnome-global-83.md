@@ -66,15 +66,18 @@ None: additive internal extraction fits already-accepted ADR 0010. Any new GNOME
 
 - 2026-10-23: B1 implementation #86 merged and validated. This B2 plan created before code changes.
 - 2026-10-23: authored `src/backend/gnome.rs` GlobalOnly / CommandAccepted backend and injected GSettings fake-runner tests, registered module, rewired existing one-shot GNOME setter through the private trait (no direct controller change); static guard, README/architecture.md/architecture.svg reflect GNOME global one-shot implementation only. GitHub implementation commit range starts `85fd4e3ff30923ad4cc85832d042a3cdbd94c256`; **no Cargo/rustfmt or CI executed locally**, no physical GNOME evidence or live setter invocation.
+- 2026-10-23: after applying four rustfmt hunks from initial CI, checked cross-platform GNOME URI test assumptions. Replaced test-only Unix `/tmp/...` URI fixture paths with `std::env::temp_dir().join(name)` in commit `7a51ed11628c5ac3e744a54d05f8850cc4c04fb1`; named-output refusal still avoids invoking a host command. This prevents Windows URL-path parsing false failures without modifying production GNOME logic. New exact-head 8/8 CI still required; first CI failure is retained below.
 - 2026-10-23: [PR #88](https://github.com/pkking/ezwallpaper/pull/88) initial HEAD `25c02f127d1f0e2bb57cd41dca3ce55b754aac52` [CI #39880133431](https://github.com/pkking/ezwallpaper/actions/runs/39880133431) showed **Rust quality FORMAT FAILURE** (Rust job #120175251934) in four `src/backend/gnome.rs` formatting hunks. Read actual job log and applied all four precise rustfmt recommendations in commit `8062cacdf8c5cc9c27d6247e77261c2d21c236d0`, preserving tests and runtime semantics. Initial run is **not** passing evidence; exact latest-head rerun is mandatory. All other initial jobs observed completed except Windows and native Noctalia still in progress at first check. Real GNOME remains UNASSESSED.
 
 ## Deviations and discoveries
+
+URI fixtures must represent valid native absolute paths on all tested hosts, not assume Unix paths on Windows; updated fake-only test fixture accordingly. No GNOME host interactions.
 
 The CI runner's rustfmt 4-line/diff diagnostics were required to normalize injected GSettings fixture assertions and URI error formatting. This is formatting-only; do not weaken Rust quality or assume a passing test from the failed initial run.
 
 ## Resume from here
 
-Read PR #88's latest HEAD and its newly triggered exact-head CI after rustfmt and plan checkpoint. Require eight full job and check-run SUCCESS including Rust quality and both OS matrices, then review no real GNOME/rotation mutation and API squash merge with expected head. On failure, inspect real job logs, repair original branch and rerun. After verified merge, separate completion Plan PR. Keep GNOME GlobalOnly/Submitted; no unattended GNOME rotation.
+Read PR #88's latest HEAD and newly triggered exact-head CI after rustfmt, cross-platform native path fixtures and plan checkpoint. Require eight full job and check-run SUCCESS including Rust quality and both OS matrices, then review no real GNOME/rotation mutation and API squash merge with expected head. On failure, inspect real job logs, repair original branch and rerun. After verified merge, separate completion Plan PR. Keep GNOME GlobalOnly/Submitted; no unattended GNOME rotation.
 
 ## Completion
 
