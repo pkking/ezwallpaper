@@ -64,10 +64,11 @@ fn apply_gnome_with(
     // Older GNOME schemas may not offer picture-uri-dark. A failed probe is
     // non-fatal, as in the legacy path; an unavailable binary is an error.
     let dark = command(&["writable", SCHEMA, "picture-uri-dark"])?;
-    if dark.success && String::from_utf8_lossy(&dark.stdout).trim() == "true" {
-        if !command(&["set", SCHEMA, "picture-uri-dark", &value])?.success {
-            bail!("gsettings picture-uri-dark update did not succeed");
-        }
+    if dark.success
+        && String::from_utf8_lossy(&dark.stdout).trim() == "true"
+        && !command(&["set", SCHEMA, "picture-uri-dark", &value])?.success
+    {
+        bail!("gsettings picture-uri-dark update did not succeed");
     }
     Ok(())
 }
