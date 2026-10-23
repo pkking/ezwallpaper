@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use std::env;
 use std::path::{Path, PathBuf};
 
+pub(crate) mod gnome;
 pub(crate) mod noctalia;
 pub(crate) mod registry;
 
@@ -18,22 +19,14 @@ pub enum ApplyStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputScope {
-    /// Reserved for future global wallpaper adapters, exercised by offline tests.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "global-only adapter is a future independent PR")
-    )]
+    /// Global desktop applies one image, not a named output; no implicit fan-out.
     GlobalOnly,
     PerOutput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Acknowledgement {
-    /// Reserved for adapters that cannot satisfy acknowledged rotation.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "submit-only adapter is a future independent PR")
-    )]
+    /// Successful command invocation is not exact-path readback.
     CommandAccepted,
     ExactPathReadback,
 }
