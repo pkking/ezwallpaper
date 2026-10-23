@@ -44,8 +44,8 @@ AGENTS.md; Issue #83 latest checkpoint; docs/adr/0010-wallpaper-backend-adapter-
 
 ## Implementation slices
 
-- [ ] GNOME module plus unit/fake runner tests and setter facade delegation.
-- [ ] Architecture/README diagram synchronization and regression check.
+- [x] GNOME module plus unit/fake runner tests and setter facade delegation authored; latest-head CI not yet run.
+- [x] Architecture/README diagram synchronized and static regression check authored; validation pending CI.
 - [ ] Exact-head CI, repair as needed, GitHub API squash merge and separate archive.
 
 ## Verification matrix
@@ -64,7 +64,8 @@ None: additive internal extraction fits already-accepted ADR 0010. Any new GNOME
 
 ## Evidence log
 
-- 2026-10-23: B1 implementation #86 merged and validated. This B2 plan created before code changes, no B2 CI yet.
+- 2026-10-23: B1 implementation #86 merged and validated. This B2 plan created before code changes.
+- 2026-10-23: authored `src/backend/gnome.rs` GlobalOnly / CommandAccepted backend and injected GSettings fake-runner tests, registered module, rewired existing one-shot GNOME setter through the private trait (no direct controller change); static guard, README/architecture.md/architecture.svg reflect GNOME global one-shot implementation only. GitHub implementation commit range starts `85fd4e3ff30923ad4cc85832d042a3cdbd94c256`; **no Cargo/rustfmt or CI executed locally**, no physical GNOME evidence or live setter invocation.
 
 ## Deviations and discoveries
 
@@ -72,7 +73,7 @@ None yet.
 
 ## Resume from here
 
-Implement an isolated GlobalOnly GSettings adapter in `src/backend/gnome.rs`, inject an offline fake command runner and delegate existing one-shot setter, then update architecture/docs and open a PR tied to Issue #83 and this plan. Never expose GNOME to unattended per-output rotation.
+Create Issue #83-linked implementation PR from `agent/wallpaper-backend-gnome-global-83` with this active plan, inspect new exact-head all 8 GitHub Actions CI jobs. Diagnose compile/Rustfmt/Clippy or test errors from actual logs; repair original PR branch and rerun before merging. GNOME must stay GlobalOnly/Submitted, no new unattended rotation or real desktop writes.
 
 ## Completion
 
