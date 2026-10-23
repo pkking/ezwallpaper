@@ -52,7 +52,7 @@ AGENTS.md; Issue #83 latest checkpoint; docs/adr/0010-wallpaper-backend-adapter-
 
 | Scope | Gate | Status |
 |---|---|---|
-| Rust quality | cargo fmt + strict clippy | PENDING |
+| Rust quality | cargo fmt + strict clippy | initial #39880133431 FAILED fmt; four hunks corrected, rerun pending |
 | GNOME offline behavior | Rust unit + desktop contract tests | PENDING |
 | Noctalia existing behavior | isolated Noctalia+Sway native E2E | PENDING |
 | Platform and governance | latest-head 8/8 CI | PENDING |
@@ -66,14 +66,15 @@ None: additive internal extraction fits already-accepted ADR 0010. Any new GNOME
 
 - 2026-10-23: B1 implementation #86 merged and validated. This B2 plan created before code changes.
 - 2026-10-23: authored `src/backend/gnome.rs` GlobalOnly / CommandAccepted backend and injected GSettings fake-runner tests, registered module, rewired existing one-shot GNOME setter through the private trait (no direct controller change); static guard, README/architecture.md/architecture.svg reflect GNOME global one-shot implementation only. GitHub implementation commit range starts `85fd4e3ff30923ad4cc85832d042a3cdbd94c256`; **no Cargo/rustfmt or CI executed locally**, no physical GNOME evidence or live setter invocation.
+- 2026-10-23: [PR #88](https://github.com/pkking/ezwallpaper/pull/88) initial HEAD `25c02f127d1f0e2bb57cd41dca3ce55b754aac52` [CI #39880133431](https://github.com/pkking/ezwallpaper/actions/runs/39880133431) showed **Rust quality FORMAT FAILURE** (Rust job #120175251934) in four `src/backend/gnome.rs` formatting hunks. Read actual job log and applied all four precise rustfmt recommendations in commit `8062cacdf8c5cc9c27d6247e77261c2d21c236d0`, preserving tests and runtime semantics. Initial run is **not** passing evidence; exact latest-head rerun is mandatory. All other initial jobs observed completed except Windows and native Noctalia still in progress at first check. Real GNOME remains UNASSESSED.
 
 ## Deviations and discoveries
 
-None yet.
+The CI runner's rustfmt 4-line/diff diagnostics were required to normalize injected GSettings fixture assertions and URI error formatting. This is formatting-only; do not weaken Rust quality or assume a passing test from the failed initial run.
 
 ## Resume from here
 
-Create Issue #83-linked implementation PR from `agent/wallpaper-backend-gnome-global-83` with this active plan, inspect new exact-head all 8 GitHub Actions CI jobs. Diagnose compile/Rustfmt/Clippy or test errors from actual logs; repair original PR branch and rerun before merging. GNOME must stay GlobalOnly/Submitted, no new unattended rotation or real desktop writes.
+Read PR #88's latest HEAD and its newly triggered exact-head CI after rustfmt and plan checkpoint. Require eight full job and check-run SUCCESS including Rust quality and both OS matrices, then review no real GNOME/rotation mutation and API squash merge with expected head. On failure, inspect real job logs, repair original branch and rerun. After verified merge, separate completion Plan PR. Keep GNOME GlobalOnly/Submitted; no unattended GNOME rotation.
 
 ## Completion
 
