@@ -38,6 +38,7 @@ class AdapterBoundaries(unittest.TestCase):
         registry = (BACKEND / "registry.rs").read_text(encoding="utf-8")
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
         gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
+        plasma = (BACKEND / "plasma.rs").read_text(encoding="utf-8")
         setter = LEGACY.read_text(encoding="utf-8")
         self.assertIn("pub trait WallpaperBackend", port)
         self.assertIn("OutputScope::PerOutput", noctalia)
@@ -54,6 +55,16 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('fn apply_gnome(', setter)
         self.assertNotIn('org.gnome.desktop.background', setter)
         self.assertNotIn('GnomeBackend', registry)
+
+        self.assertIn('PlasmaBackend::qdbus6()', setter)
+        self.assertIn('PlasmaBackend::qdbus()', setter)
+        self.assertIn('OutputScope::GlobalOnly', plasma)
+        self.assertIn('Acknowledgement::CommandAccepted', plasma)
+        self.assertIn('org.kde.plasmashell', plasma)
+        self.assertIn('Command::new(command)', plasma)
+        self.assertNotIn('fn plasma_script(', setter)
+        self.assertNotIn('org.kde.PlasmaShell.evaluateScript', setter)
+        self.assertNotIn('PlasmaBackend', registry)
 
         for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus"):
             with self.subTest(protocol=protocol):

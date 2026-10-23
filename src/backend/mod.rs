@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) mod gnome;
 pub(crate) mod noctalia;
+pub(crate) mod plasma;
 pub(crate) mod registry;
 
 /// Applying a path does not imply that actual framebuffer pixels changed.
