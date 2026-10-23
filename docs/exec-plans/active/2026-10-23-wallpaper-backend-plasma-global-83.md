@@ -46,7 +46,7 @@ AGENTS.md, README.md, docs/agents/{workflow,testing}.md, docs/adr/{0001-core-cli
 
 - [x] Create `src/backend/plasma.rs`, delegate one-shot in setter, and keep fake adapter/protocol tests offline. Code authored; remote CI not yet verified.
 - [x] Synchronize static boundary assertions, README and canonical architecture diagrams. Code authored; remote CI not yet verified.
-- [ ] Open implementation PR, read exact-head CI and repair same branch until passing; merge via GitHub API with expected head SHA, independent completion archive.
+- [ ] Opened PR #90; initial exact-head CI showed rustfmt failure corrected on same branch. Recheck new exact-head 8/8, merge only when verified, then independent completion archive.
 
 ## Verification matrix
 
@@ -70,11 +70,11 @@ None: implementation is behavior-preserving internal extraction already authoriz
 
 ## Deviations and discoveries
 
-None yet.
+- The first precise HEAD `0129967ec4213b422125dc4300413789d1404305` [CI #39978102180](https://github.com/pkking/ezwallpaper/actions/runs/39978102180) reported **Rust quality Format FAIL** (job #120497923617). Its actual `cargo fmt --check` log showed only four new `src/backend/plasma.rs` test layout changes (multiline assert, vector and fake-closure); no test suppressions or altered semantics. Applied exactly those rustfmt-proposed hunks in commit `0e5803104c3251ec7b4eb810f1b17db8552da1e6`. The first run's Rust CLI/test, Sway, macOS, governance were SUCCESS at time of inspection, but older SHA results cannot validate newer code. A **fresh latest-head** CI is required; no PASS yet.
 
 ## Resume from here
 
-Open implementation PR linked to Issue #83 and this active plan; read new exact-head GitHub Actions Rust quality, Rust/CLI, Windows/macOS, Sway/Noctalia and Agent governance results. On any failure read the actual job logs, repair the same branch and wait for a new exact HEAD before API merge; keep Plasma excluded from unattended rotation.
+Inspect [PR #90](https://github.com/pkking/ezwallpaper/pull/90) **latest** HEAD's complete 8/8 CI; previous formatting failure was corrected, but new HEAD can still fail Clippy, cross-platform or native E2E. Read genuine logs and fix same branch without weakening checks, then GitHub API squash merge with `expected_head_sha` only after all required checks pass and exact-head evidence verified. Do not register Plasma for unattended rotation.
 
 ## Completion
 
