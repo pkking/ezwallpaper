@@ -9,6 +9,7 @@ use log::debug;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+mod backend;
 mod rotation_cli;
 mod setter;
 

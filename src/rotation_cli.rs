@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
 
-use crate::setter::{ApplyStatus, Capability, Setter};
+use crate::backend::{registry, require_acknowledged_outputs, ApplyStatus, WallpaperBackend};
 
 const MAX_PROFILE_BYTES: u64 = 256 * 1024;
 const MAX_STATE_BYTES: u64 = 2 * 1024 * 1024;
@@ -313,18 +313,30 @@ pub fn run_rotation(
         Some(path) => path.to_path_buf(),
         None => default_state_path()?,
     };
-    run_with_adapter_interval(
-        profile_path,
-        &state,
-        epoch_override,
-        force,
-        apply,
-        RotationClock::realtime(interval_minutes),
-        |output, path| {
-            let capability = Capability::detect_with(Setter::Noctalia, Some(output))?;
-            capability.apply(path)
-        },
-    )
+    // Preview remains offline and independent of any desktop session.
+    // Keep the Box alive for exactly the duration of the borrowed trait port.
+    if apply {
+        let mut backend = registry::rotation_backend()?;
+        run_with_backend_interval(
+            profile_path,
+            &state,
+            epoch_override,
+            force,
+            true,
+            RotationClock::realtime(interval_minutes),
+            Some(backend.as_mut()),
+        )
+    } else {
+        run_with_backend_interval(
+            profile_path,
+            &state,
+            epoch_override,
+            force,
+            false,
+            RotationClock::realtime(interval_minutes),
+            None,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -347,8 +359,34 @@ fn run_with_adapter(
     )
 }
 
-/// Accept an injected Unix timestamp for deterministic offline clock tests.
-/// Production always passes None and reads the real UTC clock.
+/// Test-only callback adapter keeps the old fake IPC/state fixtures unchanged.
+#[cfg(test)]
+struct CallbackBackend<F> {
+    apply_fn: F,
+}
+
+#[cfg(test)]
+impl<F> WallpaperBackend for CallbackBackend<F>
+where
+    F: FnMut(&str, &Path) -> Result<ApplyStatus>,
+{
+    fn id(&self) -> &'static str {
+        "offline-acknowledged-fixture"
+    }
+    fn capabilities(&self) -> crate::backend::BackendCapabilities {
+        crate::backend::BackendCapabilities {
+            scope: crate::backend::OutputScope::PerOutput,
+            acknowledgement: crate::backend::Acknowledgement::ExactPathReadback,
+        }
+    }
+    fn apply(&mut self, output: &str, path: &Path) -> Result<ApplyStatus> {
+        (self.apply_fn)(output, path)
+    }
+}
+
+/// Existing unit callers supply a fake adapter. Production routes exclusively
+/// through the object-safe port below, never a concrete desktop setter.
+#[cfg(test)]
 fn run_with_adapter_interval(
     profile_path: &Path,
     state_path: &Path,
@@ -356,7 +394,31 @@ fn run_with_adapter_interval(
     force: bool,
     apply: bool,
     clock: RotationClock,
-    mut setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
+    setter: impl FnMut(&str, &Path) -> Result<ApplyStatus>,
+) -> Result<Vec<RotationOutcome>> {
+    let mut backend = CallbackBackend { apply_fn: setter };
+    run_with_backend_interval(
+        profile_path,
+        state_path,
+        epoch_override,
+        force,
+        apply,
+        clock,
+        Some(&mut backend),
+    )
+}
+
+/// The controller owns state transitions, not desktop transport. One backend
+/// instance services the full transaction; capabilities are checked before
+/// lock/state-directory creation or any IPC.
+fn run_with_backend_interval(
+    profile_path: &Path,
+    state_path: &Path,
+    epoch_override: Option<i64>,
+    force: bool,
+    apply: bool,
+    clock: RotationClock,
+    mut backend: Option<&mut dyn WallpaperBackend>,
 ) -> Result<Vec<RotationOutcome>> {
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -365,6 +427,17 @@ fn run_with_adapter_interval(
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
     let mut profile = load_profile(profile_path)?;
+    if apply {
+        let selected = backend
+            .as_deref_mut()
+            .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
+        let names = profile
+            .outputs
+            .iter()
+            .map(|o| o.name.clone())
+            .collect::<Vec<_>>();
+        require_acknowledged_outputs(selected, &names)?;
+    }
     // The on-disk state format stays exactly schema v1. Only non-default
     // periods use a qualified identity, so old hourly state remains readable;
     // sharing the same --state file across periods fails closed.
@@ -430,9 +503,12 @@ fn run_with_adapter_interval(
             if Some(&current_id) != proposed.content_id.as_ref() {
                 bail!("wallpaper content changed after planning; no state committed");
             }
-            let outcome = setter(&output.name, path)?;
+            let selected = backend
+                .as_deref_mut()
+                .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
+            let outcome = selected.apply(&output.name, path)?;
             if outcome != ApplyStatus::PathObserved {
-                bail!("rotation not acknowledged by Noctalia path readback");
+                bail!("rotation not acknowledged by exact wallpaper path readback");
             }
             observed = true;
             let new_state = proposed
@@ -904,6 +980,84 @@ mod tests {
             assert!(!state_lock_path(&state).exists());
         }
         assert!(!state.parent().expect("state parent").exists());
+    }
+
+    #[test]
+    fn backend_scope_and_acknowledgement_are_checked_before_state_creation() {
+        use crate::backend::{Acknowledgement, BackendCapabilities, OutputScope};
+        struct Ineligible {
+            caps: BackendCapabilities,
+            attempted: bool,
+        }
+        impl WallpaperBackend for Ineligible {
+            fn id(&self) -> &'static str {
+                "test-ineligible"
+            }
+            fn capabilities(&self) -> BackendCapabilities {
+                self.caps
+            }
+            fn apply(&mut self, _name: &str, _path: &Path) -> Result<ApplyStatus> {
+                self.attempted = true;
+                bail!("ineligible backend must not apply")
+            }
+        }
+        for caps in [
+            BackendCapabilities {
+                scope: OutputScope::GlobalOnly,
+                acknowledgement: Acknowledgement::ExactPathReadback,
+            },
+            BackendCapabilities {
+                scope: OutputScope::PerOutput,
+                acknowledgement: Acknowledgement::CommandAccepted,
+            },
+        ] {
+            let (_dir, profile, state) = fixture();
+            let mut backend = Ineligible {
+                caps,
+                attempted: false,
+            };
+            let result = run_with_backend_interval(
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, 3_600),
+                Some(&mut backend),
+            );
+            assert!(
+                result.is_err(),
+                "ineligible backend cannot serve multi-output rotation"
+            );
+            assert!(!backend.attempted);
+            assert!(!state.exists());
+            assert!(!state_lock_path(&state).exists());
+            assert!(!state.parent().expect("state parent").exists());
+        }
+    }
+
+    #[test]
+    fn invalid_native_output_fails_without_spawning_noctalia_or_locking() {
+        use crate::backend::noctalia::NoctaliaBackend;
+        let (_dir, profile, state) = fixture();
+        // Mutate only an isolated fixture; the profile parser accepts names
+        // that cannot become a safe single-token Noctalia connector.
+        let original = fs::read_to_string(&profile).expect("profile fixture");
+        let changed = original.replace("DP-1", "DP-1;untrusted");
+        fs::write(&profile, changed).expect("rewrite fixture");
+        let mut backend = NoctaliaBackend;
+        let result = run_with_backend_interval(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3_600),
+            Some(&mut backend),
+        );
+        assert!(result.is_err());
+        assert!(!state.exists());
+        assert!(!state_lock_path(&state).exists());
     }
 
     #[test]
