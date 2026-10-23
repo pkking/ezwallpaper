@@ -1,10 +1,10 @@
 # 2026-10-22-wallpaper-backend-noctalia-port-83: extract first concrete rotation adapter
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-22
-Last checkpoint: 2026-10-22
+Last checkpoint: 2026-10-23
 
 ## Objective
 
@@ -12,7 +12,7 @@ Introduce a **private CLI-owned, object-safe** `WallpaperBackend` interface, cap
 
 ## Non-goals
 
-No new GNOME, Plasma, Sway, Hyprpaper or Portal implementation; no new user-facing `rotate --setter auto`; no changing default setter, scheduler, lockfile/schema/identity, shuffle, credential, downloader, real Wayland desktop or timers. Avoid a giant registry `match` or OS commands in Core/controller. No physical display validation. No merge of #85 until its latest-head own CI passes; architecture #84 is independently merged.
+No new GNOME, Plasma, Sway, Hyprpaper or Portal implementation; no new user-facing `rotate --setter auto`; no changing default setter, scheduler, lockfile/schema/identity, shuffle, credential, downloader, real Wayland desktop or timers. Avoid a giant registry `match` or OS commands in Core/controller. No physical display validation. Previous #85 archive itself passed 8/8 and was merged before final B1 validation; architecture #84 was independently merged.
 
 ## Must-read context
 
@@ -35,28 +35,28 @@ AGENTS.md; Issue #83 checkpoint; ADR 0010; current #84 architecture PR and #85 a
 
 ## Acceptance criteria
 
-- [ ] Rotation Controller references only `backend::WallpaperBackend` and never imports `Setter`, `Capability`, `noctalia`, `Command`, D-Bus or OS commands.
-- [ ] One-shot explicit Noctalia apply and rotation use the same extracted Noctalia IPC backend code with exactly preserved `PathObserved` behavior.
-- [ ] Offline fake adapter tests cover GlobalOnly/missing readback refusal before lock/state/IPC and partial failure or Submitted may not acknowledge state; legacy 60 and #82 interval tests pass.
-- [ ] Existing 8 CI jobs including pinned native Noctalia+Sway E2E and platform checks all SUCCESS on B1 **latest exact HEAD** after #84 retarget; no physical support claims.
-- [ ] Architecture SVG/README/architecture.md statuses truthful: B1 implemented only, all future GNOME/Plasma/Sway/Hyprpaper/Portal modules still PLANNED.
-- [ ] CI evidence and issue checkpoint contain final tested commit and independently verified artifacts; no merge until exact HEAD CI success.
+- [x] Rotation Controller references only `backend::WallpaperBackend` and never imports `Setter`, `Capability`, `noctalia`, `Command`, D-Bus or OS commands.
+- [x] One-shot explicit Noctalia apply and rotation use the same extracted Noctalia IPC backend code with exactly preserved `PathObserved` behavior.
+- [x] Offline fake adapter tests cover GlobalOnly/missing readback refusal before lock/state/IPC and partial failure or Submitted may not acknowledge state; legacy 60 and #82 interval tests pass.
+- [x] Existing 8 CI jobs including pinned native Noctalia+Sway E2E and platform checks all SUCCESS on B1 **latest exact HEAD** after #84 retarget; no physical support claims.
+- [x] Architecture SVG/README/architecture.md statuses truthful: B1 implemented only, all future GNOME/Plasma/Sway/Hyprpaper/Portal modules still PLANNED.
+- [x] CI evidence and issue checkpoint contain final tested commit and independently verified artifacts; no merge until exact HEAD CI success.
 
 ## Implementation slices
 
 - [x] Extract minimal object-safe backend port/capability validation and Noctalia v5 concrete adapter into separate Rust modules, plus registry (source authored, pending CI).
 - [x] Refactor controller to depend on injected backend interface, reuse via legacy setter, add fake global-only/Submitted/partial failure tests (source authored, pending CI).
 - [x] Synchronize docs/architecture.svg, docs/architecture.md, README implementation statuses and add static boundary regression test (source authored, pending CI).
-- [ ] Open B1 PR against master (architecture #84 already merged), inspect its own exact HEAD 8/8 CI, repair any failures on this branch and squash merge through API only after full pass; publish Issue checkpoint and independent archive.
+- [x] B1 PR #86 tested at exact HEAD `99405ff04c1bd5e3b9655dfaaec7c28713176d10`; CI #39823542531 8/8 SUCCESS; squash merged as master `b8bb928adf1595ae0d3e1b653540ed6c06c07a91`. This independent archive PR records evidence; broader Issue #83 stays open.
 
 ## Verification matrix
 
 | Scope | Gate | Status |
 |---|---|---|
-| Rust format / Clippy | Rust quality CI | PENDING |
-| Offline unit / CLI | Rust tests and CLI smoke | PENDING |
-| Noctalia real native IPC/frames | pinned virtual niri+Noctalia CI job | PENDING |
-| Cross-platform and governance | all 8 CI checks at final HEAD | PENDING |
+| Rust format / Clippy | Rust quality CI | PASS, exact HEAD #39823542531 |
+| Offline unit / CLI | Rust tests and CLI smoke | PASS, exact HEAD #39823542531 |
+| Noctalia real native IPC/frames | pinned virtual niri+Noctalia CI job | PASS, isolated virtual CI #39823542531; no physical display |
+| Cross-platform and governance | all 8 CI checks at final HEAD | PASS 8/8, #39823542531 |
 | Physical GNOME/KDE/Sway/Hyprpaper | separate real desktop test | UNASSESSED |
 
 ## Decision gates
@@ -65,6 +65,8 @@ User approved strict Adapter Pattern. No approval to change default setter/OS su
 
 ## Evidence log
 
+- 2026-10-23: **Verified implementation and merge.** Final source HEAD `99405ff04c1bd5e3b9655dfaaec7c28713176d10` in [PR #86](https://github.com/pkking/ezwallpaper/pull/86) passed all eight exact-HEAD [CI run #39823542531](https://github.com/pkking/ezwallpaper/actions/runs/39823542531) checks: Rust quality, Rust tests/CLI, Agent integrity/contract tests, Windows, macOS, Sway pixel E2E, Noctalia v5.2.1 plus Sway dual-render E2E. No production/hardware claim inferred from this virtual-only CI. PR #86 was squash merged via GitHub API as `b8bb928adf1595ae0d3e1b653540ed6c06c07a91`, subsequently verified as master. Only Noctalia concrete port exists; all future adapters remain planned.
+- 2026-10-22: [minute interval completion PR #85](https://github.com/pkking/ezwallpaper/pull/85) independently merged to master at `649ee7b6e91d8718544d66f1744926e33621be6a`, preserving #82 minute interval behavior prior to B1 merge.
 - 2026-10-22: first B1 [PR #86](https://github.com/pkking/ezwallpaper/pull/86) exact initial HEAD `f2ba048174f06899f67fd4da95dbd21cbd3d5df0` [CI #39822496728](https://github.com/pkking/ezwallpaper/actions/runs/39822496728) FAILED: Rust quality `cargo fmt --check` showed 18 source formatting hunks; Rust and platform builds failed with E0597 (owned `Option<Box<dyn WallpaperBackend>>` shortened borrow via `as_deref_mut`). Read real job logs, rewrote apply/preview paths to keep owned Box live through scoped `as_mut()`, then applied rustfmt-proposed hunks in the same branch. No tests disabled, no change to per-output state semantics. New exact-HEAD CI will be required. Earlier failure remains evidence, **not** a passing result.
 - 2026-10-22: implementation authored from independent branch: `src/backend/mod.rs` object-safe trait/capabilities + strict per-output exact-readback preflight, `src/backend/registry.rs` Noctalia-only non-fallback selection, `src/backend/noctalia.rs` original bounded v5 IPC/connector validation; `src/setter.rs` compatibility facade now delegates Noctalia protocol to the same module; `src/rotation_cli.rs` injects `WallpaperBackend` and validates all named outputs before lock/IPC while keeping legacy fake-adapter tests and the unchanged #82 minute epoch/state; `src/main.rs` registers backend module. Added fake GlobalOnly/CommandAccepted refusal tests and tests/test_adapter_boundaries.py static dependency guard. Updated canonical SVG, architecture.md and README (Noctalia B1 now implemented, remaining DE modules PLANNED). **No Rust source CI observed yet**.
 - 2026-10-22: architecture PR #84 exact final HEAD `d4b9dcc5df69ac94a76e5246d694ae041992e31b`, CI [#39817701897](https://github.com/pkking/ezwallpaper/actions/runs/39817701897) **8/8 SUCCESS**; GitHub API squash merged to master `3b0bf1aae87d2df46fa0d29e87c4cd64634b097e`; B1 can target master.
@@ -76,11 +78,11 @@ CI revealed an E0597 trait-object borrow lifetime mistake in the initial adapter
 
 ## Resume from here
 
-Read PR #86 latest HEAD's new Actions CI (previous initial #39822496728 failed E0597 + rustfmt), inspect Rust quality/Clippy, unit tests, native Noctalia+Sway and cross-platform jobs; repair same branch until final latest-head 8/8 SUCCESS. Only then GitHub API squash merge and archive; no real desktop writes.
+Verify this completion-only documentation PR's **own latest HEAD** all eight CI checks, then GitHub API squash merge with HEAD lease. Confirm master contains this `completed/` plan and no corresponding `active/` plan; add exact SHA/CI checkpoint to Issue #83. Continue Issue #83 in independent adapter-specific slices (GNOME/Plasma/Sway/Hyprpaper/Portal), without claiming untested physical support.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `b8bb928adf1595ae0d3e1b653540ed6c06c07a91` (PR #86 squash merge; tested HEAD `99405ff04c1bd5e3b9655dfaaec7c28713176d10`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39823542531 (8/8 SUCCESS)
+E2E artifact: isolated pinned native Noctalia/virtual niri evidence in CI #39823542531; physical desktop UNASSESSED
 Remaining unassessed items: other DE adapters, physical monitor/4K/GPU/lockscreen, real user session and timer.
