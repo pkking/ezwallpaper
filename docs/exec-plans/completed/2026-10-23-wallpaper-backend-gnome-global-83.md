@@ -1,7 +1,7 @@
 # 2026-10-23-wallpaper-backend-gnome-global-83: GNOME global setter adapter extraction
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-23
 Last checkpoint: 2026-10-23
@@ -16,7 +16,7 @@ No new GNOME rotation support, no physical GNOME session, no privilege/persisten
 
 ## Must-read context
 
-AGENTS.md; Issue #83 latest checkpoint; docs/adr/0010-wallpaper-backend-adapter-contract.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.{md,svg}; src/setter.rs; src/backend/{mod,registry,noctalia}.rs; src/rotation_cli.rs; README.md; tests/test_desktop_adapter_contract.py. B1 PR #86 exact-head CI #39823542531 8/8 SUCCESS and merge SHA `b8bb928adf1595ae0d3e1b653540ed6c06c07a91`. B1 archive PR #87 is independently running CI; do not incorrectly claim it merged.
+AGENTS.md; Issue #83 latest checkpoint; docs/adr/0010-wallpaper-backend-adapter-contract.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.{md,svg}; src/setter.rs; src/backend/{mod,registry,noctalia}.rs; src/rotation_cli.rs; README.md; tests/test_desktop_adapter_contract.py. B1 PR #86 exact-head CI #39823542531 8/8 SUCCESS and merge SHA `b8bb928adf1595ae0d3e1b653540ed6c06c07a91`. B1 archive PR #87 independently passed 8/8 CI #39879466386 and was squash merged into master at `1a54f865d5971bfec1f340f7cf1af7fa72434c24`.
 
 ## Current facts
 
@@ -35,28 +35,29 @@ AGENTS.md; Issue #83 latest checkpoint; docs/adr/0010-wallpaper-backend-adapter-
 
 ## Acceptance criteria
 
-- [ ] `backend/gnome.rs` implements GlobalOnly / CommandAccepted with explicit global target, no independent output enumeration or false path readback.
-- [ ] Existing `setter.rs` GNOME one-shot delegates to the concrete module without altering auto/default selection, gsettings sequence or outward Submitted result.
-- [ ] Offline injected-command tests validate URI, light, optional dark, write failure, missing process, named-target refusal and no actual host execution.
-- [ ] Update README, architecture.md, SVG with truthful GNOME one-shot module status; Core, registry, rotation state and 60-minute default remain unchanged.
-- [ ] Latest exact PR HEAD 8/8 CI checks SUCCESS, including Windows/macOS and virtual Noctalia E2E; no live GNOME claims.
-- [ ] Record actual SHA, CI and scope; after successful implementation merge, archive in independent completion PR and keep Issue #83 OPEN.
+- [x] `backend/gnome.rs` implements GlobalOnly / CommandAccepted with explicit global target, no independent output enumeration or false path readback.
+- [x] Existing `setter.rs` GNOME one-shot delegates to the concrete module without altering auto/default selection, gsettings sequence or outward Submitted result.
+- [x] Offline injected-command tests validate URI, light, optional dark, write failure, missing process, named-target refusal and no actual host execution.
+- [x] Update README, architecture.md, SVG with truthful GNOME one-shot module status; Core, registry, rotation state and 60-minute default remain unchanged.
+- [x] Latest exact PR HEAD 8/8 CI checks SUCCESS, including Windows/macOS and virtual Noctalia E2E; no live GNOME claims.
+- [x] Record actual SHA, CI and scope; after successful implementation merge, archive in independent completion PR and keep Issue #83 OPEN.
 
 ## Implementation slices
 
 - [x] GNOME module plus unit/fake runner tests and setter facade delegation authored; latest-head CI not yet run.
 - [x] Architecture/README diagram synchronized and static regression check authored; validation pending CI.
-- [ ] Exact-head CI, repair as needed, GitHub API squash merge and separate archive.
+- [x] Exact-head CI #39919213934 8/8 SUCCESS on `2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d`; GitHub API squash merge `ebfc4b3b488c852ef0570dc8580354e5a6013b8d`; independent archive PR follows.
 
 ## Verification matrix
 
-| Scope | Gate | Status |
+| Scope | Gate | Verified result |
 |---|---|---|
-| Rust quality | cargo fmt + strict clippy | initial #39880133431 FAILED fmt; four hunks corrected, rerun pending |
-| GNOME offline behavior | Rust unit + desktop contract tests | PENDING |
-| Noctalia existing behavior | isolated Noctalia+Sway native E2E | PENDING |
-| Platform and governance | latest-head 8/8 CI | PENDING |
-| Real GNOME output | manual opt-in actual GNOME | UNASSESSED |
+| Rust quality | cargo fmt + strict Clippy | **SUCCESS**, exact HEAD CI #39919213934, Rust quality job #120300100107 |
+| GNOME offline behavior | Rust unit + CLI smoke + adapter boundary tests | **SUCCESS**, Rust tests and CLI smoke job #120300100135; fake subprocess only |
+| Noctalia existing behavior | native Noctalia v5.2.1 + Sway dual-render E2E | **SUCCESS**, job #120300100162, artifact #12488025456; Sway visual artifact #12485494708 |
+| Cross-platform/governance | Windows, macOS, Agent plan integrity, contract self-tests | **SUCCESS**, all eight exact-head jobs and check runs |
+| Experimental niri | pinned unmerged virtual-output PR test | **SUCCESS** in CI; artifact #12487517064, does not establish released niri |
+| Real GNOME output | actual GNOME physical session | **UNASSESSED** (not exercised by CI) |
 
 ## Decision gates
 
@@ -77,11 +78,18 @@ The CI runner's rustfmt 4-line/diff diagnostics were required to normalize injec
 
 ## Resume from here
 
-Read PR #88's latest HEAD and newly triggered exact-head CI after rustfmt, cross-platform native path fixtures and plan checkpoint. Require eight full job and check-run SUCCESS including Rust quality and both OS matrices, then review no real GNOME/rotation mutation and API squash merge with expected head. On failure, inspect real job logs, repair original branch and rerun. After verified merge, separate completion Plan PR. Keep GNOME GlobalOnly/Submitted; no unattended GNOME rotation.
+B2 implementation is complete and merged. This file is archived by an independent completion PR. Continue Issue #83 only through separate plans/PRs for Plasma, Sway, Hyprpaper or Portal; do not interpret GNOME GSettings command submission as acknowledged path/pixels or per-output rotation. No live desktop, timer or dotfiles were modified.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable to live GNOME; virtual regression gate pending
-Remaining unassessed items: real GNOME desktop, all GNOME multi-output/rotation, Plasma and other desktop adapters.
+Final commit: `ebfc4b3b488c852ef0570dc8580354e5a6013b8d` (PR #88 squash merge; exact tested HEAD `2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39919213934 — 8/8 jobs SUCCESS, 8/8 check runs SUCCESS, required 4/4 SUCCESS
+E2E evidence: native Noctalia+Sway artifact #12488025456 (`noctalia-result.json` PASS; 4 stages pixel_fraction=1.0 >= 0.9; ephemeral cleanup complete), experimental niri #12487517064, Sway visual #12485494708, Rust CLI offline #12486897309; these do not prove live GNOME
+Remaining unassessed items: real GNOME desktop, all GNOME multi-output/rotation, Plasma/Sway/Hyprpaper/Portal dedicated backends, physical 4K/GPU/hotplug/PAM, persistent system timer. Issue #83 remains OPEN.
+
+## Final implementation checkpoint — 2026-10-23
+
+- [PR #88](https://github.com/pkking/ezwallpaper/pull/88) final tested HEAD `2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d`; [CI #39919213934](https://github.com/pkking/ezwallpaper/actions/runs/39919213934) **8/8 jobs and 8/8 check runs SUCCESS**, required checks **4/4 SUCCESS**, no reviews required; mergeable true.
+- Earlier run #39880133431 failed rustfmt and Windows URI fixture; run #39880411979 failed strict Clippy `collapsible_if`. These failures were repaired in the same implementation branch without relaxing gates. The final exact-head run, not earlier runs, is completion evidence.
+- GitHub `merge_pull_request(merge_method=squash,expected_head_sha=2ff1ca5f764a00c43e11bd7ae5fee948cbb26f7d)` succeeded, master squash commit `ebfc4b3b488c852ef0570dc8580354e5a6013b8d` independently verified.
+- Scope: CLI-only `GnomeBackend` **GlobalOnly/CommandAccepted**, global one-shot GNOME light/dark GSettings `Submitted`; rotation registry still Noctalia-only with exact path readback. Unit tests inject commands and never touch the real desktop. No live GNOME, physical display, 4K/GPU/hotplug, multi-output or timer verification is claimed.
