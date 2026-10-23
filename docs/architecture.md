@@ -73,9 +73,9 @@ New JSON probe/derivative contracts have their own schema version, separate from
 Core now exposes `plan_rotation` for pure per-output, content-ID-based UTC epoch selection. It accepts candidate IDs and an explicit `RotationState` (JSON schema_version 1), removes duplicate candidate IDs, manages a deterministic shuffle bag without adjacent repeats and returns an unchanged/degraded status for repeated epochs, empty or single-current pools. It never calls the clock, reads files, persists state or runs desktop/Noctalia commands. The caller must acknowledge a successful apply before persisting `proposed_state`; returning a plan is not evidence of pixels changing. This isolated Core building block is **implemented**, while CLI profile parsing, cross-process locking, atomic on-disk state, timers, download replenishment and physical dual-output verification remain **planned** under Issues #54 and #59.
 
 
-## Cross-desktop Adapter Pattern — B1 Noctalia and B2 GNOME global one-shot (ADR 0010)
+## Cross-desktop Adapter Pattern — B1 Noctalia and B2 GNOME/Plasma global one-shot (ADR 0010)
 
-The existing CLI has a concrete desktop adapter dispatcher in `src/setter.rs`. GNOME/Plasma/Linux-WM/native one-shot `apply` paths are implemented, whereas the previously Noctalia-hardcoded `src/rotation_cli.rs::run_rotation` now obtains a Noctalia-backed `dyn WallpaperBackend` from a small CLI registry and only commits state when `wallpaper-get` confirms `PathObserved`. B1 implements a **private CLI-owned** `WallpaperBackend` trait, capability preflight and minimal **Noctalia-only rotation registry**. B2 adds `src/backend/gnome.rs` as a **GlobalOnly/CommandAccepted** concrete port that is invoked only by the existing GNOME one-shot `setter.rs` facade; `picture-uri` and optional writable `picture-uri-dark` are set through the unchanged GSettings argv protocol. No GNOME readback or per-output rotation is claimed, and `registry.rs` continues to allow only Noctalia for acknowledged rotation. Current Sway and experimental niri/Noctalia virtual-screen CI do not validate GNOME/Plasma/Hyprpaper production rotation.
+The existing CLI has a concrete desktop adapter dispatcher in `src/setter.rs`. GNOME/Plasma/Linux-WM/native one-shot `apply` paths are implemented, whereas the previously Noctalia-hardcoded `src/rotation_cli.rs::run_rotation` now obtains a Noctalia-backed `dyn WallpaperBackend` from a small CLI registry and only commits state when `wallpaper-get` confirms `PathObserved`. B1 implements a **private CLI-owned** `WallpaperBackend` trait, capability preflight and minimal **Noctalia-only rotation registry**. B2 adds `src/backend/gnome.rs` as a **GlobalOnly/CommandAccepted** concrete port that is invoked only by the existing GNOME one-shot `setter.rs` facade; `picture-uri` and optional writable `picture-uri-dark` are set through the unchanged GSettings argv protocol. Plasma one-shot now delegates `qdbus6` / `qdbus` through `src/backend/plasma.rs` using its existing JSON-escaped all-desktops Plasma script. Both GNOME and Plasma declare **GlobalOnly/CommandAccepted**; neither promises independent named-output mapping, a wallpaper path readback or pixel proof. `registry.rs` continues to allow only Noctalia for acknowledged rotation. Current Sway and experimental niri/Noctalia virtual-screen CI do not validate GNOME/Plasma/Hyprpaper production rotation.
 
 [ADR 0010](adr/0010-wallpaper-backend-adapter-contract.md), approved under [Issue #83](https://github.com/pkking/ezwallpaper/issues/83), specifies the planned migration:
 
@@ -94,9 +94,9 @@ The existing CLI has a concrete desktop adapter dispatcher in `src/setter.rs`. G
                             │ provided by tiny registry
              ┌──────────────┼────────────────┐
              │              │                │
-       Noctalia IPC   GNOME global      Plasma/Sway/Hyprpaper
-       (IMPLEMENTED)   (ONE-SHOT ONLY)        (PLANNED)
-                           │
+       Noctalia IPC     GNOME/Plasma           Sway/Hyprpaper
+       (IMPLEMENTED)    (GLOBAL ONE-SHOT)       (PLANNED)
+                            │
                       Portal (PLANNED, global-only)
 ```
 
@@ -106,7 +106,7 @@ The minimum capability contract distinguishes **global-only** from **per-output*
 
 **Evidence safety:** `Submitted` or `LaunchedUnverified` is insufficient to advance automated rotation state. Only exact-path `PathObserved` qualifies under current semantics; `PixelVerified` requires independently captured compositor/native display evidence. Never manufacture a path-readback for a desktop incapable of reporting one. A single-image/global-only backend can still support opt-in one-shot `apply` with honest `Submitted` status, even if it is not eligible for automated per-monitor rotation.
 
-**Migration sequence:** architectural ADR #84 first; B1 moves v5 Noctalia protocol to `src/backend/noctalia.rs`, injects `WallpaperBackend` into the existing Controller, and shares the same implementation with the one-shot `setter.rs` facade. Existing JSON v1 and #82 minute bucket/commit semantics remain unchanged. GNOME GSettings global-only one-shot has its own extracted module and offline fake-command tests after B2; Plasma, Sway, Hyprpaper and optional Portal remain separate future adapters requiring their own tests. No new DE support is claimed until each PR and real desktop evidence exists.
+**Migration sequence:** architectural ADR #84 first; B1 moves v5 Noctalia protocol to `src/backend/noctalia.rs`, injects `WallpaperBackend` into the existing Controller, and shares the same implementation with the one-shot `setter.rs` facade. Existing JSON v1 and #82 minute bucket/commit semantics remain unchanged. GNOME GSettings and Plasma qdbus6/qdbus global-only one-shot paths have separately extracted modules and fake-command unit tests. Plasma per-output/acknowledged rotation, Sway, Hyprpaper and optional Portal remain separate future developments requiring their own tests. No new DE support is claimed until each PR and real desktop evidence exists.
 
 The solid interface/registry/Noctalia blocks in `docs/architecture.svg` correspond to this B1 Rust implementation; the dashed remaining DE blocks represent only the future *target*, not executable source. No systemd timers, user profiles, OS desktop settings, native displays or login sessions are mutated by this architecture decision.
 
