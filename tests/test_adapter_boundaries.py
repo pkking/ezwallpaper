@@ -37,6 +37,7 @@ class AdapterBoundaries(unittest.TestCase):
         port = (BACKEND / "mod.rs").read_text(encoding="utf-8")
         registry = (BACKEND / "registry.rs").read_text(encoding="utf-8")
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
+        gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
         setter = LEGACY.read_text(encoding="utf-8")
         self.assertIn("pub trait WallpaperBackend", port)
         self.assertIn("OutputScope::PerOutput", noctalia)
@@ -45,6 +46,15 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertIn('noctalia_ipc(&get_args)?', noctalia)
         self.assertIn('apply_noctalia(path, self.output.as_deref())', setter)
         self.assertIn('NoctaliaBackend', registry)
+        self.assertIn('GnomeBackend', setter)
+        self.assertIn('OutputScope::GlobalOnly', gnome)
+        self.assertIn('Acknowledgement::CommandAccepted', gnome)
+        self.assertIn('org.gnome.desktop.background', gnome)
+        self.assertIn('Command::new("gsettings")', gnome)
+        self.assertNotIn('fn apply_gnome(', setter)
+        self.assertNotIn('org.gnome.desktop.background', setter)
+        self.assertNotIn('GnomeBackend', registry)
+
         for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus"):
             with self.subTest(protocol=protocol):
                 self.assertNotIn(protocol, registry)
