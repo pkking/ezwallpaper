@@ -105,6 +105,12 @@ mod tests {
     use super::*;
     use anyhow::anyhow;
 
+    fn fixture_path(name: &str) -> std::path::PathBuf {
+        // Preserve valid absolute file URI fixtures on Windows/macOS/Linux.
+        // This helper only constructs a path; tests do not access the desktop.
+        std::env::temp_dir().join(name)
+    }
+
     fn outcome(success: bool, stdout: &str) -> CommandOutcome {
         CommandOutcome {
             success,
@@ -136,7 +142,7 @@ mod tests {
     #[test]
     fn gsettings_light_and_writable_dark_order_and_uri_escaping() {
         let mut calls: Vec<Vec<String>> = Vec::new();
-        apply_gnome_with(Path::new("/tmp/wall paper #1.png"), |argv| {
+        apply_gnome_with(&fixture_path("wall paper #1.png"), |argv| {
             calls.push(argv.iter().map(|a| (*a).to_owned()).collect());
             Ok(outcome(
                 true,
@@ -156,7 +162,7 @@ mod tests {
     fn nonwritable_or_missing_dark_key_does_not_set_it() {
         for (success, response) in [(true, "false\n"), (false, ""), (true, "unexpected")] {
             let mut calls = Vec::new();
-            apply_gnome_with(Path::new("/tmp/wallpaper.png"), |argv| {
+            apply_gnome_with(&fixture_path("wallpaper.png"), |argv| {
                 calls.push(argv[0].to_owned());
                 Ok(outcome(
                     if argv[0] == "writable" { success } else { true },
@@ -171,14 +177,14 @@ mod tests {
     #[test]
     fn failure_before_dark_probe_does_not_continue_and_no_false_success() {
         let mut calls = Vec::new();
-        let bad = apply_gnome_with(Path::new("/tmp/wallpaper.png"), |argv| {
+        let bad = apply_gnome_with(&fixture_path("wallpaper.png"), |argv| {
             calls.push(argv[0].to_owned());
             Ok(outcome(false, ""))
         });
         assert!(bad.is_err());
         assert_eq!(calls, ["set"]);
 
-        let err = apply_gnome_with(Path::new("/tmp/wallpaper.png"), |_| {
+        let err = apply_gnome_with(&fixture_path("wallpaper.png"), |_| {
             Err(anyhow!("mock gsettings executable missing"))
         });
         assert!(err.is_err());
@@ -187,7 +193,7 @@ mod tests {
     #[test]
     fn writable_dark_set_failure_is_reported() {
         let mut calls = Vec::new();
-        let result = apply_gnome_with(Path::new("/tmp/picture.png"), |argv| {
+        let result = apply_gnome_with(&fixture_path("picture.png"), |argv| {
             calls.push(argv[0].to_owned());
             Ok(match (argv[0], argv[2]) {
                 ("writable", _) => outcome(true, "true\n"),
