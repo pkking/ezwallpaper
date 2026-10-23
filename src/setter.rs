@@ -268,11 +268,15 @@ impl Capability {
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PlasmaQdbus6 => {
-                apply_plasma(path, "qdbus6")?;
+                // KDE script updates all Plasma desktops, not a named output.
+                // Preserve one-shot Submitted semantics without path readback.
+                let mut backend = crate::backend::plasma::PlasmaBackend::qdbus6();
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)?;
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PlasmaQdbus => {
-                apply_plasma(path, "qdbus")?;
+                let mut backend = crate::backend::plasma::PlasmaBackend::qdbus();
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)?;
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PcmanfmQt => {
@@ -309,40 +313,6 @@ impl Capability {
             Adapter::Unavailable => bail!("wallpaper adapter unavailable"),
         }
     }
-}
-
-fn file_uri(path: &Path) -> Result<String> {
-    url::Url::from_file_path(path)
-        .map(|uri| uri.to_string())
-        .map_err(|_| {
-            anyhow!(
-                "wallpaper path cannot be encoded as a file URI: {}",
-                path.display()
-            )
-        })
-}
-
-fn plasma_script(path: &Path) -> Result<String> {
-    let uri = file_uri(path)?;
-    // JSON-encoded strings are valid JavaScript literal strings; avoid path/script injection.
-    let literal = serde_json::to_string(&uri)?;
-    Ok(format!(
-        "for (const desktop of desktops()) {{ desktop.currentConfigGroup = [\"Wallpaper\", \"org.kde.image\", \"General\"]; desktop.writeConfig(\"Image\", {}); }}",
-        literal
-    ))
-}
-
-fn apply_plasma(path: &Path, command: &str) -> Result<()> {
-    let script = plasma_script(path)?;
-    checked_command(
-        command,
-        &[
-            "org.kde.plasmashell",
-            "/PlasmaShell",
-            "org.kde.PlasmaShell.evaluateScript",
-            &script,
-        ],
-    )
 }
 
 fn checked_command(command: &str, args: &[&str]) -> Result<()> {
@@ -456,16 +426,6 @@ mod tests {
             .adapter,
             Adapter::Unavailable
         );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn plasma_script_serializes_untrusted_path_as_data() {
-        let path = Path::new("/tmp/folder/quote\\\"; alert(1);.png");
-        let encoded = file_uri(path).expect("encode local path");
-        let literal = serde_json::to_string(&encoded).expect("escape JS literal");
-        let script = plasma_script(path).expect("absolute path generates valid file URI");
-        assert!(script.contains(&format!("desktop.writeConfig(\"Image\", {});", literal)));
     }
 
     #[test]
