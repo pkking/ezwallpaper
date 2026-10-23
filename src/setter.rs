@@ -261,7 +261,10 @@ impl Capability {
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::GnomeGsettings => {
-                apply_gnome(path)?;
+                // GSettings remains a global one-shot setter. Command success
+                // is only Submitted, never exact path/pixel acknowledgement.
+                let mut backend = crate::backend::gnome::GnomeBackend;
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)?;
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PlasmaQdbus6 => {
@@ -317,24 +320,6 @@ fn file_uri(path: &Path) -> Result<String> {
                 path.display()
             )
         })
-}
-
-fn apply_gnome(path: &Path) -> Result<()> {
-    let uri = file_uri(path)?;
-    // GSettings parses a GVariant string; JSON double-quoted strings escape data.
-    let value = serde_json::to_string(&uri)?;
-    const SCHEMA: &str = "org.gnome.desktop.background";
-    checked_command("gsettings", &["set", SCHEMA, "picture-uri", &value])?;
-
-    // GNOME < 42 does not expose the dark key. Only write when available and writable.
-    let dark = Command::new("gsettings")
-        .args(["writable", SCHEMA, "picture-uri-dark"])
-        .output()
-        .context("could not check GNOME dark wallpaper capability")?;
-    if dark.status.success() && String::from_utf8_lossy(&dark.stdout).trim() == "true" {
-        checked_command("gsettings", &["set", SCHEMA, "picture-uri-dark", &value])?;
-    }
-    Ok(())
 }
 
 fn plasma_script(path: &Path) -> Result<String> {
