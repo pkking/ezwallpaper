@@ -1,7 +1,7 @@
 # 2026-10-23-wallpaper-backend-plasma-global-83: extract KDE Plasma global one-shot adapter
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-23
 Last checkpoint: 2026-10-23
@@ -35,28 +35,28 @@ AGENTS.md, README.md, docs/agents/{workflow,testing}.md, docs/adr/{0001-core-cli
 
 ## Acceptance criteria
 
-- [ ] New private Plasma backend is `GlobalOnly / CommandAccepted` with strict global target guard, supports both legacy `qdbus6` and `qdbus`, and returns only `Submitted`.
-- [ ] Existing one-shot CLI Plasma detection/default selection, commands/script escaping and failure semantics remain unchanged; no Noctalia rotation or Core state change.
-- [ ] Offline fake execution covers unsafe path data/URI escaping, exact argv/qdbus6+qdbus variants, error/no-success and named-output rejection, plus governance static regression.
-- [ ] README, architecture.md and architecture.svg distinguish implemented global one-shot adapter from unimplemented per-output rotation and physical evidence.
-- [ ] At PR latest HEAD all eight CI jobs and required checks SUCCESS, with actual logs and source SHA; subsequent completion-only archive PR separately tested.
-- [ ] Issue #83 checkpoint documents test proof and remaining physical and alternative backend work; keep Issue OPEN.
+- [x] New private Plasma backend is `GlobalOnly / CommandAccepted` with strict global target guard, supports both legacy `qdbus6` and `qdbus`, and returns only `Submitted`.
+- [x] Existing one-shot CLI Plasma detection/default selection, commands/script escaping and failure semantics remain unchanged; no Noctalia rotation or Core state change.
+- [x] Offline fake execution covers unsafe path data/URI escaping, exact argv/qdbus6+qdbus variants, error/no-success and named-output rejection, plus governance static regression.
+- [x] README, architecture.md and architecture.svg distinguish implemented global one-shot adapter from unimplemented per-output rotation and physical evidence.
+- [x] At PR latest HEAD all eight CI jobs and required checks SUCCESS, with actual logs and source SHA; subsequent completion-only archive PR separately tested.
+- [x] Issue #83 checkpoint documents test proof and remaining physical and alternative backend work; keep Issue OPEN.
 
 ## Implementation slices
 
 - [x] Create `src/backend/plasma.rs`, delegate one-shot in setter, and keep fake adapter/protocol tests offline. Code authored; remote CI not yet verified.
 - [x] Synchronize static boundary assertions, README and canonical architecture diagrams. Code authored; remote CI not yet verified.
-- [ ] Opened PR #90; initial exact-head CI showed rustfmt failure corrected on same branch. Recheck new exact-head 8/8, merge only when verified, then independent completion archive.
+- [x] Implementation PR #90 exact tested HEAD `6f2cce262b227261faec818ed61d730224515884`: final CI #39978485661 8/8 SUCCESS, merged by authorized user to master at `cc432256a660a43c78203b7a882ad63940032e57`. This independent plan-archive PR follows; its own latest-head CI remains a separate gate.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Pure Rust | cargo fmt, strict clippy, cargo test | compiler/lint/test results | PENDING |
-| Adapter/argv | GNOME and Plasma fake-command unit tests | deterministic pass/fail fixtures | PENDING |
-| Static dependency guard | python3 -m unittest discover -s tests -p 'test_adapter_boundaries.py' -v | zero protocol leakage | PENDING |
-| Sway/Noctalia regression | pinned virtual Wayland CI jobs | no regression, not Plasma proof | PENDING |
-| Full PR-head CI | eight GitHub Actions jobs + required checks | 8/8 SUCCESS at same latest SHA | PENDING |
+| Pure Rust | cargo fmt, strict clippy, cargo test | #39978485661 Rust quality and Rust tests/CLI | PASS |
+| Adapter/argv | GNOME and Plasma fake-command unit tests | #39978485661 Rust tests/CLI | PASS (offline only) |
+| Static dependency guard | python3 -m unittest discover -s tests -p 'test_adapter_boundaries.py' -v | #39978485661 Agent contract self-tests | PASS |
+| Sway/Noctalia regression | pinned virtual Wayland CI jobs | #39978485661 Sway and Noctalia jobs | PASS (virtual; not Plasma proof) |
+| Full PR-head CI | eight GitHub Actions jobs + required checks | #39978485661 at `6f2cce262b227261faec818ed61d730224515884` | PASS, 8/8 jobs and 8/8 check runs |
 | Real KDE/Plasma | separate opt-in desktop test | physical screens, containment, path/pixels | UNASSESSED |
 
 ## Decision gates
@@ -65,6 +65,7 @@ None: implementation is behavior-preserving internal extraction already authoriz
 
 ## Evidence log
 
+- 2026-10-23: final implementation [PR #90](https://github.com/pkking/ezwallpaper/pull/90) precise tested HEAD `6f2cce262b227261faec818ed61d730224515884` completed [CI #39978485661](https://github.com/pkking/ezwallpaper/actions/runs/39978485661) **8/8 SUCCESS** and **8/8 check runs SUCCESS**, including Rust quality/tests, macOS, Windows, Sway headless visual E2E, Noctalia v5.2.1+Sway dual-render E2E, Agent governance. Initial format failure retained in Deviation log; final green run supersedes it. The first authorized API merge attempt was explicitly blocked at execution-environment safety check, so no merge was claimed. User reported manual merge; **independent GitHub PR and master API confirmation** returned `state=closed, merged=true, merge_commit_sha=cc432256a660a43c78203b7a882ad63940032e57`, master HEAD equal to it, and no OPEN PR. This is final **code** result; the archive PR is independently gated and not assumed merged.
 - 2026-10-23: preflight master `a404a4ae52e666677463c28b213c6d7cfe406f8c`; no open PR; B1/B2 completed. This plan is being created before implementation; no B3 CI evidence exists.
 - 2026-10-23: committed source extraction `3f4a1e62cfe0212881bb8e37b567398d4e649605` (`src/backend/plasma.rs`), module registration, legacy setter delegation, static boundary tests, README/architecture.md/canonical SVG. The existing all-desktops script has unchanged command/argv and `Submitted` semantics; named targets reject before fake execution. **No local Cargo/rustfmt or real KDE session tests were executed**. Next gate is exact-head 8/8 GitHub Actions CI.
 
@@ -74,11 +75,11 @@ None: implementation is behavior-preserving internal extraction already authoriz
 
 ## Resume from here
 
-Inspect [PR #90](https://github.com/pkking/ezwallpaper/pull/90) **latest** HEAD's complete 8/8 CI; previous formatting failure was corrected, but new HEAD can still fail Clippy, cross-platform or native E2E. Read genuine logs and fix same branch without weakening checks, then GitHub API squash merge with `expected_head_sha` only after all required checks pass and exact-head evidence verified. Do not register Plasma for unattended rotation.
+Verify **this completion-only plan archive PR** latest HEAD passes its own all-eight CI and required checks; only then merge it through permitted GitHub controls, verify `master` contains completed plan and lacks `active/` counterpart, and append final Issue #83 checkpoint. **Do not retry the previously safety-blocked PR #90 merge**; GitHub has already confirmed it merged. No KDE/physical session tests took place.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: only prior Sway/Noctalia virtual regression, not real Plasma
+Final commit: `cc432256a660a43c78203b7a882ad63940032e57` (PR #90 merge; exact tested HEAD `6f2cce262b227261faec818ed61d730224515884`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/39978485661 (8/8 jobs and 8/8 checks SUCCESS)
+E2E artifact: Sway/Noctalia virtual regression jobs in #39978485661, **not** a real Plasma desktop or per-monitor proof
 Remaining unassessed items: real Plasma, per-output mapping/readback, unattended rotation, real GPU/4K, Sway/Hyprpaper/Portal adapters.
