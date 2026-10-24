@@ -67,11 +67,11 @@ No new design decision: strict internal extraction of current one-shot behavior 
 
 ## Deviations and discoveries
 
-None yet.
+- First exact-head [CI #40095216435](https://github.com/pkking/ezwallpaper/actions/runs/40095216435) at `9ad201ad61a56504f8c37e6a3b5c39ac73419086` **Rust quality FAILED** in `cargo fmt --check`. Read actual job #120875907771 log: precisely five rustfmt hunks in `src/backend/swaybg.rs` (long `bail!`, `try_wait` chain, multi-line assertion, chained `apply_with`, long error assertion), **not** a product behavior failure. Applied exactly those five formatting hunks on the same source branch as commit `d75281e160dd73f5fcd96a84e4b1d5300e2b1cd0`; no lint suppression or test changes. A fresh run #40095383097 at that head started PENDING, **not yet PASS**. The rest of initial head's job results cannot validate new source head.
 
 ## Resume from here
 
-Create implementation PR from `agent/wallpaper-backend-swaybg-global-83` with Issue #83 and this active Plan, then check full 8/8 latest-head Actions jobs and required checks. Read real Rustfmt/Clippy/test failure logs and repair the original branch without suppressions; API squash merge only when authorized/allowed and exact-head checks pass. After code merge, create separate completed-plan archive PR with its own CI. This slice does not change swaybg lifecycle/rotation.
+Fetch PR #92 **latest HEAD and latest exact-head** all 8 Actions jobs/check runs (source rustfmt-fix head `d75281e160dd73f5fcd96a84e4b1d5300e2b1cd0`, run #40095383097 was PENDING before this documentation update). On new failures read real job logs and repair the same branch without weakening checks; merge only after current HEAD 8/8 and required all SUCCESS and permitted controls. Then independent completion archive PR and Issue checkpoint. Do not claim unattended/physical Sway support.
 
 ## Completion
 
