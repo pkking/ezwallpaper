@@ -69,6 +69,8 @@ No new design decision: strict internal extraction of current one-shot behavior 
 
 ## Deviations and discoveries
 
+- First archive PR #93 CI run #40097787167 FAILED Agent plan integrity: archived plan lacked the exact `Remaining unassessed items` evidence label; job #120883562814 log confirmed this deterministic metadata failure. Updated this label without changing claimed capability, scope or implementation code; the repaired archive HEAD requires a fresh CI run. Previous CI remains recorded as failed.
+
 - First exact-head [CI #40095216435](https://github.com/pkking/ezwallpaper/actions/runs/40095216435) at `9ad201ad61a56504f8c37e6a3b5c39ac73419086` **Rust quality FAILED** in `cargo fmt --check`. Read actual job #120875907771 log: precisely five rustfmt hunks in `src/backend/swaybg.rs` (long `bail!`, `try_wait` chain, multi-line assertion, chained `apply_with`, long error assertion), **not** a product behavior failure. Applied exactly those five formatting hunks on the same source branch as commit `d75281e160dd73f5fcd96a84e4b1d5300e2b1cd0`; no lint suppression or test changes. A fresh run #40095383097 at that head started PENDING, **not yet PASS**. The rest of initial head's job results cannot validate new source head.
 
 ## Resume from here
@@ -80,4 +82,4 @@ Verify **this docs-only completion archive PR's latest HEAD** passes all eight G
 Final commit: `8dd697ce574fa955f84f8b6fe8cfdeccb9e89995` (PR #92 squash merge; tested PR head `19b21707b92972165b4c211ec03240327edab1d2`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/40095622575 (completed SUCCESS; eight Actions jobs SUCCESS at tested HEAD)
 E2E artifacts: Noctalia+Sway virtual `12560499530`, experimental niri+Noctalia `12560449558`, Sway virtual `12559889300`; Rust CLI offline `12560063840`. These are existing virtual regression evidence, not physical Sway proof.
-Remaining unassessed: real compositor session, per-output Sway, lifecycle cleanup, pixel evidence on user desktop, competing renderer presence, Hyprpaper/Portal, production timer.
+Remaining unassessed items: real compositor session, per-output Sway, lifecycle cleanup, pixel evidence on user desktop, competing renderer presence, Hyprpaper/Portal, production timer.
