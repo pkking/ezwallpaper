@@ -119,11 +119,10 @@ mod tests {
         let mut backend = SwaybgBackend;
         let file = std::env::temp_dir().join("picture.png");
         let early = backend.apply_with("", &file, |_| Ok(Some("exit status: 1".to_owned())));
-        assert!(early.unwrap_err().to_string().contains("exit status: 1"));
+        let early_error = early.expect_err("early child exit must be rejected");
+        assert!(early_error.to_string().contains("exit status: 1"));
         let failed = backend.apply_with("", &file, |_| Err(anyhow!("fake spawn failure")));
-        assert!(failed
-            .unwrap_err()
-            .to_string()
-            .contains("fake spawn failure"));
+        let failed_error = failed.expect_err("failed child launch must be rejected");
+        assert!(failed_error.to_string().contains("fake spawn failure"));
     }
 }
