@@ -39,6 +39,7 @@ class AdapterBoundaries(unittest.TestCase):
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
         gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
         plasma = (BACKEND / "plasma.rs").read_text(encoding="utf-8")
+        swaybg = (BACKEND / "swaybg.rs").read_text(encoding="utf-8")
         setter = LEGACY.read_text(encoding="utf-8")
         self.assertIn("pub trait WallpaperBackend", port)
         self.assertIn("OutputScope::PerOutput", noctalia)
@@ -66,7 +67,16 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('org.kde.PlasmaShell.evaluateScript', setter)
         self.assertNotIn('PlasmaBackend', registry)
 
-        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus"):
+        self.assertIn('SwaybgBackend', setter)
+        self.assertIn('OutputScope::GlobalOnly', swaybg)
+        self.assertIn('Acknowledgement::CommandAccepted', swaybg)
+        self.assertIn('ApplyStatus::LaunchedUnverified', swaybg)
+        self.assertIn('Command::new("swaybg")', swaybg)
+        self.assertIn('thread::sleep(Duration::from_millis(150))', swaybg)
+        self.assertNotIn('Command::new("swaybg")', setter)
+        self.assertNotIn('SwaybgBackend', registry)
+
+        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "swaybg"):
             with self.subTest(protocol=protocol):
                 self.assertNotIn(protocol, registry)
 
