@@ -42,8 +42,8 @@ AGENTS.md; docs/agents/workflow.md and testing.md; accepted docs/adr/0010-wallpa
 
 ## Implementation slices
 
-- [ ] Create `src/backend/swaybg.rs`, wire legacy one-shot call, add offline fake-launch tests.
-- [ ] Update dependency guard and architecture README/SVG status.
+- [x] Create `src/backend/swaybg.rs`, wire legacy one-shot call, add offline fake-launch tests (authored, CI PENDING).
+- [x] Update dependency guard and architecture README/SVG status (authored, CI PENDING).
 - [ ] Open implementation PR; inspect latest exact-head CI, repair same branch failures, merge only if allowed and verified, then create independent completion archive PR.
 
 ## Verification matrix
@@ -63,6 +63,7 @@ No new design decision: strict internal extraction of current one-shot behavior 
 ## Evidence log
 
 - 2026-10-24: preflight observed master `e5ee088d258ad7c822f8627d469c8eab67bcedf2`, OPEN PR set empty. This plan starts before implementation.
+- 2026-10-24: authored `src/backend/swaybg.rs` from existing CLI process launcher: preserve `Command::new("swaybg").arg("-i").arg(path)`, null I/O, 150ms `try_wait`, exact errors and `LaunchedUnverified` only. Code commit `077b3a9adf58f0df3f959666bc6eb568528ee38d`; subsequent module/legacy delegation, offline fake child test, static guard and README/architecture.md/canonical SVG committed in the same branch. **No local Rust compiler/CI tests run at authoring; real user session untouched.**
 
 ## Deviations and discoveries
 
@@ -70,7 +71,7 @@ None yet.
 
 ## Resume from here
 
-Implement one-shot Swaybg `WallpaperBackend` with fake launcher and legacy delegation, update docs in the same branch, create PR linked to this active plan. Check actual latest-head CI instead of treating prior green Sway jobs as fresh validation.
+Create implementation PR from `agent/wallpaper-backend-swaybg-global-83` with Issue #83 and this active Plan, then check full 8/8 latest-head Actions jobs and required checks. Read real Rustfmt/Clippy/test failure logs and repair the original branch without suppressions; API squash merge only when authorized/allowed and exact-head checks pass. After code merge, create separate completed-plan archive PR with its own CI. This slice does not change swaybg lifecycle/rotation.
 
 ## Completion
 
