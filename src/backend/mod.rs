@@ -8,6 +8,7 @@ pub(crate) mod gnome;
 pub(crate) mod noctalia;
 pub(crate) mod plasma;
 pub(crate) mod registry;
+pub(crate) mod swaybg;
 
 /// Applying a path does not imply that actual framebuffer pixels changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

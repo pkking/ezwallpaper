@@ -5,9 +5,7 @@ pub use crate::backend::ApplyStatus;
 use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 use std::path::Path;
-use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
+use std::process::Command;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Setter {
@@ -292,23 +290,8 @@ impl Capability {
                 Ok(ApplyStatus::PathObserved)
             }
             Adapter::Swaybg => {
-                let mut child = Command::new("swaybg")
-                    .arg("-i")
-                    .arg(path)
-                    .stdin(Stdio::null())
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .spawn()
-                    .context("could not launch swaybg")?;
-                // A process launch does not prove the compositor accepted the image.
-                thread::sleep(Duration::from_millis(150));
-                if let Some(exit) = child.try_wait().context("could not check swaybg process")? {
-                    bail!(
-                        "swaybg exited before the wallpaper was established: {}",
-                        exit
-                    );
-                }
-                Ok(ApplyStatus::LaunchedUnverified)
+                let mut backend = crate::backend::swaybg::SwaybgBackend;
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::Unavailable => bail!("wallpaper adapter unavailable"),
         }
