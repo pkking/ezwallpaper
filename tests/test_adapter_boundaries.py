@@ -38,6 +38,7 @@ class AdapterBoundaries(unittest.TestCase):
         registry = (BACKEND / "registry.rs").read_text(encoding="utf-8")
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
         gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
+        feh = (BACKEND / "feh.rs").read_text(encoding="utf-8")
         plasma = (BACKEND / "plasma.rs").read_text(encoding="utf-8")
         lxqt = (BACKEND / "lxqt.rs").read_text(encoding="utf-8")
         swaybg = (BACKEND / "swaybg.rs").read_text(encoding="utf-8")
@@ -76,6 +77,16 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('checked_command("pcmanfm-qt"', setter)
         self.assertNotIn('LxqtBackend', registry)
 
+        self.assertIn('FehBackend', setter)
+        self.assertIn('OutputScope::GlobalOnly', feh)
+        self.assertIn('Acknowledgement::CommandAccepted', feh)
+        self.assertIn('Command::new(command)', feh)
+        self.assertIn('run("feh", &["--bg-fill", &path.to_string_lossy()])', feh)
+        self.assertNotIn('checked_command("feh"', setter)
+        self.assertNotIn('fn checked_command(', setter)
+        self.assertNotIn('FehBackend', registry)
+        self.assertNotIn('Command::new', setter)
+
         self.assertIn('SwaybgBackend', setter)
         self.assertIn('OutputScope::GlobalOnly', swaybg)
         self.assertIn('Acknowledgement::CommandAccepted', swaybg)
@@ -85,7 +96,7 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('Command::new("swaybg")', setter)
         self.assertNotIn('SwaybgBackend', registry)
 
-        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "pcmanfm-qt", "swaybg"):
+        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "pcmanfm-qt", "feh", "swaybg"):
             with self.subTest(protocol=protocol):
                 self.assertNotIn(protocol, registry)
 
