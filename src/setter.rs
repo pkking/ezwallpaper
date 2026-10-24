@@ -278,8 +278,8 @@ impl Capability {
                 Ok(ApplyStatus::Submitted)
             }
             Adapter::PcmanfmQt => {
-                checked_command("pcmanfm-qt", &["-w", &path.to_string_lossy()])?;
-                Ok(ApplyStatus::Submitted)
+                let mut backend = crate::backend::lxqt::LxqtBackend;
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::Feh => {
                 checked_command("feh", &["--bg-fill", &path.to_string_lossy()])?;

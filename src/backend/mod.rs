@@ -5,6 +5,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 pub(crate) mod gnome;
+pub(crate) mod lxqt;
 pub(crate) mod noctalia;
 pub(crate) mod plasma;
 pub(crate) mod registry;

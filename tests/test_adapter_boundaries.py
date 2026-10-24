@@ -39,6 +39,7 @@ class AdapterBoundaries(unittest.TestCase):
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
         gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
         plasma = (BACKEND / "plasma.rs").read_text(encoding="utf-8")
+        lxqt = (BACKEND / "lxqt.rs").read_text(encoding="utf-8")
         swaybg = (BACKEND / "swaybg.rs").read_text(encoding="utf-8")
         setter = LEGACY.read_text(encoding="utf-8")
         self.assertIn("pub trait WallpaperBackend", port)
@@ -67,6 +68,14 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('org.kde.PlasmaShell.evaluateScript', setter)
         self.assertNotIn('PlasmaBackend', registry)
 
+        self.assertIn('LxqtBackend', setter)
+        self.assertIn('OutputScope::GlobalOnly', lxqt)
+        self.assertIn('Acknowledgement::CommandAccepted', lxqt)
+        self.assertIn('Command::new(command)', lxqt)
+        self.assertIn('run("pcmanfm-qt", &["-w", &path.to_string_lossy()])', lxqt)
+        self.assertNotIn('checked_command("pcmanfm-qt"', setter)
+        self.assertNotIn('LxqtBackend', registry)
+
         self.assertIn('SwaybgBackend', setter)
         self.assertIn('OutputScope::GlobalOnly', swaybg)
         self.assertIn('Acknowledgement::CommandAccepted', swaybg)
@@ -76,7 +85,7 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('Command::new("swaybg")', setter)
         self.assertNotIn('SwaybgBackend', registry)
 
-        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "swaybg"):
+        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "pcmanfm-qt", "swaybg"):
             with self.subTest(protocol=protocol):
                 self.assertNotIn(protocol, registry)
 
