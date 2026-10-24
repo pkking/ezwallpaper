@@ -88,7 +88,10 @@ mod tests {
             Ok(())
         });
         assert!(result.is_err());
-        assert!(!called, "named-output failure must precede command invocation");
+        assert!(
+            !called,
+            "named-output failure must precede command invocation"
+        );
     }
 
     #[test]
@@ -109,10 +112,7 @@ mod tests {
             calls,
             vec![(
                 "feh".to_owned(),
-                vec![
-                    "--bg-fill".to_owned(),
-                    path.to_string_lossy().into_owned()
-                ]
+                vec!["--bg-fill".to_owned(), path.to_string_lossy().into_owned()]
             )]
         );
     }
@@ -121,7 +121,10 @@ mod tests {
     fn fake_launch_and_exit_errors_never_claim_success() {
         let path = std::env::temp_dir().join("picture.png");
         let mut call_count = 0;
-        for message in ["failed to launch feh", "feh exited with status exit status: 1"] {
+        for message in [
+            "failed to launch feh",
+            "feh exited with status exit status: 1",
+        ] {
             let result = FehBackend.apply_with("", &path, |command, args| {
                 assert_eq!(command, "feh");
                 assert_eq!(args[0], "--bg-fill");
@@ -129,7 +132,9 @@ mod tests {
                 Err(anyhow!(message))
             });
             assert_eq!(
-                result.expect_err("failed command must not submit").to_string(),
+                result
+                    .expect_err("failed command must not submit")
+                    .to_string(),
                 message
             );
         }
@@ -149,6 +154,9 @@ mod tests {
             assert_eq!(args, ["--bg-fill", expected.as_str()]);
             Ok(())
         });
-        assert_eq!(result.expect("fake accepts lossy filename"), ApplyStatus::Submitted);
+        assert_eq!(
+            result.expect("fake accepts lossy filename"),
+            ApplyStatus::Submitted
+        );
     }
 }
