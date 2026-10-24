@@ -2,10 +2,9 @@
 use crate::backend::command_available;
 use crate::backend::noctalia::{apply_noctalia, noctalia_ipc, validate_connector};
 pub use crate::backend::ApplyStatus;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use std::env;
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Setter {
@@ -282,8 +281,8 @@ impl Capability {
                 crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::Feh => {
-                checked_command("feh", &["--bg-fill", &path.to_string_lossy()])?;
-                Ok(ApplyStatus::Submitted)
+                let mut backend = crate::backend::feh::FehBackend;
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::Noctalia => {
                 apply_noctalia(path, self.output.as_deref())?;
@@ -296,17 +295,6 @@ impl Capability {
             Adapter::Unavailable => bail!("wallpaper adapter unavailable"),
         }
     }
-}
-
-fn checked_command(command: &str, args: &[&str]) -> Result<()> {
-    let result = Command::new(command)
-        .args(args)
-        .status()
-        .with_context(|| format!("failed to launch {}", command))?;
-    if !result.success() {
-        bail!("{} exited with status {}", command, result);
-    }
-    Ok(())
 }
 
 #[cfg(test)]
