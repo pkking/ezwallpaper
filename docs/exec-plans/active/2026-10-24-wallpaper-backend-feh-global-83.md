@@ -43,8 +43,8 @@ No new X11 protocol, external tool dependency, display mapping, asynchronous exe
 
 ## Implementation slices
 
-- [ ] Commit this active plan before code, then add feh concrete backend and refactor dispatcher delegation.
-- [ ] Add offline injected command tests and static boundary guard; update README, architecture.md and canonical SVG.
+- [x] Active plan committed before code; authored feh backend, module declaration, dispatcher delegation and retired obsolete checked_command (CI not yet run).
+- [x] Authored injected-executor unit tests, Python static boundary guard, README, architecture.md and canonical SVG in the same branch (CI not yet run).
 - [ ] Verify exact final source HEAD with 8/8 GitHub CI, merge only after full success; complete independent plan archival PR.
 
 ## Verification matrix
@@ -66,13 +66,15 @@ None: behavior-preserving internal adapter extraction under accepted ADR 0010. A
 
 - 2026-10-24: starting master `456e93854b3e2b236dc484b82d85353886a7c53c`, previous #95 archive completed 8/8 and merged. Read `src/setter.rs`, backend port, static boundary contract and docs. Created active plan BEFORE product code.
 
+- 2026-10-24: authored `src/backend/feh.rs` with `GlobalOnly/CommandAccepted` and synchronous `feh --bg-fill`, wired `backend/mod.rs` and `setter.rs`, removed now-unneeded `checked_command`, added injected fake-runner tests and Python static isolation checks. Updated README/architecture.md/canonical SVG together. **UNVERIFIED** until actual CI run.
+
 ## Deviations and discoveries
 
-None recorded.
+- No local Rust/desktop session was executed. Source edits alone do not prove formatting or tests passed; final exact-head CI is required.
 
 ## Resume from here
 
-Implement feh `GlobalOnly/CommandAccepted` adapter using injected runner; wire setter and tests without changing existing user-visible behavior; update README/architecture.md/canonical SVG in the same branch. Open Issue #83-linked implementation PR with exact Plan line and require full exact-head CI before merge. No actual desktop commands.
+Open the implementation PR from `agent/wallpaper-backend-feh-global-83`, with exact `Issue: #83` and `Plan: docs/exec-plans/active/2026-10-24-wallpaper-backend-feh-global-83.md` metadata. Inspect its final exact-head full eight CI jobs and actual logs/artifacts; fix failed checks without bypasses on same PR before any merge. No real X11 session was touched.
 
 ## Completion
 
