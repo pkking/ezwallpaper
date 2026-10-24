@@ -43,8 +43,8 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, accepted docs/adr/00
 
 ## Implementation slices
 
-- [ ] Commit a plan before code, then extract LXQt backend, register module and delegate existing call.
-- [ ] Add deterministic regression/unit tests, adapter boundary check and README/architecture diagram.
+- [x] Plan committed before code; extracted LXQt backend, registered module and delegated existing call (authored, CI NOT YET RUN).
+- [x] Added deterministic injected-runner unit tests, static adapter boundary guard and README/architecture.md/canonical SVG (authored, CI NOT YET RUN).
 - [ ] Inspect final implementation PR's exact SHA CI, repair any failures, merge only if authorized and green, then independent archival PR/checkpoint.
 
 ## Verification matrix
@@ -65,13 +65,15 @@ No human design choice: internal behavior-preserving extraction under accepted A
 
 - 2026-10-24: master `a24109e2bfa5097af3321bd41c6d9d875069f4ab`, no OPEN PR. Read actual existing `PcmanfmQt` code and preceding dedicated adapters. This execution plan created before implementation.
 
+- 2026-10-24: authored `src/backend/lxqt.rs`, wired `src/backend/mod.rs` and existing setter delegation, extended offline injected-runner and static guard checks, updated README, architecture.md and canonical SVG in the same branch. Existing LXQt detection remains untouched. Evidence is SOURCE REVIEW ONLY; no Cargo, CI or physical display validation has run yet.
+
 ## Deviations and discoveries
 
-None recorded yet.
+- No local Cargo/rustc toolchain available in this session; compilation, formatting and Rust lint are UNVERIFIED until GitHub Actions CI. No real desktop was touched.
 
 ## Resume from here
 
-Implement the dedicated CLI-only `LxqtBackend` and deterministic fake-command tests on `agent/wallpaper-backend-lxqt-global-83`, update static guard and canonical architecture docs/diagram, then open PR #83-linked and verify exact-head 8-job CI. No actual user desktop invocation.
+Open one Issue #83-linked implementation PR for `agent/wallpaper-backend-lxqt-global-83`; inspect its latest exact-HEAD eight GitHub CI jobs and required checks; on real failures read job logs and repair on the same branch before merger. Do not claim real desktop proof.
 
 ## Completion
 
