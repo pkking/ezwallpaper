@@ -24,7 +24,10 @@ impl SwaybgBackend {
     ) -> Result<ApplyStatus> {
         self.validate_output(output)?;
         if let Some(exit) = launch(path)? {
-            bail!("swaybg exited before the wallpaper was established: {}", exit);
+            bail!(
+                "swaybg exited before the wallpaper was established: {}",
+                exit
+            );
         }
         Ok(ApplyStatus::LaunchedUnverified)
     }
@@ -61,9 +64,7 @@ impl WallpaperBackend for SwaybgBackend {
                 .context("could not launch swaybg")?;
             // Preserve existing one-shot behavior and lifetime exactly.
             thread::sleep(Duration::from_millis(150));
-            let exit = child
-                .try_wait()
-                .context("could not check swaybg process")?;
+            let exit = child.try_wait().context("could not check swaybg process")?;
             Ok(exit.map(|status| status.to_string()))
         })
     }
@@ -86,7 +87,8 @@ mod tests {
         assert!(super::super::require_acknowledged_outputs(
             &backend,
             &["DP-1".to_owned(), "HDMI-A-1".to_owned()]
-        ).is_err());
+        )
+        .is_err());
         let mut invoked = false;
         let got = backend.apply_with("HDMI-A-1", Path::new("/tmp/test.png"), |_| {
             invoked = true;
@@ -101,11 +103,13 @@ mod tests {
         let mut backend = SwaybgBackend;
         let path = std::env::temp_dir().join("wall paper #1.png");
         let mut times = 0;
-        let result = backend.apply_with("", &path, |actual| {
-            assert_eq!(actual, path);
-            times += 1;
-            Ok(None)
-        }).expect("running fake child");
+        let result = backend
+            .apply_with("", &path, |actual| {
+                assert_eq!(actual, path);
+                times += 1;
+                Ok(None)
+            })
+            .expect("running fake child");
         assert_eq!(times, 1);
         assert_eq!(result, ApplyStatus::LaunchedUnverified);
     }
@@ -117,6 +121,9 @@ mod tests {
         let early = backend.apply_with("", &file, |_| Ok(Some("exit status: 1".to_owned())));
         assert!(early.unwrap_err().to_string().contains("exit status: 1"));
         let failed = backend.apply_with("", &file, |_| Err(anyhow!("fake spawn failure")));
-        assert!(failed.unwrap_err().to_string().contains("fake spawn failure"));
+        assert!(failed
+            .unwrap_err()
+            .to_string()
+            .contains("fake spawn failure"));
     }
 }
