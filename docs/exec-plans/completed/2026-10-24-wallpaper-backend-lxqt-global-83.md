@@ -1,7 +1,7 @@
 # 2026-10-24-wallpaper-backend-lxqt-global-83: extract existing LXQt one-shot wallpaper setter
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-24
 Last checkpoint: 2026-10-24
@@ -35,26 +35,26 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, accepted docs/adr/00
 
 ## Acceptance criteria
 
-- [ ] `src/backend/lxqt.rs` implements global `WallpaperBackend` and old caller delegates without changing legacy exit/error/argv/path semantics or auto detection.
-- [ ] Named output is rejected before execution; capability `GlobalOnly/CommandAccepted` cannot qualify for acknowledged per-output rotation; registry remains Noctalia-only.
-- [ ] Injected fake-runner Rust tests cover exact argv/path identity, exit failure, subprocess launch failure and rejected output; offline static dependency guard covers dedicated LXQt module.
-- [ ] README, architecture.md, canonical SVG distinguish implemented global one-shot LXQt from planned per-output and real desktop evidence.
-- [ ] Final code PR latest head all eight CI jobs SUCCESS, required checks successful; separate completion archive PR CI before closing this slice. Issue #83 remains OPEN.
+- [x] `src/backend/lxqt.rs` implements global `WallpaperBackend` and old caller delegates without changing legacy exit/error/argv/path semantics or auto detection.
+- [x] Named output is rejected before execution; capability `GlobalOnly/CommandAccepted` cannot qualify for acknowledged per-output rotation; registry remains Noctalia-only.
+- [x] Injected fake-runner Rust tests cover exact argv/path identity, exit failure, subprocess launch failure and rejected output; offline static dependency guard covers dedicated LXQt module.
+- [x] README, architecture.md, canonical SVG distinguish implemented global one-shot LXQt from planned per-output and real desktop evidence.
+- [x] Final code PR latest head all eight CI jobs SUCCESS, required checks successful; separate completion archive PR CI before closing this slice. Issue #83 remains OPEN.
 
 ## Implementation slices
 
-- [x] Plan committed before code; extracted LXQt backend, registered module and delegated existing call (authored, CI NOT YET RUN).
-- [x] Added deterministic injected-runner unit tests, static adapter boundary guard and README/architecture.md/canonical SVG (authored, CI NOT YET RUN).
-- [ ] Inspect final implementation PR's exact SHA CI, repair any failures, merge only if authorized and green, then independent archival PR/checkpoint.
+- [x] Plan committed before code; extracted LXQt backend, registered module and delegated existing call; implementation final HEAD CI #40101412628 SUCCESS.
+- [x] Added deterministic injected-runner unit tests, static adapter boundary guard and README/architecture.md/canonical SVG; exact implementation HEAD CI #40101412628 SUCCESS.
+- [x] PR #94 final exact HEAD `17cd4dfe6289338a7e42702ef2f952cec4eaf2bc` passed 8/8 jobs in CI #40101412628, then GitHub squash merged at `34eaaba851f1bcbfac263d15f06e4a19f356d33a`. Independent archival PR/checkpoint follows its own CI gate.
 
 ## Verification matrix
 
 | Scope | Gate | Status |
 |---|---|---|
-| Syntax/style | cargo fmt --check; cargo clippy strict | NOT RUN; no local Cargo toolchain available |
-| Unit / offline CLI | cargo test + CLI smoke | NOT RUN |
-| Boundary regression | python3 -m unittest discover -s tests -p 'test_adapter_boundaries.py' -v | NOT RUN |
-| Platform/visual regression | GitHub Actions eight jobs including Sway and Noctalia virtual E2E | NOT RUN |
+| Syntax/style | cargo fmt --check; cargo clippy strict | PASS — #40101412628 Rust quality (GitHub CI only) |
+| Unit / offline CLI | cargo test + CLI smoke | PASS — #40101412628 Rust tests and CLI smoke |
+| Boundary regression | python3 -m unittest discover -s tests -p 'test_adapter_boundaries.py' -v | PASS — #40101412628 Agent contract self-tests |
+| Platform/visual regression | GitHub Actions eight jobs including Sway and Noctalia virtual E2E | PASS — #40101412628 8/8 (virtual E2E is not LXQt live proof) |
 | Physical LXQt / actual visual pixels or per-output | separately consented evidence | UNASSESSED |
 
 ## Decision gates
@@ -67,17 +67,19 @@ No human design choice: internal behavior-preserving extraction under accepted A
 
 - 2026-10-24: authored `src/backend/lxqt.rs`, wired `src/backend/mod.rs` and existing setter delegation, extended offline injected-runner and static guard checks, updated README, architecture.md and canonical SVG in the same branch. Existing LXQt detection remains untouched. Evidence is SOURCE REVIEW ONLY; no Cargo, CI or physical display validation has run yet.
 
+- 2026-10-24: implementation [PR #94](https://github.com/pkking/ezwallpaper/pull/94) exact tested HEAD `17cd4dfe6289338a7e42702ef2f952cec4eaf2bc` passed [CI #40101412628](https://github.com/pkking/ezwallpaper/actions/runs/40101412628), 8/8 completed SUCCESS: Rust quality, Rust tests/CLI, Windows, macOS, Sway, native Noctalia+Sway, Agent plan integrity, Agent contract self-tests. GitHub API squash merge returned `merged=true` and master merge SHA `34eaaba851f1bcbfac263d15f06e4a19f356d33a`, independently checked PR closed/merged. Recorded exact run artifacts: native Noctalia+Sway `12563322285`, Sway visual `12563196279`, experimental niri+Noctalia `12562908236`, Rust offline `12562594285`. These virtual regressions do not verify LXQt physical pixels. The archive-only follow-up PR needs its own independent 8/8 CI.
+
 ## Deviations and discoveries
 
 - No local Cargo/rustc toolchain available in this session; compilation, formatting and Rust lint are UNVERIFIED until GitHub Actions CI. No real desktop was touched.
 
 ## Resume from here
 
-Open one Issue #83-linked implementation PR for `agent/wallpaper-backend-lxqt-global-83`; inspect its latest exact-HEAD eight GitHub CI jobs and required checks; on real failures read job logs and repair on the same branch before merger. Do not claim real desktop proof.
+Verify this **separate docs-only completion archive PR** latest HEAD against all eight Actions jobs and required ruleset checks. If all success and mergeable, GitHub squash merge with expected HEAD SHA; then independently confirm master completed plan exists, active path absent and update Issue #83. On failure fix the original archive branch and rerun. Never remerge implementation #94 or claim live LXQt visual verification.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `34eaaba851f1bcbfac263d15f06e4a19f356d33a` (PR #94 squash merge; exact tested HEAD `17cd4dfe6289338a7e42702ef2f952cec4eaf2bc`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/40101412628 (8/8 completed SUCCESS including four required checks)
+E2E artifact: native Noctalia+Sway virtual `12563322285`; Sway headless visual `12563196279`; experimental niri+Noctalia virtual `12562908236`; Rust offline `12562594285`; none is real LXQt display proof
 Remaining unassessed items: physical LXQt desktop pixels, actual display topology and per-monitor rotation, user session lifecycle, 4K/GPU/hotplug, real wallpaper readback.
