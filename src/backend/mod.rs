@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use std::env;
 use std::path::{Path, PathBuf};
 
+pub(crate) mod feh;
 pub(crate) mod gnome;
 pub(crate) mod lxqt;
 pub(crate) mod noctalia;
