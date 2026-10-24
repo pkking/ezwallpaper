@@ -70,11 +70,12 @@ None: behavior-preserving internal adapter extraction under accepted ADR 0010. A
 
 ## Deviations and discoveries
 
+- First source PR HEAD `bfa2cb58f2657b22cefe173278a78af3d385baee` triggered [CI #40110178192](https://github.com/pkking/ezwallpaper/actions/runs/40110178192). **Rust quality FAILED** on `cargo fmt --all -- --check` at `src/backend/feh.rs` test formatting (job 120920068353); at first diagnosis Agent plan integrity, contract self-tests, Sway and Rust tests/CLI had passed; others had not yet finished. This first failed run MUST NOT be considered green. Retrieved actual job log and reproduced its five exact diff hunks as text edits in commit `e686cde6d1e452e0aa2b58e29ed8e1191ee75b91`; no code logic or gate suppression. Must verify fresh latest-HEAD run 8/8 before merge.
 - No local Rust/desktop session was executed. Source edits alone do not prove formatting or tests passed; final exact-head CI is required.
 
 ## Resume from here
 
-Open the implementation PR from `agent/wallpaper-backend-feh-global-83`, with exact `Issue: #83` and `Plan: docs/exec-plans/active/2026-10-24-wallpaper-backend-feh-global-83.md` metadata. Inspect its final exact-head full eight CI jobs and actual logs/artifacts; fix failed checks without bypasses on same PR before any merge. No real X11 session was touched.
+Resume existing [PR #96](https://github.com/pkking/ezwallpaper/pull/96) after first Rust quality rustfmt failure (run #40110178192) was repaired on same branch in `e686cde6d1e452e0aa2b58e29ed8e1191ee75b91`: fetch its **latest HEAD**, fresh run ID, all eight CI jobs, and actual logs/artifacts. Do not treat old green jobs at failed HEAD as current evidence; only merge by GitHub API with expected final tested SHA when 8/8 success and mergeable. On any other failure fix same PR, rerun, and checkpoint. No real X11 session was touched.
 
 ## Completion
 
