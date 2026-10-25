@@ -2,7 +2,7 @@
 use crate::backend::command_available;
 use crate::backend::noctalia::{apply_noctalia, noctalia_ipc, validate_connector};
 pub use crate::backend::ApplyStatus;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use std::env;
 use std::path::Path;
 
@@ -250,12 +250,8 @@ impl Capability {
         }
         match self.adapter {
             Adapter::Native => {
-                let utf8 = path
-                    .to_str()
-                    .ok_or_else(|| anyhow!("wallpaper path is not UTF-8"))?;
-                wallpaper::set_from_path(utf8)
-                    .map_err(|error| anyhow!("desktop wallpaper API failed: {}", error))?;
-                Ok(ApplyStatus::Submitted)
+                let mut backend = crate::backend::native::NativeBackend;
+                crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::GnomeGsettings => {
                 // GSettings remains a global one-shot setter. Command success
