@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub(crate) mod feh;
 pub(crate) mod gnome;
 pub(crate) mod lxqt;
+pub(crate) mod native;
 pub(crate) mod noctalia;
 pub(crate) mod plasma;
 pub(crate) mod registry;
