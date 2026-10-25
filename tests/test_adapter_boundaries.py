@@ -37,6 +37,7 @@ class AdapterBoundaries(unittest.TestCase):
         port = (BACKEND / "mod.rs").read_text(encoding="utf-8")
         registry = (BACKEND / "registry.rs").read_text(encoding="utf-8")
         noctalia = (BACKEND / "noctalia.rs").read_text(encoding="utf-8")
+        native = (BACKEND / "native.rs").read_text(encoding="utf-8")
         gnome = (BACKEND / "gnome.rs").read_text(encoding="utf-8")
         feh = (BACKEND / "feh.rs").read_text(encoding="utf-8")
         plasma = (BACKEND / "plasma.rs").read_text(encoding="utf-8")
@@ -50,6 +51,15 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertIn('noctalia_ipc(&get_args)?', noctalia)
         self.assertIn('apply_noctalia(path, self.output.as_deref())', setter)
         self.assertIn('NoctaliaBackend', registry)
+        self.assertIn('NativeBackend', setter)
+        self.assertIn('OutputScope::GlobalOnly', native)
+        self.assertIn('Acknowledgement::CommandAccepted', native)
+        self.assertIn('wallpaper::set_from_path', native)
+        self.assertIn('wallpaper path is not UTF-8', native)
+        self.assertIn('desktop wallpaper API failed:', native)
+        self.assertNotIn('wallpaper::set_from_path', setter)
+        self.assertNotIn('NativeBackend', registry)
+
         self.assertIn('GnomeBackend', setter)
         self.assertIn('OutputScope::GlobalOnly', gnome)
         self.assertIn('Acknowledgement::CommandAccepted', gnome)
@@ -96,7 +106,7 @@ class AdapterBoundaries(unittest.TestCase):
         self.assertNotIn('Command::new("swaybg")', setter)
         self.assertNotIn('SwaybgBackend', registry)
 
-        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "pcmanfm-qt", "feh", "swaybg"):
+        for protocol in ("Command::new", "wallpaper-set", "wallpaper-get", "gsettings", "qdbus", "pcmanfm-qt", "feh", "swaybg", "set_from_path"):
             with self.subTest(protocol=protocol):
                 self.assertNotIn(protocol, registry)
 
