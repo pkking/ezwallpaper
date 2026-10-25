@@ -42,8 +42,8 @@ No change to wallpaper-rs dependency/version/usage, OS/DE auto detection, defaul
 
 ## Implementation slices
 
-- [ ] Commit active plan before code; add `native.rs`, module and setter delegation preserving exact behavior.
-- [ ] Write injected tests and static boundary guard, update README + architecture.md + SVG in same implementation PR.
+- [x] Plan committed before product code; `native.rs`, module registration and existing setter delegation authored, no CI verification yet.
+- [x] Injected native API tests, static boundary guard and README + architecture.md + canonical SVG authored on same implementation branch; no CI verification yet.
 - [ ] Verify all eight exact-head CI jobs; squash merge only on PASS and then separate independently verified archive PR.
 
 ## Verification matrix
@@ -64,13 +64,15 @@ None: behavior-preserving source isolation under approved ADR 0010. Any change t
 
 - 2026-10-25: verified base master `00127f0d1a860aa0c8c7f528e247239b59a166eb`, confirmed Issue #83 open, no outstanding PRs. Read existing Native arm in setter, cross-platform backend module contracts, README and architecture docs. This active plan is committed BEFORE editing product code.
 
+- 2026-10-25: authored `src/backend/native.rs` with fake-call injection and strict `GlobalOnly/CommandAccepted` checks, moved the existing `wallpaper::set_from_path` call and error/UTF-8 conversion from setter without touching discovery or regular-file preflight. Updated static boundary test and README/architecture.md/canonical SVG in same implementation branch. Source changes unverified until CI.
+
 ## Deviations and discoveries
 
-None recorded.
+- No local rustfmt/cargo toolchain or actual user desktop is available in this execution environment. Compilation, Clippy, test success and graphical effects are UNVERIFIED pending GitHub Actions. No live wallpaper was changed.
 
 ## Resume from here
 
-On branch `agent/wallpaper-backend-native-one-shot-83` implement the standalone `NativeBackend` preserving legacy wallpaper-rs path conversion and errors; add offline fake tests, update boundary guards and canonical README/architecture.svg/text, then open Issue #83-linked implementation PR and require its latest exact-head eight CI jobs before merge. No real desktop writes.
+Open one Issue #83-linked source PR from `agent/wallpaper-backend-native-one-shot-83` with exact active Plan line, inspect full eight GitHub CI jobs at the latest exact HEAD, correct any real failure in the same branch without suppressions and rerun. Only squash merge after 8/8 SUCCESS, required checks and mergeable; create separately CI-tested archive PR. No real desktop writes.
 
 ## Completion
 
