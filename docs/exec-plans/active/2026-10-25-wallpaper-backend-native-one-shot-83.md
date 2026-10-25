@@ -68,11 +68,12 @@ None: behavior-preserving source isolation under approved ADR 0010. Any change t
 
 ## Deviations and discoveries
 
+- Initial source PR #98 HEAD `f48bd308c7d8bd1393c5654da6406dfd15cebf23` in [CI #40191413812](https://github.com/pkking/ezwallpaper/actions/runs/40191413812): **Rust quality FAILED** on one exact `cargo fmt --all -- --check` hunk in `src/backend/native.rs` test `assert_eq!`, real job 121163011407 log. Agent contract self-tests and plan integrity had SUCCESS; other jobs were pending and cannot establish overall pass. Fixed only the rustfmt-specified formatting in `2c834738993a4160fed96efa44b3cf5ae7d5064a`, with no logic changes or gate suppressions. The initial run is not proof of success; require a full fresh CI at latest HEAD.
 - No local rustfmt/cargo toolchain or actual user desktop is available in this execution environment. Compilation, Clippy, test success and graphical effects are UNVERIFIED pending GitHub Actions. No live wallpaper was changed.
 
 ## Resume from here
 
-Open one Issue #83-linked source PR from `agent/wallpaper-backend-native-one-shot-83` with exact active Plan line, inspect full eight GitHub CI jobs at the latest exact HEAD, correct any real failure in the same branch without suppressions and rerun. Only squash merge after 8/8 SUCCESS, required checks and mergeable; create separately CI-tested archive PR. No real desktop writes.
+Continue existing [PR #98](https://github.com/pkking/ezwallpaper/pull/98) after initial rustfmt failure in CI #40191413812 was repaired in `2c834738993a4160fed96efa44b3cf5ae7d5064a`. Fetch latest exact PR HEAD/fresh run ID, inspect all eight Actions jobs; if more failure, read actual logs and fix without bypasses. Squash merge with expected final SHA only on all 8 SUCCESS and mergeable; independent CI-tested archive PR afterward. No real desktop writes.
 
 ## Completion
 
