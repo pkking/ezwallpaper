@@ -93,7 +93,10 @@ mod tests {
             })
             .expect("fake accepted one valid path");
         assert_eq!(result, ApplyStatus::Submitted);
-        assert_eq!(calls, vec![path.to_str().expect("UTF-8 fixture").to_owned()]);
+        assert_eq!(
+            calls,
+            vec![path.to_str().expect("UTF-8 fixture").to_owned()]
+        );
     }
 
     #[test]
