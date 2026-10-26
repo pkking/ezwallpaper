@@ -1,7 +1,7 @@
 # 2026-10-25-wallpaper-backend-native-one-shot-83: extract existing wallpaper-rs native apply
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-25
 Last checkpoint: 2026-10-25
@@ -34,26 +34,26 @@ No change to wallpaper-rs dependency/version/usage, OS/DE auto detection, defaul
 
 ## Acceptance criteria
 
-- [ ] Dedicated `src/backend/native.rs` `NativeBackend` implements `WallpaperBackend`, declaration in `backend/mod.rs`, delegation from `Adapter::Native` leaving discovery and legacy error/status behavior unchanged.
-- [ ] Capabilities GlobalOnly/CommandAccepted; named output rejected before native invoke; no change to Noctalia-only registry or state.
-- [ ] Deterministic injected fake native setter tests assert valid UTF-8 path identity, Submitted-only result, original error-prefix behavior, named-output preflight and non-UTF8 rejection on Unix; Python static guard confirms wallpaper-rs invocation only inside dedicated backend.
-- [ ] Same source PR updates README/architecture.md/canonical SVG to mark generic native one-shot implemented and real OS graphical outcomes UNASSESSED.
-- [ ] Exact final source HEAD CI 8/8 SUCCESS and reviewed before normal squash merge; own green archival PR before complete. Parent Issue #83 remains OPEN.
+- [x] Dedicated `src/backend/native.rs` `NativeBackend` implements `WallpaperBackend`, declaration in `backend/mod.rs`, delegation from `Adapter::Native` leaving discovery and legacy error/status behavior unchanged.
+- [x] Capabilities GlobalOnly/CommandAccepted; named output rejected before native invoke; no change to Noctalia-only registry or state.
+- [x] Deterministic injected fake native setter tests assert valid UTF-8 path identity, Submitted-only result, original error-prefix behavior, named-output preflight and non-UTF8 rejection on Unix; Python static guard confirms wallpaper-rs invocation only inside dedicated backend.
+- [x] Same source PR updates README/architecture.md/canonical SVG to mark generic native one-shot implemented and real OS graphical outcomes UNASSESSED.
+- [x] Exact final source HEAD CI 8/8 SUCCESS and reviewed before normal squash merge; own green archival PR before complete. Parent Issue #83 remains OPEN.
 
 ## Implementation slices
 
-- [x] Plan committed before product code; `native.rs`, module registration and existing setter delegation authored, no CI verification yet.
-- [x] Injected native API tests, static boundary guard and README + architecture.md + canonical SVG authored on same implementation branch; no CI verification yet.
-- [ ] Verify all eight exact-head CI jobs; squash merge only on PASS and then separate independently verified archive PR.
+- [x] Plan committed before product code; `native.rs`, module registration and legacy setter delegation implemented; final source PR #98 exact-head CI #40191490521 8/8 SUCCESS.
+- [x] Injected native API tests, static boundary guard and README + architecture.md + canonical SVG implemented in same source PR; final-source CI #40191490521 8/8 SUCCESS.
+- [x] Verified final PR #98 exact HEAD `91d881f5538f79fc39024b6a8e4f80b1304ef326` with eight successful GitHub CI jobs; normal squash merge returned `merged=true`, master commit `4b4e33cfdcc19b08c310ad7112eb39a776ad3c6b`. Separate archive PR still requires its own exact-head CI before merge.
 
 ## Verification matrix
 
 | Scope | Gate | Status |
 |---|---|---|
-| Rust quality | cargo fmt / strict clippy (GitHub Actions) | NOT RUN |
-| Rust unit + offline CLI | cargo test / CLI smoke | NOT RUN |
-| Boundary / plan | Agent plan integrity, contract self-tests | NOT RUN |
-| Platform and virtual compositor | Windows, macOS, Sway, native Noctalia+Sway E2E | NOT RUN |
+| Rust quality | cargo fmt / strict clippy (GitHub Actions) | PASS — #40191490521 |
+| Rust unit + offline CLI | cargo test / CLI smoke | PASS — #40191490521 |
+| Boundary / plan | Agent plan integrity, contract self-tests | PASS — #40191490521 |
+| Platform and virtual compositor | Windows, macOS, Sway, native Noctalia+Sway E2E | PASS — #40191490521 (headless/virtual evidence only) |
 | Physical OS wallpaper change | named real desktop test | UNASSESSED |
 
 ## Decision gates
@@ -66,18 +66,20 @@ None: behavior-preserving source isolation under approved ADR 0010. Any change t
 
 - 2026-10-25: authored `src/backend/native.rs` with fake-call injection and strict `GlobalOnly/CommandAccepted` checks, moved the existing `wallpaper::set_from_path` call and error/UTF-8 conversion from setter without touching discovery or regular-file preflight. Updated static boundary test and README/architecture.md/canonical SVG in same implementation branch. Source changes unverified until CI.
 
+- 2026-10-25: [PR #98](https://github.com/pkking/ezwallpaper/pull/98) final exact head `91d881f5538f79fc39024b6a8e4f80b1304ef326` completed [CI #40191490521](https://github.com/pkking/ezwallpaper/actions/runs/40191490521) **8/8 SUCCESS** (Agent plan integrity/contract self-tests, Rust quality/tests, Windows/macOS, Sway headless visual and native Noctalia+Sway virtual E2E). GitHub normal squash merge returned `merged=true`, commit `4b4e33cfdcc19b08c310ad7112eb39a776ad3c6b`; independent PR read confirmed closed/merged. Artifact IDs recorded in Completion. No direct physical Windows/macOS/Linux wallpaper evidence. Archive-only PR still requires its own successful 8-job run.
+
 ## Deviations and discoveries
 
-- Initial source PR #98 HEAD `f48bd308c7d8bd1393c5654da6406dfd15cebf23` in [CI #40191413812](https://github.com/pkking/ezwallpaper/actions/runs/40191413812): **Rust quality FAILED** on one exact `cargo fmt --all -- --check` hunk in `src/backend/native.rs` test `assert_eq!`, real job 121163011407 log. Agent contract self-tests and plan integrity had SUCCESS; other jobs were pending and cannot establish overall pass. Fixed only the rustfmt-specified formatting in `2c834738993a4160fed96efa44b3cf5ae7d5064a`, with no logic changes or gate suppressions. The initial run is not proof of success; require a full fresh CI at latest HEAD.
+- Initial source PR #98 HEAD `f48bd308c7d8bd1393c5654da6406dfd15cebf23` in [CI #40191413812](https://github.com/pkking/ezwallpaper/actions/runs/40191413812): **Rust quality FAILED** on one exact `cargo fmt --all -- --check` hunk in `src/backend/native.rs` test `assert_eq!`, real job 121163011407 log. Agent contract self-tests and plan integrity had SUCCESS; other jobs were pending and cannot establish overall pass. Fixed only the rustfmt-specified formatting in `2c834738993a4160fed96efa44b3cf5ae7d5064a`, with no logic changes or gate suppressions. The initial run was a genuine failure; a later exact-head #40191490521 8/8 SUCCESS resolved this before merge.
 - No local rustfmt/cargo toolchain or actual user desktop is available in this execution environment. Compilation, Clippy, test success and graphical effects are UNVERIFIED pending GitHub Actions. No live wallpaper was changed.
 
 ## Resume from here
 
-Continue existing [PR #98](https://github.com/pkking/ezwallpaper/pull/98) after initial rustfmt failure in CI #40191413812 was repaired in `2c834738993a4160fed96efa44b3cf5ae7d5064a`. Fetch latest exact PR HEAD/fresh run ID, inspect all eight Actions jobs; if more failure, read actual logs and fix without bypasses. Squash merge with expected final SHA only on all 8 SUCCESS and mergeable; independent CI-tested archive PR afterward. No real desktop writes.
+Inspect this docs-only completion archive PR's **own exact latest HEAD** and all eight required GitHub CI jobs; if 8/8 SUCCESS and GitHub mergeable=true, squash merge with expected archive HEAD SHA, independently verify master has completed plan and active path absent, and update Issue #83. If failure, diagnose archive logs, fix same archive branch, rerun. Source PR #98 already merged: do not remerge or claim live OS visual validation.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `4b4e33cfdcc19b08c310ad7112eb39a776ad3c6b` (PR #98 squash merge; exact tested source HEAD `91d881f5538f79fc39024b6a8e4f80b1304ef326`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/40191490521 (8/8 completed SUCCESS, including four required checks)
+E2E artifact: Noctalia+Sway virtual `12599216172`; experimental niri+Noctalia virtual `12598996492`; offline Rust CLI `12598187409`; headless Sway screenshot `12598002552`; none proves physical native OS wallpaper
 Remaining unassessed items: physical Windows/macOS/Linux actual desktop wallpaper pixels, wallpaper-rs-specific DE differences, independent per-output mapping/rotation, native path readback, session lifecycle, 4K/GPU/hotplug.
