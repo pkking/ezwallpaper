@@ -25,6 +25,33 @@ impl NoctaliaBackend {
         };
         wayland && super::command_available("noctalia")
     }
+
+    /// One-shot compatibility entry point for the legacy CLI facade.
+    /// None retains Noctalia's global wallpaper-set/get IPC form;
+    /// Some(connector) selects one output. Neither target changes rotation.
+    pub(crate) fn apply_one_shot(
+        &mut self,
+        path: &Path,
+        output: Option<&str>,
+    ) -> Result<ApplyStatus> {
+        self.apply_one_shot_with(path, output, apply_noctalia)
+    }
+
+    /// Injected acknowledgement seam for tests; no real desktop is touched.
+    /// A fake Ok models IPC set + exact-path get acknowledgement, not pixels.
+    fn apply_one_shot_with(
+        &mut self,
+        path: &Path,
+        output: Option<&str>,
+        mut acknowledged_apply: impl FnMut(&Path, Option<&str>) -> Result<()>,
+    ) -> Result<ApplyStatus> {
+        // A caller must not represent the global target with Some("").
+        if let Some(connector) = output {
+            validate_connector(connector)?;
+        }
+        acknowledged_apply(path, output)?;
+        Ok(ApplyStatus::PathObserved)
+    }
 }
 impl WallpaperBackend for NoctaliaBackend {
     fn id(&self) -> &'static str {
@@ -43,9 +70,7 @@ impl WallpaperBackend for NoctaliaBackend {
         if !path.is_file() {
             bail!("wallpaper path is not a regular file: {}", path.display());
         }
-        validate_connector(output)?;
-        apply_noctalia(path, Some(output))?;
-        Ok(ApplyStatus::PathObserved)
+        self.apply_one_shot(path, Some(output))
     }
 }
 
@@ -118,4 +143,84 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
         bail!("Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::anyhow;
+
+    #[test]
+    fn legacy_global_one_shot_preserves_missing_connector() {
+        let path = Path::new("/tmp/noctalia global wallpaper.png");
+        let mut invoked = 0;
+        let result = NoctaliaBackend.apply_one_shot_with(path, None, |actual_path, output| {
+            assert_eq!(actual_path, path);
+            assert_eq!(output, None);
+            invoked += 1;
+            Ok(())
+        });
+        assert_eq!(result.expect("fake readback acknowledged"), ApplyStatus::PathObserved);
+        assert_eq!(invoked, 1);
+    }
+
+    #[test]
+    fn legacy_named_one_shot_forwards_exact_connector() {
+        let path = Path::new("/tmp/noctalia per-output.png");
+        let mut invoked = 0;
+        let result = NoctaliaBackend.apply_one_shot_with(
+            path,
+            Some("DP-1"),
+            |actual_path, output| {
+                assert_eq!(actual_path, path);
+                assert_eq!(output, Some("DP-1"));
+                invoked += 1;
+                Ok(())
+            },
+        );
+        assert_eq!(result.expect("fake readback acknowledged"), ApplyStatus::PathObserved);
+        assert_eq!(invoked, 1);
+    }
+
+    #[test]
+    fn empty_or_invalid_named_connector_never_becomes_global() {
+        let path = Path::new("/tmp/noctalia.png");
+        let mut invoked = false;
+        for output in ["", "DP 1", "DP-1;injection", "DP-1\\n"] {
+            let result = NoctaliaBackend.apply_one_shot_with(
+                path,
+                Some(output),
+                |_, _| {
+                    invoked = true;
+                    Ok(())
+                },
+            );
+            assert!(result.is_err(), "connector should fail: {}", output);
+        }
+        assert!(!invoked);
+        assert!(validate_connector("").is_err());
+    }
+
+    #[test]
+    fn failed_or_unconfirmed_ipc_never_claims_path_observed() {
+        let path = Path::new("/tmp/noctalia.png");
+        for reason in ["wallpaper-set rejected", "wallpaper-get mismatch"] {
+            let result = NoctaliaBackend.apply_one_shot_with(path, None, |_, _| {
+                Err(anyhow!(reason))
+            });
+            assert_eq!(result.expect_err("IPC was not acknowledged").to_string(), reason);
+        }
+    }
+
+    #[test]
+    fn trait_named_output_is_not_a_global_alias() {
+        let backend = NoctaliaBackend;
+        assert_eq!(backend.capabilities().scope, OutputScope::PerOutput);
+        assert_eq!(
+            backend.capabilities().acknowledgement,
+            Acknowledgement::ExactPathReadback
+        );
+        assert!(backend.validate_output("DP-1").is_ok());
+        assert!(backend.validate_output("").is_err());
+    }
 }
