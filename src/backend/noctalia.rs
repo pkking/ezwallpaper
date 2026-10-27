@@ -160,7 +160,10 @@ mod tests {
             invoked += 1;
             Ok(())
         });
-        assert_eq!(result.expect("fake readback acknowledged"), ApplyStatus::PathObserved);
+        assert_eq!(
+            result.expect("fake readback acknowledged"),
+            ApplyStatus::PathObserved
+        );
         assert_eq!(invoked, 1);
     }
 
@@ -168,17 +171,17 @@ mod tests {
     fn legacy_named_one_shot_forwards_exact_connector() {
         let path = Path::new("/tmp/noctalia per-output.png");
         let mut invoked = 0;
-        let result = NoctaliaBackend.apply_one_shot_with(
-            path,
-            Some("DP-1"),
-            |actual_path, output| {
+        let result =
+            NoctaliaBackend.apply_one_shot_with(path, Some("DP-1"), |actual_path, output| {
                 assert_eq!(actual_path, path);
                 assert_eq!(output, Some("DP-1"));
                 invoked += 1;
                 Ok(())
-            },
+            });
+        assert_eq!(
+            result.expect("fake readback acknowledged"),
+            ApplyStatus::PathObserved
         );
-        assert_eq!(result.expect("fake readback acknowledged"), ApplyStatus::PathObserved);
         assert_eq!(invoked, 1);
     }
 
@@ -187,14 +190,10 @@ mod tests {
         let path = Path::new("/tmp/noctalia.png");
         let mut invoked = false;
         for output in ["", "DP 1", "DP-1;injection", "DP-1\\n"] {
-            let result = NoctaliaBackend.apply_one_shot_with(
-                path,
-                Some(output),
-                |_, _| {
-                    invoked = true;
-                    Ok(())
-                },
-            );
+            let result = NoctaliaBackend.apply_one_shot_with(path, Some(output), |_, _| {
+                invoked = true;
+                Ok(())
+            });
             assert!(result.is_err(), "connector should fail: {}", output);
         }
         assert!(!invoked);
@@ -205,10 +204,12 @@ mod tests {
     fn failed_or_unconfirmed_ipc_never_claims_path_observed() {
         let path = Path::new("/tmp/noctalia.png");
         for reason in ["wallpaper-set rejected", "wallpaper-get mismatch"] {
-            let result = NoctaliaBackend.apply_one_shot_with(path, None, |_, _| {
-                Err(anyhow!(reason))
-            });
-            assert_eq!(result.expect_err("IPC was not acknowledged").to_string(), reason);
+            let result =
+                NoctaliaBackend.apply_one_shot_with(path, None, |_, _| Err(anyhow!(reason)));
+            assert_eq!(
+                result.expect_err("IPC was not acknowledged").to_string(),
+                reason
+            );
         }
     }
 
