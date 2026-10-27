@@ -68,12 +68,13 @@ No human architecture decision: this is solely a behavior-preserving route to th
 
 ## Deviations and discoveries
 
+- First PR #100 implementation HEAD `a6a100cc9caf0b14b8684bf7211a4553b02f8261` launched [CI #40543537373](https://github.com/pkking/ezwallpaper/actions/runs/40543537373). **Rust quality FAILED** at `cargo fmt --all -- --check` (real job `122327952579`) due to five formatting hunks in new injected test module. Logs inspected, exact rustfmt diagnostic formatting applied to `src/backend/noctalia.rs` in commit `8b452d0c64068a43898b5317f794a2ee516fa24d`. No functional alteration, gate relaxation or desktop side effect. The failed run is not success evidence; all eight checks must rerun on latest PR HEAD.
 - No local Rust compiler/rustfmt is available in the authoring environment; source editing and unit-test authoring alone do not establish compilation or test success. Full GitHub CI must run before merge. The injected closure models acknowledgement, not actual IPC path verification or display pixels.
 - The established protocol implementation `apply_noctalia(path, Option<&str>)` remains unchanged. The new method forwards `None` (global) or `Some` (named); the rotation trait still rejects empty output and Noctalia remains the sole rotation registry implementation.
 
 ## Resume from here
 
-Open the Issue #83-linked implementation PR from branch `agent/noctalia-one-shot-port-83` using exactly `Plan: docs/exec-plans/active/2026-10-27-noctalia-one-shot-port-83.md`. Fetch its exact HEAD and all eight CI jobs; diagnose failures from actual job logs and repair same branch without lowering gates. Only merge normally using expected HEAD SHA on complete success; then create independently CI-verified docs-only archive PR. No real user desktop mutation.
+Continue existing [PR #100](https://github.com/pkking/ezwallpaper/pull/100) after #40543537373 rustfmt failure was repaired on the same branch in `8b452d0c64068a43898b5317f794a2ee516fa24d`. Fetch the **latest exact HEAD** and its **fresh** CI run, inspect all 8 jobs including Rust tests and native Noctalia virtual E2E. Fix genuine failures on the same branch without suppressions; only squash merge with expected tested HEAD on 8/8 SUCCESS and GitHub mergeability. Then separate independently CI-tested plan archive PR. Do not execute real user desktop operations.
 
 ## Completion
 
