@@ -44,8 +44,8 @@ Issue #83 and last checkpoint; `AGENTS.md`, `docs/agents/workflow.md`, `docs/age
 
 ## Implementation slices
 
-- [ ] Commit this active plan before source; implement backend-owned one-shot bridge + facade delegation.
-- [ ] Add deterministic fake IPC tests and Python static guard; update README, architecture.md and SVG.
+- [x] Active plan committed before code; backend-owned one-shot bridge and setter delegation implemented (CI UNVERIFIED).
+- [x] Added five deterministic fake-acknowledgement unit tests, Python static guard and README/architecture.md/canonical SVG updates in the same branch (CI UNVERIFIED).
 - [ ] Validate latest exact PR HEAD, investigate failures, merge on green only; independently archive verified plan.
 
 ## Verification matrix
@@ -68,11 +68,12 @@ No human architecture decision: this is solely a behavior-preserving route to th
 
 ## Deviations and discoveries
 
-None.
+- No local Rust compiler/rustfmt is available in the authoring environment; source editing and unit-test authoring alone do not establish compilation or test success. Full GitHub CI must run before merge. The injected closure models acknowledgement, not actual IPC path verification or display pixels.
+- The established protocol implementation `apply_noctalia(path, Option<&str>)` remains unchanged. The new method forwards `None` (global) or `Some` (named); the rotation trait still rejects empty output and Noctalia remains the sole rotation registry implementation.
 
 ## Resume from here
 
-Implement the backend-owned legacy Noctalia one-shot bridge in `src/backend/noctalia.rs`, delegate `src/setter.rs`, test both `None` and named `Some` with fakes, update architecture and source boundary checks in the same branch. Then open an Issue #83-linked implementation PR with exact Plan metadata; do not merge without all eight latest-exact-HEAD CI checks.
+Open the Issue #83-linked implementation PR from branch `agent/noctalia-one-shot-port-83` using exactly `Plan: docs/exec-plans/active/2026-10-27-noctalia-one-shot-port-83.md`. Fetch its exact HEAD and all eight CI jobs; diagnose failures from actual job logs and repair same branch without lowering gates. Only merge normally using expected HEAD SHA on complete success; then create independently CI-verified docs-only archive PR. No real user desktop mutation.
 
 ## Completion
 
