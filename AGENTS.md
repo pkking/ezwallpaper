@@ -38,6 +38,15 @@ For work interrupted at any step, keep the plan in active/ and record the exact 
 
 Never claim passing Rust tests if Cargo did not run. An HTTP response in a mock proves the mock contract, not the live provider. Failing or skipped checks are not passing checks.
 
+## Source-code evidence requirement for technical analyses
+
+- **All technical analyses, design comparisons, upstream integration selections, claimed capability matrices, compatibility judgments and implementation recommendations must be grounded in actual inspected code.** Cite the exact repository, fixed tag/commit SHA, file and relevant function/line range; show the pertinent call chain and explain precisely what each implementation does and does *not* prove.
+- README, Wiki, CLI help, marketing summaries and package matrices are **discovery hints**, not implementation proof. If they conflict with code, use the applicable version's actual implementation; explicitly retract a previous unsupported conclusion instead of silently preserving it.
+- For IPC and state-commit claims, trace client request → server handler → state update/renderer → independent readback, including async ordering, error branches, output identity and renderer ownership. A successful command, queued mutation, local cached intent or claimed feature flag is not proof of actual backend path observation or pixels.
+- If any material upstream implementation cannot be fetched or version-pinned, mark it **BLOCKED_SOURCE / UNVERIFIED**, state what code remains missing, and do not qualify it for implementation or make affirmative support claims. Treat absence from only the inspected files as **insufficient evidence**, not proof that an interface never exists elsewhere.
+- Distinguish **CODE** (verified in source), **CONTRACT** (IDL/XML/schema), **TESTED** (actual specific test/CI evidence), and **UNVERIFIED** (missing runtime/integration proof). Scope each conclusion to the revision and environment actually examined. Include negative evidence and rejected alternatives where they change the selection.
+
+
 ## README architecture diagram invariant
 
 - `README.md` must render `docs/architecture.svg`, the canonical source-controlled diagram. Keep the diagram aligned with `docs/architecture.md`, the accepted ADRs and code; indicate planned components explicitly rather than depicting them as implemented.
