@@ -36,25 +36,25 @@ No new backend, new Rust crate or binary, code changes, CI/quality gate changes,
 
 ## Acceptance criteria
 
-- [ ] Evidence-backed option matrix for native compositor IPC, existing daemons, reusable Rust crates and aggregating frontend, with supported scope, readback, renderer ownership, availability, maintenance/licensing and specific risks (no invented support).
-- [ ] Explicit primary/conditional/rejected recommendations for Hyprland, generic Wayland/Sway, KDE/XFCE/X11, GNOME/Portal, Windows/macOS, and Noctalia/niri coexistence, including strict state-commit gate and alternate renderer exclusion.
-- [ ] Bounded evaluation plan: independently verifiable readback, output identity/hotplug, renderer lifetime, path edge cases, security and version/license checks, without prematurely implementing code or forcing a new dependency.
-- [ ] Architecture.md links the assessment, explicitly states selection is proposed/not implemented. No code, dependencies, ADR or SVG changes; diagram remains unchanged because current/planned boundaries are identical.
+- [x] Evidence-backed option matrix for native compositor IPC, existing daemons, reusable Rust crates and aggregating frontend, with supported scope, readback, renderer ownership, availability, maintenance/licensing and specific risks (no invented support).
+- [x] Explicit primary/conditional/rejected recommendations for Hyprland, generic Wayland/Sway, KDE/XFCE/X11, GNOME/Portal, Windows/macOS, and Noctalia/niri coexistence, including strict state-commit gate and alternate renderer exclusion.
+- [x] Bounded evaluation plan: independently verifiable readback, output identity/hotplug, renderer lifetime, path edge cases, security and version/license checks, without prematurely implementing code or forcing a new dependency.
+- [x] Architecture.md links the assessment, explicitly states selection is proposed/not implemented. No code, dependencies, ADR or SVG changes; diagram remains unchanged because current/planned boundaries are identical.
 - [ ] Latest exact review PR HEAD CI 8/8 SUCCESS and mergeable before merge; separate independent archival gate before plan COMPLETED. Parent Issue #83 remains OPEN.
 
 ## Implementation slices
 
 - [x] Read current repo/issue/ADR and upstream primary references; create this plan on a fresh branch **before** documentation edits.
-- [ ] Draft `docs/architecture/backend-upstream-selection-83.md` with decision criteria, evidence table, priority, known blockers and test matrix.
-- [ ] Cross-link from architecture.md and review source-only diff, quality/evidence limits, then open docs-only Issue #83-linked PR.
+- [x] Draft `docs/architecture/backend-upstream-selection-83.md` with decision criteria, evidence table, priority, known blockers and test matrix.
+- [x] Cross-linked from architecture.md. Source PR scope: independent research Markdown plus this active plan; no source code/dependency/ADR/SVG edits; PR and final CI still pending.
 - [ ] Gate on latest-exact-HEAD CI and finish independent completed-plan archive; keep parent issue open.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
-| Research validity | official/API documentation and cross-project contradictions | grounded hyperlinks & caveats | IN PROGRESS |
-| Source safety | diff only markdown research + active plan | GitHub PR patch | NOT RUN |
+| Research validity | official/API documentation and cross-project contradictions | official Hyprpaper/Sway/wpaperd/UDA/docs.rs/Portal + packaged awww manpages hyperlinked, contradictions and unassessed fields explicit | DOCUMENTED (not live-tested) |
+| Source safety | diff only markdown research + active plan | 3 Markdown paths authored: selection, architecture.md cross-link and this active plan; verify PR patch after creation | PENDING PR PATCH |
 | CI governance | Agent plan integrity + contract self-tests | latest-head Actions jobs | NOT RUN |
 | Rust/plats/virtual regression | all eight required CI jobs | latest-head Actions run | NOT RUN |
 | Actual native pixels, daemon restarts, hotplug | physical integration | not in this selection review | UNASSESSED |
@@ -67,6 +67,8 @@ This PR makes a **non-binding, ordered selection recommendation** under accepted
 
 - 2026-10-28: examined #83, #101 merge, actual `backend/mod.rs`, `backend/registry.rs`, ADR 0010 and Cargo.toml; upstream Hyprpaper/Sway manuals, crates.io docs.rs, awww-query manpage, wpaperd README, Waypaper docs and UDA wallpaper guide. This plan is created before research doc mutation; no live desktop actions.
 
+- 2026-10-28: authored [reuse assessment](../../architecture/backend-upstream-selection-83.md) with eleven classes of upstream options and platform-oriented priority, explicit D/I/U evidence, mandatory gate G0–G4, version/daemon conflict/physical evidence limits; architecture.md cross-linked. Source references checked against packaged `awww-img(1)` and `awww-query(1)`, Hyprland/Sway upstream docs, Waypaper/wpaperd upstream README, UDA detailed guide, docs.rs and XDG Portal. Source-only diff remains pending official PR patch inspection. No executable commands run against desktop.
+
 ## Deviations and discoveries
 
 - UniDesktop API's high-level website advertises multi-monitor capabilities, but its detailed wallpaper guide explicitly says **per-monitor selection is future Display Topology work**. Follow the narrower verified wallpaper guide.
@@ -75,7 +77,7 @@ This PR makes a **non-binding, ordered selection recommendation** under accepted
 
 ## Resume from here
 
-Author the detailed evidence-linked selection in `docs/architecture/backend-upstream-selection-83.md`, add its link in `docs/architecture.md` and checkpoint this active plan. Open a docs-only source PR with exactly `Issue: #83` and `Plan: docs/exec-plans/active/2026-10-28-wallpaper-backend-upstream-selection-83.md`. Require its own final-head eight CI successes; only after merge create separately verified active-to-completed archive. Do not install/reroute wallpapers during selection.
+Open the standalone **documentation-only** source PR for branch `agent/backend-upstream-selection-83` with exactly `Issue: #83` and `Plan: docs/exec-plans/active/2026-10-28-wallpaper-backend-upstream-selection-83.md`. Independently inspect the PR patch to ensure only three Markdown documents change. Fetch latest exact HEAD and all 8 Actions jobs; fix genuine issues without suppressions. Merge only on 8/8 SUCCESS and `mergeable=true` with expected HEAD; afterward create separate completed-plan archive PR, require its own 8/8 latest-head CI, confirm master and Issue #83 OPEN. No real desktop mutation.
 
 ## Completion
 
