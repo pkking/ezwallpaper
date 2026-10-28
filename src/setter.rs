@@ -1,6 +1,6 @@
 //! Desktop integration adapter discovery. Pure detection can be tested headlessly.
 use crate::backend::command_available;
-use crate::backend::noctalia::{apply_noctalia, noctalia_ipc, validate_connector};
+use crate::backend::noctalia::{noctalia_ipc, validate_connector, NoctaliaBackend};
 pub use crate::backend::ApplyStatus;
 use anyhow::{bail, Result};
 use std::env;
@@ -281,8 +281,8 @@ impl Capability {
                 crate::backend::WallpaperBackend::apply(&mut backend, "", path)
             }
             Adapter::Noctalia => {
-                apply_noctalia(path, self.output.as_deref())?;
-                Ok(ApplyStatus::PathObserved)
+                let mut backend = NoctaliaBackend;
+                backend.apply_one_shot(path, self.output.as_deref())
             }
             Adapter::Swaybg => {
                 let mut backend = crate::backend::swaybg::SwaybgBackend;
