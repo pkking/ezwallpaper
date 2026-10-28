@@ -1,7 +1,7 @@
 # 2026-10-27-noctalia-one-shot-port-83: delegate legacy Noctalia one-shot via its backend
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-27
 Last checkpoint: 2026-10-27
@@ -36,26 +36,26 @@ Issue #83 and last checkpoint; `AGENTS.md`, `docs/agents/workflow.md`, `docs/age
 
 ## Acceptance criteria
 
-- [ ] Setter delegates to backend's `apply_one_shot(path, output)` rather than imports/calls `apply_noctalia` directly; regular-file preflight and original errors/status preserved.
-- [ ] Backend's one-shot API forwards `None` for legacy global operation and `Some(connector)` for explicit output; does not reinterpret a blank string as global. `WallpaperBackend::apply` remains named-output-only.
-- [ ] Fake runner Rust unit tests and static Python boundary checks protect both target semantics, status, failed/no-mutation cases, and readback-only `PathObserved`.
-- [ ] README/architecture.md/canonical SVG updated in same source PR to distinguish true implemented Noctalia paths from planned cross-DE rotation; physical evidence marked UNASSESSED.
-- [ ] Source PR latest HEAD 8/8 PASS and reviewed before squash merge; separate archive PR has its own exact-head 8/8 CI. Keep Issue #83 OPEN.
+- [x] Setter delegates to backend's `apply_one_shot(path, output)` rather than imports/calls `apply_noctalia` directly; regular-file preflight and original errors/status preserved.
+- [x] Backend's one-shot API forwards `None` for legacy global operation and `Some(connector)` for explicit output; does not reinterpret a blank string as global. `WallpaperBackend::apply` remains named-output-only.
+- [x] Fake runner Rust unit tests and static Python boundary checks protect both target semantics, status, failed/no-mutation cases, and readback-only `PathObserved`.
+- [x] README/architecture.md/canonical SVG updated in same source PR to distinguish true implemented Noctalia paths from planned cross-DE rotation; physical evidence marked UNASSESSED.
+- [x] Source PR latest HEAD 8/8 PASS and reviewed before squash merge; separate archive PR has its own exact-head 8/8 CI. Keep Issue #83 OPEN.
 
 ## Implementation slices
 
-- [x] Active plan committed before code; backend-owned one-shot bridge and setter delegation implemented (CI UNVERIFIED).
-- [x] Added five deterministic fake-acknowledgement unit tests, Python static guard and README/architecture.md/canonical SVG updates in the same branch (CI UNVERIFIED).
-- [ ] Validate latest exact PR HEAD, investigate failures, merge on green only; independently archive verified plan.
+- [x] Active plan committed before code; backend-owned one-shot bridge and setter delegation implemented. Final source SHA tested 8/8 SUCCESS in CI #40543811140.
+- [x] Five fake-acknowledgement unit tests, Python static boundary guard, README/architecture.md/canonical SVG updated in same source PR; final CI #40543811140 8/8 SUCCESS.
+- [x] Source PR #100 latest exact HEAD `85a961ef3ed0f2c16462f2f7f46e5b0ce4ba0fd4` verified 8/8 SUCCESS, mergeable=true; squash merged `2533185e735b7a7a08220a68dffeec402040f6b3`. This docs-only completion archive requires its own exact-head 8/8 gate before merge.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
-| Rust formatting, lint | Rust quality | latest-head job | NOT RUN |
-| Unit and offline CLI | Rust tests and CLI smoke | latest-head job | NOT RUN |
-| Plan/agent contract | Agent plan integrity; Agent contract self-tests | latest-head jobs | NOT RUN |
-| Platform/headless visual | Windows; macOS; Sway visual; Noctalia+Sway | latest-head jobs | NOT RUN |
+| Rust formatting, lint | Rust quality | CI #40543811140 | PASS |
+| Unit and offline CLI | Rust tests and CLI smoke | CI #40543811140 | PASS |
+| Plan/agent contract | Agent plan integrity; Agent contract self-tests | CI #40543811140 | PASS |
+| Platform/headless visual | Windows; macOS; Sway visual; Noctalia+Sway | CI #40543811140 | PASS (headless/virtual only) |
 | Physical Noctalia monitor behavior | live user desktop | none | UNASSESSED |
 
 ## Decision gates
@@ -66,19 +66,21 @@ No human architecture decision: this is solely a behavior-preserving route to th
 
 - 2026-10-27: checked Issue #83 OPEN, zero open PRs and current `src/backend/noctalia.rs`/`src/setter.rs` semantics. Branch created from `master`; this plan committed before source changes. Implementation, current CI and physical desktop result are NOT YET VERIFIED.
 
+- 2026-10-28: final PR #100 exact HEAD `85a961ef3ed0f2c16462f2f7f46e5b0ce4ba0fd4` finished [CI #40543811140](https://github.com/pkking/ezwallpaper/actions/runs/40543811140) **8/8 SUCCESS**, including strict Rust quality/tests, plan integrity/contract tests, macOS/Windows, Sway framebuffer and Noctalia+Sway E2E. GitHub squash merge at expected HEAD returned `merged=true`, SHA `2533185e735b7a7a08220a68dffeec402040f6b3`; independent PR query returned closed/merged. Artifact identifiers are recorded in Completion. Distinct physical Noctalia session results remain UNASSESSED. Archive PR must independently pass its own exact-head eight checks before merge.
+
 ## Deviations and discoveries
 
-- First PR #100 implementation HEAD `a6a100cc9caf0b14b8684bf7211a4553b02f8261` launched [CI #40543537373](https://github.com/pkking/ezwallpaper/actions/runs/40543537373). **Rust quality FAILED** at `cargo fmt --all -- --check` (real job `122327952579`) due to five formatting hunks in new injected test module. Logs inspected, exact rustfmt diagnostic formatting applied to `src/backend/noctalia.rs` in commit `8b452d0c64068a43898b5317f794a2ee516fa24d`. No functional alteration, gate relaxation or desktop side effect. The failed run is not success evidence; all eight checks must rerun on latest PR HEAD.
-- No local Rust compiler/rustfmt is available in the authoring environment; source editing and unit-test authoring alone do not establish compilation or test success. Full GitHub CI must run before merge. The injected closure models acknowledgement, not actual IPC path verification or display pixels.
+- First PR #100 implementation HEAD `a6a100cc9caf0b14b8684bf7211a4553b02f8261` launched [CI #40543537373](https://github.com/pkking/ezwallpaper/actions/runs/40543537373). **Rust quality FAILED** at `cargo fmt --all -- --check` (real job `122327952579`) due to five formatting hunks in new injected test module. Logs inspected, exact rustfmt diagnostic formatting applied to `src/backend/noctalia.rs` in commit `8b452d0c64068a43898b5317f794a2ee516fa24d`. No functional alteration, gate relaxation or desktop side effect. The failed run is not success evidence; all eight checks were rerun on latest PR HEAD and passed in CI #40543811140.
+- No local Rust compiler/rustfmt was used during authoring; the final exact source HEAD GitHub CI #40543811140 independently established compilation/test success, not physical desktop effects. The injected closure models acknowledgement, not actual IPC path verification or display pixels.
 - The established protocol implementation `apply_noctalia(path, Option<&str>)` remains unchanged. The new method forwards `None` (global) or `Some` (named); the rotation trait still rejects empty output and Noctalia remains the sole rotation registry implementation.
 
 ## Resume from here
 
-Continue existing [PR #100](https://github.com/pkking/ezwallpaper/pull/100) after #40543537373 rustfmt failure was repaired on the same branch in `8b452d0c64068a43898b5317f794a2ee516fa24d`. Fetch the **latest exact HEAD** and its **fresh** CI run, inspect all 8 jobs including Rust tests and native Noctalia virtual E2E. Fix genuine failures on the same branch without suppressions; only squash merge with expected tested HEAD on 8/8 SUCCESS and GitHub mergeability. Then separate independently CI-tested plan archive PR. Do not execute real user desktop operations.
+Inspect the separate docs-only completion archive PR's own latest HEAD, eight CI jobs, mergeability and artifacts. If 8/8 SUCCESS, squash merge with exact expected archive HEAD; independently verify master completed plan exists with Status: COMPLETED and active path is absent; update Issue #83. If failing, inspect real archive job logs, fix and rerun same branch. Do not remerge source #100 or claim physical display evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `2533185e735b7a7a08220a68dffeec402040f6b3` (implementation PR #100 squash merge, exact tested source HEAD `85a961ef3ed0f2c16462f2f7f46e5b0ce4ba0fd4`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/40543811140 (8/8 completed SUCCESS)
+E2E artifact: virtual native Noctalia+Sway `12753223886`, experimental niri+Noctalia `12754815384`, offline Rust CLI `12752071975`, headless Sway framebuffer `12751532270`; none proves physical user desktop pixels
 Remaining unassessed items: physical Noctalia pixels, actual connector/display topology, hotplug, logout/restart lifecycle, 4K/GPU/renderer ownership, new non-Noctalia per-output rotation.
