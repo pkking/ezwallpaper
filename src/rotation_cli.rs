@@ -329,10 +329,12 @@ pub fn run_rotation(
             force,
             true,
             RotationClock::realtime(interval_minutes),
-            Some(backend.as_mut()),
-            match choice {
-                registry::RotationBackend::Noctalia => None,
-                registry::RotationBackend::Wpaperd => Some("wpaperd"),
+            RotationPort {
+                backend: Some(backend.as_mut()),
+                state_scope: match choice {
+                    registry::RotationBackend::Noctalia => None,
+                    registry::RotationBackend::Wpaperd => Some("wpaperd"),
+                },
             },
         )
     } else {
@@ -343,10 +345,12 @@ pub fn run_rotation(
             force,
             false,
             RotationClock::realtime(interval_minutes),
-            None,
-            match choice {
-                registry::RotationBackend::Noctalia => None,
-                registry::RotationBackend::Wpaperd => Some("wpaperd"),
+            RotationPort {
+                backend: None,
+                state_scope: match choice {
+                    registry::RotationBackend::Noctalia => None,
+                    registry::RotationBackend::Wpaperd => Some("wpaperd"),
+                },
             },
         )
     }
@@ -441,9 +445,18 @@ fn run_with_backend_interval(
         force,
         apply,
         clock,
-        backend,
-        None,
+        RotationPort {
+            backend,
+            state_scope: None,
+        },
     )
+}
+
+/// The backend port and optional state namespace are one invocation contract.
+/// This keeps the controller signature within the repository's strict Clippy gate.
+struct RotationPort<'a> {
+    backend: Option<&'a mut dyn WallpaperBackend>,
+    state_scope: Option<&'static str>,
 }
 
 fn run_with_backend_interval_scoped(
@@ -453,9 +466,12 @@ fn run_with_backend_interval_scoped(
     force: bool,
     apply: bool,
     clock: RotationClock,
-    mut backend: Option<&mut dyn WallpaperBackend>,
-    state_scope: Option<&str>,
+    port: RotationPort<'_>,
 ) -> Result<Vec<RotationOutcome>> {
+    let RotationPort {
+        mut backend,
+        state_scope,
+    } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
     utc_bucket_for_seconds(0, interval_minutes)?;
@@ -640,8 +656,10 @@ mod tests {
             false,
             true,
             RotationClock::simulated(60, 3_600),
-            Some(&mut backend),
-            Some("wpaperd"),
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: Some("wpaperd"),
+            },
         )
         .expect("offline scoped apply");
         assert_eq!(applied.len(), 2);
@@ -656,8 +674,10 @@ mod tests {
                 false,
                 false,
                 RotationClock::simulated(60, 3_600),
-                None,
-                None,
+                RotationPort {
+                    backend: None,
+                    state_scope: None,
+                },
             )
             .is_err(),
             "Noctalia cannot consume wpaperd state"
@@ -669,8 +689,10 @@ mod tests {
             false,
             false,
             RotationClock::simulated(60, 3_600),
-            None,
-            Some("wpaperd"),
+            RotationPort {
+                backend: None,
+                state_scope: Some("wpaperd"),
+            },
         )
         .expect("wpaperd offline preview");
         assert!(preview
