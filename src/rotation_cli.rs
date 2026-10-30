@@ -316,7 +316,7 @@ pub fn run_rotation(
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
         Some(path) => path.to_path_buf(),
-        None => default_state_path(choice)?, 
+        None => default_state_path(choice)?,
     };
     // Preview remains offline and independent of any desktop session.
     // Keep the Box alive for exactly the duration of the borrowed trait port.
@@ -631,7 +631,9 @@ mod tests {
     fn wpaperd_scope_never_reuses_noctalia_state_identity() {
         let (_dir, profile, state) = fixture();
         let mut backend = CallbackBackend {
-            apply_fn: |_, _| Ok(ApplyStatus::PathObserved),
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                Ok(ApplyStatus::PathObserved)
+            },
         };
         let applied = run_with_backend_interval_scoped(
             &profile,
@@ -648,17 +650,20 @@ mod tests {
         let saved: SavedState =
             serde_json::from_slice(&fs::read(&state).expect("state")).expect("JSON");
         assert!(saved.profile.starts_with("ezwallpaper-backend:wpaperd:"));
-        assert!(run_with_backend_interval_scoped(
-            &profile,
-            &state,
-            None,
-            false,
-            false,
-            RotationClock::simulated(60, 3_600),
-            None,
-            None,
-        )
-        .is_err(), "Noctalia cannot consume wpaperd state");
+        assert!(
+            run_with_backend_interval_scoped(
+                &profile,
+                &state,
+                None,
+                false,
+                false,
+                RotationClock::simulated(60, 3_600),
+                None,
+                None,
+            )
+            .is_err(),
+            "Noctalia cannot consume wpaperd state"
+        );
         let preview = run_with_backend_interval_scoped(
             &profile,
             &state,
