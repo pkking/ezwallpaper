@@ -64,7 +64,8 @@ No new user decision required for deterministic tests with no runtime behavior c
 
 ## Evidence log
 
-- 2026-10-30: authored five deterministic tests in `tests/wpaperd_wire_contract.rs`, no new crate or daemon, UnixStream pairs only; independent GitHub CI pending. Source commit `1f48d422e52ba4b6fd94dc507444b454be928c2a`.
+- 2026-10-30: added a sixth negative test verifying a **silent but still-connected fake Unix socket** returns `TimedOut` or `WouldBlock` rather than pretending `PathObserved`, using a bounded 50ms read timeout and no daemon. Source commit `42c9a0d125c4d437fa87bdcf49a877965daeccba`; this invalidates previous CI job results on older SHA and requires a fresh 8/8 run.
+- 2026-10-30: authored six deterministic tests in `tests/wpaperd_wire_contract.rs`, no new crate or daemon, UnixStream pairs only; independent GitHub CI pending. Source commit `1f48d422e52ba4b6fd94dc507444b454be928c2a`.
 - 2026-10-30: source review fixed wpaperd SHA `483225a9...`; identified `cli/src/main.rs` write/read framing, `ipc/src/lib.rs` enum JSON shapes, `daemon/src/ipc_server.rs` `CurrentWallpaper` vs async `SetWallpaper` code. No daemon or real desktop was touched.
 
 ## Deviations and discoveries
@@ -75,7 +76,7 @@ No new user decision required for deterministic tests with no runtime behavior c
 
 ## Resume from here
 
-Continue existing [PR #105](https://github.com/pkking/ezwallpaper/pull/105): fetch its latest HEAD after this plan update, obtain the new CI run, inspect all eight jobs and job logs. The initial CI #41079057713 failed Rust quality at rustfmt-only differences; those exact differences were fixed in `d8fffe8a...`. Do not reuse the initial run. Repair any additional fail without removing gates; merge source with expected final HEAD only on 8/8 SUCCESS and mergeable=true. Then independent completed-plan archive PR with its own eight checks; close #104 only after archive, keep parent #83 open.
+Continue existing [PR #105](https://github.com/pkking/ezwallpaper/pull/105): fetch its latest HEAD after this plan update, obtain the new CI run, inspect all eight jobs and job logs. The initial CI #41079057713 failed Rust quality at rustfmt-only differences; those exact differences were fixed in `d8fffe8a...`. The later #41079289247 had seven completed successes (Rust/Windows/macOS/Sway and agent) while Noctalia still building, then a sixth timeout regression was added at `42c9a0d`; **none of these old-head results can validate the current HEAD**. Require a new fresh 8/8 run. Repair any additional fail without removing gates; merge source with expected final HEAD only on 8/8 SUCCESS and mergeable=true. Then independent completed-plan archive PR with its own eight checks; close #104 only after archive, keep parent #83 open.
 
 ## Completion
 
