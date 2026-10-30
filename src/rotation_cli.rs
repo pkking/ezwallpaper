@@ -631,9 +631,7 @@ mod tests {
     fn wpaperd_scope_never_reuses_noctalia_state_identity() {
         let (_dir, profile, state) = fixture();
         let mut backend = CallbackBackend {
-            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
-                Ok(ApplyStatus::PathObserved)
-            },
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> { Ok(ApplyStatus::PathObserved) },
         };
         let applied = run_with_backend_interval_scoped(
             &profile,
