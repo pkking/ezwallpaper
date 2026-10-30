@@ -19,12 +19,26 @@ Configure these via GitHub repository **Settings > Secrets and variables > Actio
 
 | Secret | Purpose |
 |---|---|
-| `OPENROUTER_API_KEY` | OpenWiki model inference. The workflow uses OpenRouter provider and `z-ai/glm-5.2` model from the upstream example. API usage may incur provider charges. |
+| `ARK_API_KEY` | 火山引擎方舟（Volcengine Ark）通用模型 API Key，需已开通对应模型。OpenWiki 通过 OpenAI-compatible 接口使用 `doubao-seed-2-1-pro-260915`，调用可能产生费用。 |
 | `OPENWIKI_PR_TOKEN` | Fine-grained PAT or GitHub App token scoped to `pkking/ezwallpaper` with **Contents: read/write** and **Pull requests: read/write**. Required to open a PR that triggers required GitHub CI. |
 
 Use a dedicated automation identity if possible. Never commit tokens or include them in generated documents. Missing secrets produce a failing workflow with a configuration message, not a silently skipped docs run. The default GitHub `GITHUB_TOKEN` cannot be used as a drop-in replacement: PRs it creates normally do not trigger `pull_request` workflows.
 
-The inference step receives the model-provider key but **not** the PR token. Source content is sent to the configured external model provider; the repository is public, but review data-sharing and costs before enabling scheduled inference. OpenWiki's optional telemetry is disabled.
+The inference step receives the model-provider key but **not** the PR token. Source content is sent to 火山引擎方舟（Volcengine Ark）; the repository is public, but review data-sharing, data residency and costs before enabling scheduled inference. OpenWiki's optional telemetry is disabled.
+
+### Ark provider configuration
+
+The workflow selects the OpenWiki `openai-compatible` provider (not the native `openrouter` provider):
+
+```yaml
+OPENWIKI_PROVIDER: openai-compatible
+OPENAI_COMPATIBLE_BASE_URL: https://ark.cn-beijing.volces.com/api/v3
+OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
+OPENWIKI_MODEL_ID: doubao-seed-2-1-pro-260915
+OPENWIKI_PAGE_CONCURRENCY: "1"
+```
+
+The endpoint and model ID are from the [official Ark OpenAI SDK compatibility example](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh); [model capabilities](https://docs.volcengine.com/docs/ark/model-list?lang=zh) include tool calling. The model must be enabled for the API key. This integration is **source/API compatible but not runtime-tested** until a real generation run succeeds. A different region or a Coding Plan subscription may require a **different base URL, token and model ID**; do not use a Coding Plan key with this ordinary metered endpoint. For Coding Plan use, consult [Ark third-party tool integration guidance](https://console.volcengine.com/ark/region%3Acn-beijing/docs/integrate-third-party-tools). No automatic paid fallback or model selection is configured.
 
 ## Repository governance
 
@@ -47,6 +61,6 @@ OpenWiki may update root `AGENTS.md`, but this project owns it as its authoritat
 4. Merge generated docs only after the **latest PR HEAD** passes checks and the documentation has been reviewed. Leave the ongoing Issue open.
 5. Subsequent scheduled runs reuse `openwiki/update`; no content change means no new PR.
 
-On a failing generation, inspect the Actions log for provider authentication, cost/rate limits, Node/npm installation or OpenWiki errors. The workflow fails rather than posting incomplete docs. In case of unwanted output, do not merge the docs PR; re-run after fixing source/settings. Roll back this automation by removing its workflow in a governed PR, then retire Issue #106 and the plan after no scheduled generated PR depends on them.
+On a failing generation, inspect the Actions log for Ark model access/authentication, quota or rate limits, Node/npm installation or OpenWiki errors. The workflow fails rather than posting incomplete docs. In case of unwanted output, do not merge the docs PR; re-run after fixing source/settings. Roll back this automation by removing its workflow in a governed PR, then retire Issue #106 and the plan after no scheduled generated PR depends on them.
 
 **Upstream implementation:** [scheduled-workflow example](https://github.com/langchain-ai/openwiki/blob/v0.7.2/examples/openwiki-update.yml), [CLI/package requirements](https://github.com/langchain-ai/openwiki/blob/v0.7.2/package.json).
