@@ -81,7 +81,7 @@ Verify this independent completed-plan archive PR's **own latest exact HEAD**, a
 
 ## Completion
 
-Source final SHA: `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72` (PR #105 squash merge; tested HEAD `67f4f5b000968f3973f3a38c37b2b39bdd5c761c`)
+Final commit: `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72` (PR #105 squash merge; tested HEAD `67f4f5b000968f3973f3a38c37b2b39bdd5c761c`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/41080116105 (8/8 SUCCESS)
 Archive: this separately gated completed-plan PR
-Real wpaperd E2E: UNASSESSED
+Remaining unassessed items: native wpaperd daemon/compositor session, physical framebuffer, hotplug, daemon restart and renderer ownership. The six wire tests are intentionally offline.
