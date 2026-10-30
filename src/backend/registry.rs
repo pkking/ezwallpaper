@@ -21,7 +21,9 @@ pub fn rotation_backend(choice: RotationBackend) -> Result<Box<dyn WallpaperBack
         RotationBackend::Wpaperd => {
             #[cfg(target_os = "linux")]
             {
-                Ok(Box::new(super::wpaperd::WpaperdBackend::connect_current_session()?))
+                Ok(Box::new(
+                    super::wpaperd::WpaperdBackend::connect_current_session()?,
+                ))
             }
             #[cfg(not(target_os = "linux"))]
             {
