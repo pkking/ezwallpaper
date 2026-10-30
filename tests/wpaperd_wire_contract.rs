@@ -216,3 +216,28 @@ fn independent_all_wallpapers_returns_distinct_output_paths() {
     // Path overlap is not interchangeable between distinct monitor IDs.
     assert_ne!(entries[0], entries[1]);
 }
+
+#[test]
+fn unresponsive_fake_server_times_out_without_any_acknowledgement() {
+    use std::io::ErrorKind;
+    use std::time::Duration;
+
+    // Keep the peer open but silent. This is a PRIVATE UnixStream pair,
+    // not the user's wpaperd daemon or runtime socket.
+    let (mut client, _silent_server) = UnixStream::pair().expect("fake socket pair");
+    client
+        .set_read_timeout(Some(Duration::from_millis(50)))
+        .expect("set bounded fixture timeout");
+    client
+        .write_all(br#"{"CurrentWallpaper":{"monitor":"DP-1"}}"#)
+        .expect("write fake readback request");
+    let mut response = String::new();
+    let failure = client
+        .read_to_string(&mut response)
+        .expect_err("silent server must not acknowledge a wallpaper");
+    assert!(matches!(
+        failure.kind(),
+        ErrorKind::TimedOut | ErrorKind::WouldBlock
+    ));
+    assert!(response.is_empty());
+}
