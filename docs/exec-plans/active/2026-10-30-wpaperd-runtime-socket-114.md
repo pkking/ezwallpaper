@@ -50,8 +50,8 @@ Preserve explicit `--rotation-backend wpaperd --apply` and existing Noctalia def
 | Scope | Gate | Status |
 |---|---|---|
 | Upstream path | Fixed wpaperd 1.3.0 source + xdg 3.0.0 source | CODE reviewed |
-| Offline regression | Rust test for exact runtime root socket and absent endpoint | IMPLEMENTED, CI pending |
-| Full CI | Eight jobs on latest exact PR HEAD | UNASSESSED |
+| Offline regression | Rust test for exact runtime root socket and absent endpoint | IMPLEMENTED; rerun required after rustfmt fix |
+| Full CI | Eight jobs on latest exact PR HEAD | #41117947997 Rust quality failed fmt; new HEAD CI pending |
 | Native pixels | #111 separate actual compositor evidence | UNASSESSED |
 
 ## Decision gates
@@ -62,6 +62,7 @@ User already approved A. Correcting a verified integration path is a routine bug
 
 - 2026-10-30: upstream source, xdg 3.0.0 source and CI #41116832430 artifact #13007420138 inspected; wpaperd.log empty, Sway log shows two native layer surfaces, test failed waiting for nested socket. No user desktop touched.
 - 2026-10-30: branch `agent/fix-wpaperd-runtime-socket-114` source commits `9ed9c567140c8f0a012fd71fefa1361858e57f62`, `efa09652a5e3c78235e035b220c6a0aa8aca7f19`: root socket helper and deterministic fake listener test, README corrected. Tests not yet run; no green claim.
+- 2026-10-30: PR #115 first exact-head CI #41117947997: Rust quality failed `cargo fmt --all -- --check` on a single new test `conn.write_all` formatting block (raw job log inspected). Fixed exactly per rustfmt diff at `74bfdb1e916223f35fdc06bc7674f0471e063ddb`; all original checks retained. Full new exact-head CI required.
 
 ## Deviations and discoveries
 
@@ -69,7 +70,7 @@ Merged mock-only CI #109 was green despite a wrong production socket path; this 
 
 ## Resume from here
 
-Open the linked source PR for Issue #114 and inspect its exact-head eight-job CI; do not merge until all eight jobs and workflow succeed, mergeable=true and diff/security reviewed.
+Inspect the new exact-head CI after rustfmt-only correction for PR #115; diagnose any failures from raw logs, and merge only after all eight jobs and workflow succeed, mergeable=true and diff/security reviewed.
 
 ## Completion
 
