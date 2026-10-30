@@ -110,6 +110,12 @@ fn ipc_exchange(mut stream: UnixStream, request: &Request) -> Result<Response> {
     parsed.map_err(|err| anyhow!("wpaperd IPC rejected request: {}", err))
 }
 
+// Pinned wpaperd 1.3.0 ipc::socket_path(): xdg::BaseDirectories::get_runtime_directory()
+// returns the unprefixed XDG_RUNTIME_DIR, unlike get_runtime_file().
+fn socket_path_in_runtime(runtime: &Path) -> PathBuf {
+    runtime.join("wpaperd.sock")
+}
+
 impl WpaperdBackend {
     /// Detect only the daemon the user already started, in the current Wayland session.
     pub fn connect_current_session() -> Result<Self> {
@@ -129,7 +135,7 @@ impl WpaperdBackend {
         if !runtime.is_absolute() {
             bail!("XDG_RUNTIME_DIR must be an absolute directory");
         }
-        Self::connect_to(runtime.join("wpaperd").join("wpaperd.sock"))
+        Self::connect_to(socket_path_in_runtime(&runtime))
     }
 
     /// Read-only output inventory occurs before rotation creates lock/state dirs.
@@ -229,6 +235,32 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::os::unix::net::UnixListener;
+
+    #[test]
+    fn pinned_native_socket_uses_xdg_runtime_root() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let socket = socket_path_in_runtime(temp.path());
+        assert_eq!(socket, temp.path().join("wpaperd.sock"));
+        assert_ne!(socket, temp.path().join("wpaperd").join("wpaperd.sock"));
+        assert!(WpaperdBackend::connect_to(socket.clone()).is_err());
+
+        let listener = UnixListener::bind(&socket).expect("test-only root socket");
+        let server = thread::spawn(move || {
+            let (mut conn, _) = listener.accept().expect("accept fake IPC");
+            let mut buf = [0; 4096];
+            let n = conn.read(&mut buf).expect("request");
+            let request: serde_json::Value =
+                serde_json::from_slice(&buf[..n]).expect("JSON request");
+            assert_eq!(request, json!("AllWallpapers"));
+            conn.write_all(
+                br#"{"Ok":{"AllWallpapers":{"entries":[["DP-1","/tmp/red.png"]]}}}"#,
+            )
+            .expect("write fake inventory");
+        });
+        let backend = WpaperdBackend::connect_to(socket).expect("root socket inventory");
+        assert!(backend.validate_output("DP-1").is_ok());
+        server.join().expect("fake server join");
+    }
 
     #[test]
     fn missing_socket_and_bad_output_are_rejected() {
