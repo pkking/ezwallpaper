@@ -204,7 +204,8 @@ def execute(binary: Path, daemon: Path, artifacts: Path, config: Path, source_sh
                     env=env, stdin=subprocess.DEVNULL, stdout=daemon_log,
                     stderr=subprocess.STDOUT, start_new_session=True,
                 )
-                sock = runtime / "wpaperd" / "wpaperd.sock"
+                # Pinned wpaperd 1.3.0 ipc::socket_path uses raw XDG_RUNTIME_DIR.
+                sock = runtime / "wpaperd.sock"
                 wait_native(wpaperd, sock, {OUTPUTS[0]: images["red"], OUTPUTS[1]: images["blue"]}, artifacts)
                 for name, color in ((OUTPUTS[0], "red"), (OUTPUTS[1], "blue")):
                     verdict["outputs"][name] = {"before": assert_frame(name, "native-before", RGB[color], artifacts, env)}
