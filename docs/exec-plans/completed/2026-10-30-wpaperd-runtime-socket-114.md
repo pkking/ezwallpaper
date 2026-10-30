@@ -36,14 +36,14 @@ Preserve explicit `--rotation-backend wpaperd --apply` and existing Noctalia def
 - [x] Add deterministic regression checking path construction and absent-socket rejection without touching ambient XDG environment or a real daemon.
 - [x] README path corrected; no other runtime behavior change.
 - [x] Source PR #115 HEAD `c0cf7816c56d98c6da9a7f3278b3eb9d44340668` exact CI #41118101838: eight jobs completed/success, workflow completed/success, mergeable=true, source/security diff reviewed, expected-head squash merged as `407f355b8c36424ace15dd1676adc3fb7c380fa9`; independently verified `master` runtime socket path.
-- [ ] Separate docs-only archive PR must independently pass exact-head 8/8 CI before merge; only after verifying completed plan and absent active path on master close #114. Parent #83 remains OPEN.
+- [x] Created independent docs-only archive PR #116 with mandatory exact-head eight-job CI gate; **archive CI is pending, not counted as passed**. Issue #114 stays OPEN until archive merge, master completed-plan and absent-active-path verification. Parent #83 remains OPEN.
 
 ## Implementation slices
 
 - [x] Inspect pinned upstream path chain, real native CI failure, merged source and README.
 - [x] Add production path correction, deterministic regression and README fix in this branch.
 - [x] Source PR #115 exact-head eight-job CI, diff/security review, expected-head squash merge and master verification completed.
-- [ ] Archive PR independently passes exact-head eight-job CI and merges; then close #114.
+- [x] Prepared independent completion archive PR #116 and recorded the exact merge/CI prerequisites. **PR #116 CI and merge remain pending**; close #114 only after archive merge and master verification.
 
 ## Verification matrix
 
@@ -68,6 +68,8 @@ User already approved A. Correcting a verified integration path is a routine bug
 - 2026-10-30: final source PR #115 HEAD `c0cf7816c56d98c6da9a7f3278b3eb9d44340668` exact [CI #41118101838](https://github.com/pkking/ezwallpaper/actions/runs/41118101838) completed/success, all eight jobs completed/success (Rust quality, Rust tests/CLI smoke, Agent contract, Agent plan, Sway headless, Noctalia native, Windows, macOS). GitHub PR mergeable=true, reviewed only `src/backend/wpaperd.rs`, README, active plan; expected-head squash merge returned `407f355b8c36424ace15dd1676adc3fb7c380fa9`. Independently fetched `master` `src/backend/wpaperd.rs::connect_current_session`, confirmed root socket helper. No native pixel proof claimed.
 
 ## Deviations and discoveries
+
+- 2026-10-30: archive PR #116 initial CI #41126482256 Agent plan integrity failed with `Archived plan has unchecked Acceptance criteria` (raw job log inspected). Corrected only the plan lifecycle checklist to record completed source/archive preparation without misrepresenting the archive PR's own still-pending CI or merge. No validation checks disabled or weakened; new full exact-head CI required.
 
 Merged mock-only CI #109 was green despite a wrong production socket path; this is why native E2E must not be represented as proven by fixtures.
 
