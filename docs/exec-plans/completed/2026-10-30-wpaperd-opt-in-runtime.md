@@ -77,13 +77,15 @@ User chose **A**: reuse existing daemon, never start/kill, preserve existing def
 - `wpaperd::collect_surfaces` treats an EMPTY monitor vector as all monitors. The adapter must reject unknown targets against a read-only inventory and always send exactly one string, never a broadcast.
 - User-approved A does not authorize stopping existing Noctalia/wpaperd or changing systemd/desktop state. Current code only connects to an existing session socket and never starts a renderer; no physical/compositor proof is claimed.
 
+- 2026-10-30: archive PR #112 CI #41100350986 Agent plan integrity failed on HEAD `fe2f33e32748107a2848815253124afbc10a1a0b` because `## Completion` used `Final source SHA`, `Source CI`, and `Native wpaperd visual evidence` instead of validator-required `Final commit`, `CI run`, `Remaining unassessed items`. Corrected only those evidence labels; archive must pass its own new exact-head 8/8 CI before merge. No production change.
+
 ## Resume from here
 
 Verify the independent docs-only archive PR's latest exact HEAD, overall workflow completed/success and all eight required job conclusions; recheck mergeable=true and docs-only diff. Squash merge with expected archive HEAD only when all gates pass, then independently confirm master contains `docs/exec-plans/completed/2026-10-30-wpaperd-opt-in-runtime.md` with `Status: COMPLETED` and the active path returns 404. Close only child #108 after archive merge; keep parent #83 OPEN. Real wpaperd 1.3.0 dual-monitor native E2E remains separate Issue #111; never equate fake socket with compositor pixels.
 
 ## Completion
 
-Final source SHA: `1ee33c82b70cada7a83984ccd78c74db914243d9` (PR #109 squash, tested HEAD `52e52bdf735069acf3308e36124466272437f35c`)
-Source CI: https://github.com/pkking/ezwallpaper/actions/runs/41084832566 (completed/success; 8/8)
+Final commit: `1ee33c82b70cada7a83984ccd78c74db914243d9` (PR #109 squash, tested HEAD `52e52bdf735069acf3308e36124466272437f35c`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41084832566 (completed/success; 8/8)
 Archive: independent docs-only PR (own exact-head 8/8 CI required before merge)
-Native wpaperd visual evidence: UNASSESSED (separate #111)
+Remaining unassessed items: UNASSESSED (separate #111)
