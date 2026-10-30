@@ -37,15 +37,15 @@ No live compositor, renderer startup, desktop/wallpaper mutation, daemon install
 
 ## Acceptance criteria
 
-- [ ] Deterministic UnixStream pair fixture proves exactly one named `SetWallpaper` target and stable JSON serde encoding.
-- [ ] Independent `CurrentWallpaper` request after `Ok` is required and path must exactly match the requested value; timeout/stale/EOF/error/other-monitor negative cases covered.
+- [x] Deterministic UnixStream pair fixture proves exactly one named `SetWallpaper` target and stable JSON serde encoding.
+- [x] Independent `CurrentWallpaper` request after `Ok` is required and path must exactly match the requested value; timeout/stale/EOF/error/other-monitor negative cases covered.
 - [ ] Cargo fmt, clippy, unit tests and eight CI jobs pass at exact final source HEAD; PR patch only test file + active plan.
 - [ ] Source PR merged with expected tested head; independently tested archive PR moves plan to completed; #104 closed only after archive merge; parent #83 open.
 
 ## Implementation slices
 
 - [x] Read current repository, parent issue, source audit, pinned upstream client/server wire protocol; create #104 and active plan first.
-- [ ] Add test-only UnixStream pair/JSON fixture and independent readback assertions.
+- [x] Added integration tests in `tests/wpaperd_wire_contract.rs`: real UnixStream::pair byte exchange, serde externally tagged request/reply, two monitor identities, stale/valid readback, errors and malformed/EOF. No actual wpaperd daemon. CI still pending.
 - [ ] Open source PR, inspect changed files, validate latest-head CI, normal squash merge only after 8/8.
 - [ ] Independent completion-only PR for plan archiving and CI; close #104 afterward, keep #83 open.
 
@@ -64,15 +64,17 @@ No new user decision required for deterministic tests with no runtime behavior c
 
 ## Evidence log
 
+- 2026-10-30: authored five deterministic tests in `tests/wpaperd_wire_contract.rs`, no new crate or daemon, UnixStream pairs only; independent GitHub CI pending. Source commit `1f48d422e52ba4b6fd94dc507444b454be928c2a`.
 - 2026-10-30: source review fixed wpaperd SHA `483225a9...`; identified `cli/src/main.rs` write/read framing, `ipc/src/lib.rs` enum JSON shapes, `daemon/src/ipc_server.rs` `CurrentWallpaper` vs async `SetWallpaper` code. No daemon or real desktop was touched.
 
 ## Deviations and discoveries
 
-None yet.
+- Upstream `cli/src/main.rs` is authoritative for the wire protocol: JSON request written once, JSON `Result<IpcResponse,IpcError>` read until server socket close. Tests use UnixStream::pair without real daemon. They intentionally cannot establish actual async timing or compositor pixels; those remain UNASSESSED.
+- Upstream `daemon/src/ipc_server.rs::collect_surfaces` interprets an empty monitors vector as ALL surfaces. Test specifically forbids confusing a named target with empty-list global broadcast.
 
 ## Resume from here
 
-Implement `tests/wpaperd_wire_contract.rs` with fake local `UnixStream::pair` and fixed JSON variants; assert that `SetWallpaper:Ok` is not confirmation, that a distinct `CurrentWallpaper` exact match is required and that mismatch/error/EOF/other-monitor fail. Then open source PR linked to Issue #104 and this plan, require all eight exact-head CI checks before merge. Archive separately, keep #83 open.
+Open a source PR for branch `agent/wpaperd-wire-contract-104` linked to Issue #104 and this plan, then inspect patch (only `tests/wpaperd_wire_contract.rs` and this active plan). Recheck exact HEAD, run all eight GitHub CI jobs including macOS/Linux/Windows; fix rustfmt, compiler or test errors on same branch, never suppress checks. Squash merge only after verified 8/8 success. After source merge create independent archive PR, preserve parent #83 open.
 
 ## Completion
 
