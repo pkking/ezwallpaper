@@ -50,6 +50,22 @@ enum RemoteError {
     ValidationError(String),
 }
 
+impl std::fmt::Display for RemoteError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MonitorNotFound { monitor } => {
+                write!(formatter, "monitor not found: {monitor}")
+            }
+            Self::DrawErrors(errors) => {
+                write!(formatter, "wallpaper drawing errors: {errors:?}")
+            }
+            Self::ValidationError(message) => {
+                write!(formatter, "invalid image or path: {message}")
+            }
+        }
+    }
+}
+
 pub struct WpaperdBackend {
     socket: PathBuf,
     outputs: HashSet<String>,
@@ -91,7 +107,7 @@ fn ipc_exchange(mut stream: UnixStream, request: &Request) -> Result<Response> {
     }
     let parsed: std::result::Result<Response, RemoteError> =
         serde_json::from_slice(&reply).context("invalid wpaperd IPC response")?;
-    parsed.map_err(|err| anyhow!("wpaperd IPC rejected request: {:?}", err))
+    parsed.map_err(|err| anyhow!("wpaperd IPC rejected request: {}", err))
 }
 
 impl WpaperdBackend {
@@ -269,7 +285,7 @@ mod tests {
                     1 => {
                         assert_eq!(request["SetWallpaper"]["monitors"], json!(["DP-1"]));
                         assert_eq!(request["SetWallpaper"]["path"], json!(canonical));
-                        json!("Ok")
+                        json!({"Ok":"Ok"})
                     }
                     2 => {
                         assert_eq!(request, json!({"CurrentWallpaper":{"monitor":"DP-1"}}));
