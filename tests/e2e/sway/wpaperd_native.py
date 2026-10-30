@@ -113,6 +113,26 @@ def wait_native(proc: subprocess.Popen, sock: Path, expected: dict[str, Path], a
     raise E2EFailure(f"native wpaperd two-output IPC not ready: {last}")
 
 
+def parse_cli_outcomes(value: object) -> dict[str, dict]:
+    """Match src/main.rs rotation --json schema v1 envelope, not a bare list."""
+    if not isinstance(value, dict) or value.get("schema_version") != 1:
+        raise E2EFailure("CLI rotation JSON has unexpected schema/version")
+    outcomes = value.get("outputs")
+    if not isinstance(outcomes, list) or len(outcomes) != len(OUTPUTS):
+        raise E2EFailure("CLI returned unexpected dual-output result")
+    by_output = {}
+    for item in outcomes:
+        if not isinstance(item, dict) or not isinstance(item.get("output"), str):
+            raise E2EFailure("CLI rotation output entry malformed")
+        name = item["output"]
+        if name in by_output:
+            raise E2EFailure("CLI rotation returned duplicate output")
+        by_output[name] = item
+    if set(by_output) != set(OUTPUTS):
+        raise E2EFailure("CLI rotation returned unexpected output names")
+    return by_output
+
+
 def cli_negative(binary: Path, profile: Path, state: Path, env: dict, label: str, artifacts: Path) -> None:
     result = subprocess.run(
         [str(binary), "rotate", "next", "--profile", str(profile),
@@ -244,10 +264,7 @@ def execute(binary: Path, daemon: Path, artifacts: Path, config: Path, source_sh
                     "--rotation-backend", "wpaperd", "--apply", "--state", str(state), "--json",
                 ], env=env, timeout=30)
                 (artifacts / "ezwallpaper-apply.json").write_bytes(completed.stdout)
-                outcomes = json.loads(completed.stdout)
-                if not isinstance(outcomes, list) or len(outcomes) != 2:
-                    raise E2EFailure("CLI returned unexpected dual-output result")
-                by_output = {item["output"]: item for item in outcomes}
+                by_output = parse_cli_outcomes(json.loads(completed.stdout))
                 if set(by_output) != set(OUTPUTS) or not by_output[OUTPUTS[0]]["applied_path_observed"] or by_output[OUTPUTS[1]]["applied_path_observed"]:
                     raise E2EFailure("CLI applied wrong output or fabricated acknowledgement")
                 saved = json.loads(state.read_text())
