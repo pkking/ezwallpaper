@@ -260,6 +260,27 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_output_inventory_fails_closed() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let socket = temp.path().join("wpaperd.sock");
+        let listener = UnixListener::bind(&socket).expect("fake socket");
+        let server = thread::spawn(move || {
+            let (mut conn, _) = listener.accept().expect("accept");
+            let mut buf = [0; 4096];
+            let n = conn.read(&mut buf).expect("request");
+            let query: serde_json::Value =
+                serde_json::from_slice(&buf[..n]).expect("JSON request");
+            assert_eq!(query, json!("AllWallpapers"));
+            conn.write_all(
+                br#"{"Ok":{"AllWallpapers":{"entries":[["DP-1","/tmp/a.png"],["DP-1","/tmp/b.png"]]}}}"#,
+            )
+            .expect("write fake inventory");
+        });
+        assert!(WpaperdBackend::connect_to(socket).is_err());
+        server.join().expect("fake server join");
+    }
+
+    #[test]
     fn real_adapter_reads_inventory_and_separate_output_ack() {
         let temp = tempfile::tempdir().expect("tempdir");
         let socket = temp.path().join("daemon.sock");
