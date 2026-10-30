@@ -252,10 +252,8 @@ mod tests {
             let request: serde_json::Value =
                 serde_json::from_slice(&buf[..n]).expect("JSON request");
             assert_eq!(request, json!("AllWallpapers"));
-            conn.write_all(
-                br#"{"Ok":{"AllWallpapers":{"entries":[["DP-1","/tmp/red.png"]]}}}"#,
-            )
-            .expect("write fake inventory");
+            conn.write_all(br#"{"Ok":{"AllWallpapers":{"entries":[["DP-1","/tmp/red.png"]]}}}"#)
+                .expect("write fake inventory");
         });
         let backend = WpaperdBackend::connect_to(socket).expect("root socket inventory");
         assert!(backend.validate_output("DP-1").is_ok());
