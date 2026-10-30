@@ -1,7 +1,7 @@
 # 2026-10-30-wpaperd-opt-in-runtime — already-running daemon path-observed rotation
 
 Issue: #108
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-30
 Last checkpoint: 2026-10-30
@@ -20,8 +20,8 @@ Repo `AGENTS.md`, `docs/agents/workflow.md`, `docs/agents/testing.md`, ADR 0010,
 
 ## Current facts
 
-- Base `master` following merged selection #102/#103, at `69c290eb6e3b41e6044c78c1852df879250c32c1` (verify before merge). Parent #83 OPEN.
-- Previous isolated offline wire tests [#105](https://github.com/pkking/ezwallpaper/pull/105) on its own branch: currently still CI pending (separate task #104); do not merge or assume its tests unless its own eight-check gate passes. This runtime slice may carry independent unit tests.
+- Source PR #109 began from master `69c290eb6e3b41e6044c78c1852df879250c32c1`; after independently verified exact-head 8/8 CI it merged as `1ee33c82b70cada7a83984ccd78c74db914243d9`. Parent #83 remains OPEN.
+- Isolated wire contract source PR [#105](https://github.com/pkking/ezwallpaper/pull/105) independently passed exact-head eight-job CI #41080116105 and merged as `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`. Its separate plan archive PR #110 is independently gated under Issue #104; this runtime slice has its own tests and merge evidence.
 - wpaperd v1.3.0 emits serde externally-tagged `{"SetWallpaper":{"path": "...", "monitors":["DP-1"]}}`, `{"CurrentWallpaper":{"monitor":"DP-1"}}` and `Result<IpcResponse,IpcError>` JSON with `{"Ok":"Ok"}`, `{"Ok":{"CurrentWallpaper":{"path":"..."}}}`, or `{"Err":...}` via UnixStream. Upstream daemon uses empty monitor vec as ALL, so always exactly one.
 - `SetWallpaper` queue may return `Ok` before asynchronous image decoder loads; later independent `CurrentWallpaper` can read its `current_img` but cannot prove pixels. Version compatibility beyond pinned 1.3.0 remains unassessed.
 - `require_acknowledged_outputs` runs before any state/lock dirs; current `rotation_backend()` is Noctalia-only, and `run_rotation` with apply=false never touches a backend. This contract must remain true.
@@ -41,22 +41,23 @@ Repo `AGENTS.md`, `docs/agents/workflow.md`, `docs/agents/testing.md`, ADR 0010,
 - [x] Typed JSON/UnixStream and per-output preflight/readback implementation in named `backend/wpaperd.rs`, no desktop commands in Core/controller; timeout, error, stale result, duplicate/unknown monitor fail closed.
 - [x] Backend-specific state isolation and CLI parsing tests preserve prior Noctalia hourly/JSON behavior.
 - [x] Deterministic mock UnixListener integration tests exercise real adapter: unavailable daemon, dual-output identity, preflight before mutation, server errors/timeout, successful set→readback and stale→success; no real desktop mutation.
-- [ ] Source PR latest exact-head CI all 8 SUCCESS and mergeable, code reviewed and squash merged; independent archive PR latest exact-head CI all 8 success; close child Issue #108 only after archive, parent #83 remains OPEN.
+- [x] Source PR #109 latest exact HEAD `52e52bdf735069acf3308e36124466272437f35c` verified: CI #41084832566 workflow completed/success, all eight jobs completed/success, mergeable=true; reviewed and squash merged with expected SHA as `1ee33c82b70cada7a83984ccd78c74db914243d9`.
+- [x] Separate docs-only completion PR archives this plan; it must pass its own exact-head eight-job CI before merging. Close child Issue #108 only after that archive merge; parent #83 stays OPEN.
 
 ## Implementation slices
 
 - [x] Create issue #108, branch and plan before code, with explicit user decision A and pinned upstream source.
-- [x] Implemented `backend/wpaperd.rs`: Linux-only structured IPC, read-only inventory, one-target set, bounded independent readback, duplicate/unknown rejection, no external process management. Source committed; CI not yet run.
-- [x] Added additive CLI `--rotation-backend`, backend-qualified state and separate default path, offline tests and README/architecture/SVG. Independent PR still pending.
-- [ ] Verify all eight exact-head CI checks and archive independently.
+- [x] Implemented `backend/wpaperd.rs`: Linux-only structured IPC, read-only inventory, one-target set, bounded independent readback, duplicate/unknown rejection, no external process management. Source merged after independently verified exact-head 8/8 CI.
+- [x] Added additive CLI `--rotation-backend`, backend-qualified state and separate default path, offline tests and README/architecture/SVG. Source PR #109 merged.
+- [x] Verified source PR #109 eight exact-head CI checks and normal expected-head squash merge. This independent archive PR requires its own eight checks before merge.
 
 ## Verification matrix
 
 | Gate | Evidence | Status |
 |---|---|---|
-| Rust fmt + strict Clippy | CI Rust quality | NOT RUN |
-| Rust workspace + mock adapter tests | CI Rust tests and CLI smoke | NOT RUN |
-| Windows/macOS and existing native Sway/Noctalia E2E | 8 total exact-HEAD jobs | NOT RUN |
+| Rust fmt + strict Clippy | CI #41084832566 Rust quality | PASS (source HEAD) |
+| Rust workspace + mock adapter tests | CI #41084832566 Rust tests and CLI smoke | PASS (source HEAD) |
+| Windows/macOS and existing native Sway/Noctalia E2E | CI #41084832566, all eight jobs | PASS (source HEAD; archive CI independently pending) |
 | Real wpaperd v1.3.0 compositor pixels, restarts/hotplug | separate native E2E | UNASSESSED |
 
 ## Decision gates
@@ -65,7 +66,9 @@ User chose **A**: reuse existing daemon, never start/kill, preserve existing def
 
 ## Evidence log
 
-- 2026-10-30: implementation work on branch `agent/wpaperd-runtime-opt-in-108`: added Linux-only `backend/wpaperd.rs` (UnixStream + typed JSON), explicit registry/CLI selection with Noctalia unchanged, wpaperd-specific default state and qualified profile identity, mock UnixListener tests, README/architecture/diagram. No production desktop operation was performed. Await exact-head CI and source PR review.
+- 2026-10-30: source PR #109 exact HEAD `52e52bdf735069acf3308e36124466272437f35c` with workflow #41084832566 completed/success and all eight named jobs completed/success; mergeable=true. Reviewed nine changed paths, including typed JSON UnixStream transport, preflight, independent readback, Noctalia default, backend-qualified state and diagram. Squash merged via GitHub API with expected head at `1ee33c82b70cada7a83984ccd78c74db914243d9`; independently fetched master source and PR merged status. Real native wpaperd compositor remains unassessed.
+
+- 2026-10-30: implementation work on branch `agent/wpaperd-runtime-opt-in-108`: added Linux-only `backend/wpaperd.rs` (UnixStream + typed JSON), explicit registry/CLI selection with Noctalia unchanged, wpaperd-specific default state and qualified profile identity, mock UnixListener tests, README/architecture/diagram. No production desktop operation was performed. Source CI #41084832566 completed/success (8/8); source PR #109 squash merged at `1ee33c82b70cada7a83984ccd78c74db914243d9`.
 - 2026-10-30: inspected wpaperd release 1.3.0 IPC client/server source; typed JSON framing, asynchronous `SetWallpaper` and `CurrentWallpaper`, empty-list broadcast. Verified selected current Rust port/registry/controller and clap. No real wallpaper actions.
 
 ## Deviations and discoveries
@@ -74,12 +77,15 @@ User chose **A**: reuse existing daemon, never start/kill, preserve existing def
 - `wpaperd::collect_surfaces` treats an EMPTY monitor vector as all monitors. The adapter must reject unknown targets against a read-only inventory and always send exactly one string, never a broadcast.
 - User-approved A does not authorize stopping existing Noctalia/wpaperd or changing systemd/desktop state. Current code only connects to an existing session socket and never starts a renderer; no physical/compositor proof is claimed.
 
+- 2026-10-30: archive PR #112 CI #41100350986 Agent plan integrity failed on HEAD `fe2f33e32748107a2848815253124afbc10a1a0b` because `## Completion` used `Final source SHA`, `Source CI`, and `Native wpaperd visual evidence` instead of validator-required `Final commit`, `CI run`, `Remaining unassessed items`. Corrected only those evidence labels; archive must pass its own new exact-head 8/8 CI before merge. No production change.
+
 ## Resume from here
 
-Open source PR for branch `agent/wpaperd-runtime-opt-in-108` with exact Issue #108 and this active Plan. Inspect changed files; run latest exact-head CI, diagnose rustfmt/Clippy/Windows/macOS/native E2E failures from actual job logs without weakening gates. On 8/8 SUCCESS and mergeable=true, squash merge with expected head; then independent docs-only archive PR with own eight checks, close #108 only after archive, keep #83 OPEN. Do not automatically start/kill any renderer.
+Verify the independent docs-only archive PR's latest exact HEAD, overall workflow completed/success and all eight required job conclusions; recheck mergeable=true and docs-only diff. Squash merge with expected archive HEAD only when all gates pass, then independently confirm master contains `docs/exec-plans/completed/2026-10-30-wpaperd-opt-in-runtime.md` with `Status: COMPLETED` and the active path returns 404. Close only child #108 after archive merge; keep parent #83 OPEN. Real wpaperd 1.3.0 dual-monitor native E2E remains separate Issue #111; never equate fake socket with compositor pixels.
 
 ## Completion
 
-Final source SHA: pending
-Source CI: pending
-Native wpaperd visual evidence: UNASSESSED
+Final commit: `1ee33c82b70cada7a83984ccd78c74db914243d9` (PR #109 squash, tested HEAD `52e52bdf735069acf3308e36124466272437f35c`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41084832566 (completed/success; 8/8)
+Archive: independent docs-only PR (own exact-head 8/8 CI required before merge)
+Remaining unassessed items: UNASSESSED (separate #111)
