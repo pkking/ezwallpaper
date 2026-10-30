@@ -1,10 +1,10 @@
 # 2026-10-28-wallpaper-backend-upstream-selection-83: upstream backend reuse selection before further adapters
 
 Issue: #83
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-28
-Last checkpoint: 2026-10-28
+Last checkpoint: 2026-10-30
 
 ## Objective
 
@@ -40,23 +40,23 @@ No new backend, new Rust crate or binary, application code changes, CI/quality g
 - [x] Explicit implementation-level primary/conditional/rejected recommendations for Hyprland, generic Wayland/Sway, KDE/XFCE/X11, GNOME/Portal, Windows/macOS, and Noctalia/niri coexistence, including strict state-commit gate and alternate renderer exclusion.
 - [x] Bounded implementation-verification plan: independently verifiable readback, output identity/hotplug, renderer lifetime, path edge cases, security and version/license checks, without prematurely implementing code or forcing a new dependency.
 - [x] Architecture.md links the source-audited assessment, explicitly marks selection proposed. `AGENTS.md` now permanently requires fixed-revision source-code evidence in future analyses; neither application code, dependencies, ADR, nor SVG changed.
-- [ ] Latest exact review PR HEAD CI 8/8 SUCCESS and mergeable before merge; separate independent archival gate before plan COMPLETED. Parent Issue #83 remains OPEN.
+- [x] Source PR #102 latest exact HEAD `de60e088d9da484bb159681a43ae42200065a770` verified 8/8 SUCCESS (CI #40734192465), mergeable=true; source merged into master at `e4c3d6c559d9fe1f8921ffa0e15153fe032147a8`. This archival PR independently requires its own exact-head 8/8 CI before merging; parent Issue #83 stays OPEN.
 
 ## Implementation slices
 
 - [x] Read current repo/issue/ADR and upstream primary references; create this plan on a fresh branch **before** documentation edits.
 - [x] Draft `docs/architecture/backend-upstream-selection-83.md` with decision criteria, evidence table, priority, known blockers and test matrix.
-- [x] Cross-linked from architecture.md and extended `AGENTS.md` technical-analysis evidence discipline. Source PR scope: four Markdown paths (assessment, architecture pointer, AGENTS.md, active plan); no application code/dependency/ADR/SVG edits; final exact-head CI still pending.
-- [ ] Gate on latest-exact-HEAD CI and finish independent completed-plan archive; keep parent issue open.
+- [x] Cross-linked architecture.md, updated AGENTS.md, verified exactly four Markdown paths in source PR #102; source latest exact-head CI #40734192465 all eight checks SUCCESS.
+- [x] Source PR #102 passed eight required latest-head CI jobs and was squash-merged; independently staged this completion archive with separate exact-head CI gate. Parent Issue #83 remains OPEN.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
 | Research validity | fixed commit + source file/function/line links; distinguish code/contract/blocked | hyprpaper IPC.cpp/XML/UI; wpaperd IPC handler/image picker/surface; Sway background/ipc-json; more-wallpapers Sway/KDE/XFCE; UDA Linux; Waypaper changer; Portal XML; awww explicitly BLOCKED_SOURCE | CODE-AUDITED / no live tests |
-| Source safety | diff only markdown research + agent governance + active plan | four Markdown paths: assessment, architecture.md, AGENTS.md and active plan; verify PR patch | PENDING PR PATCH |
-| CI governance | Agent plan integrity + contract self-tests | latest-head Actions jobs | NOT RUN |
-| Rust/plats/virtual regression | all eight required CI jobs | latest-head Actions run | NOT RUN |
+| Source safety | diff only markdown research + agent governance + active plan | Verified four Markdown paths in source PR #102 (AGENTS.md, architecture.md, assessment and plan); archive only moves the plan | VERIFIED |
+| CI governance | Agent plan integrity + contract self-tests | source exact-head CI #40734192465 | PASS |
+| Rust/plats/virtual regression | Rust quality/tests, Windows/macOS, Sway/Noctalia E2E and governance on exact source PR #102 HEAD | PASS (8/8) |
 | Actual native pixels, daemon restarts, hotplug | physical integration | not in this selection review | UNASSESSED |
 
 ## Decision gates
@@ -70,6 +70,8 @@ This PR makes a **non-binding, ordered selection recommendation** under accepted
 
 - 2026-10-28: authored [reuse assessment](../../architecture/backend-upstream-selection-83.md) with eleven classes of upstream options and platform-oriented priority, explicit D/I/U evidence, mandatory gate G0–G4, version/daemon conflict/physical evidence limits; architecture.md cross-linked. Source references checked against packaged `awww-img(1)` and `awww-query(1)`, Hyprland/Sway upstream docs, Waypaper/wpaperd upstream README, UDA detailed guide, docs.rs and XDG Portal. Source-only diff remains pending official PR patch inspection. No executable commands run against desktop.
 
+- 2026-10-30: independently fetched [PR #102](https://github.com/pkking/ezwallpaper/pull/102) current source HEAD `de60e088d9da484bb159681a43ae42200065a770` and [CI #40734192465](https://github.com/pkking/ezwallpaper/actions/runs/40734192465) overall `completed/success`, all eight individual jobs `completed/success`; `mergeable=true`. Checked source PR patch contains exactly `AGENTS.md`, `docs/architecture.md`, `docs/architecture/backend-upstream-selection-83.md`, and active plan; squash merged via `expected_head_sha` at `e4c3d6c559d9fe1f8921ffa0e15153fe032147a8`, independently verified closed/merged. The archive PR itself still requires its own independent latest-head 8/8 CI; physical desktop tests remain UNASSESSED.
+
 ## Deviations and discoveries
 
 - UDA Linux source (commit `a74bd2cf`) `get_wallpaper` returns `NotSupported`, constructs `HDMI-{index}` and uses implicit fallbacks. This is a code-level proof that it cannot meet output-scoped exact-path rotation, regardless of overview claims.
@@ -79,11 +81,11 @@ This PR makes a **non-binding, ordered selection recommendation** under accepted
 
 ## Resume from here
 
-Continue **existing PR #102** (https://github.com/pkking/ezwallpaper/pull/102), not a duplicate PR. Fetch its latest exact HEAD and latest new run; compare PR patch to confirm **four Markdown paths only**: `AGENTS.md`, this plan, `docs/architecture.md` and `docs/architecture/backend-upstream-selection-83.md`. Check all eight CI jobs on exact latest HEAD, not the previously green older SHA; diagnose failures without weakening gates. Only if 8/8 SUCCESS and `mergeable=true`, squash merge with expected HEAD; archive plan in separate docs-only PR with **its own** latest-head 8/8 CI. Issue #83 stays OPEN, and awww remains BLOCKED_SOURCE. No desktop mutation.
+Verify the independent docs-only archive PR's **own latest exact HEAD** and eight checks. Only on 8/8 SUCCESS plus mergeable=true, squash merge with the expected archive HEAD; independently confirm the completed plan exists on master with Status: COMPLETED and old active plan returns 404, then record final checkpoint in Issue #83 (leave OPEN). No new source/backend work is authorized here; awww remains BLOCKED_SOURCE.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable (documentation-only; no real desktop)
+Final commit: `e4c3d6c559d9fe1f8921ffa0e15153fe032147a8` (source PR #102 squash merge, tested HEAD `de60e088d9da484bb159681a43ae42200065a770`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/40734192465 (8/8 SUCCESS)
+E2E artifact: source PR's existing headless/virtual Sway and Noctalia regression jobs PASS; no real desktop for this documentation-only study
 Remaining unassessed items: physical displays, protocol/version verification on actual packaged binaries, output identity/hotplug, daemon session lifecycle, multi-writer conflicts, license counsel, all non-Noctalia per-output rotation.
