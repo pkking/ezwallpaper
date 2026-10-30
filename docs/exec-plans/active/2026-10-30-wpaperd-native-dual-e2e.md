@@ -1,7 +1,7 @@
 # 2026-10-30-wpaperd-native-dual-e2e — pinned 1.3.0 virtual Sway framebuffer validation
 
 Issue: #111
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-30
 Last checkpoint: 2026-10-30
@@ -49,8 +49,8 @@ No installation, process management, daemon launch or fallback in production cod
 ## Implementation slices
 
 - [x] Re-read pinned upstream daemon/IPC/opts/config and existing Sway dual-output helpers; confirm #109 merged on master and create plan before implementation.
-- [ ] Add isolated native Sway/wpaperd Python harness with source pin, IPC/output/pixel checks, teardown, and failure artifact capture; include offline helper regression tests.
-- [ ] Integrate pinned native build and test into existing Linux visual CI without disabling any existing jobs; preserve source SHA, logs, screenshot artifacts and explicit failure.
+- [x] Added isolated native Sway/wpaperd Python harness with source pin, IPC/output/pixel checks, teardown, failure artifacts and offline helper tests; native execution pending.
+- [x] Integrated pinned native build and test into existing Sway visual job, preserving all original checks and adding source SHA, build logs, screenshot artifacts and explicit failure; CI pending.
 - [ ] Review full source patch, diagnose all exact-head CI jobs and actual logs; merge only after 8/8 completed/success and mergeable=true.
 - [ ] Archive plan through independent docs-only PR and its own 8/8 gate, close only #111, keep parent #83 OPEN.
 
@@ -70,6 +70,8 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Evidence log
 
+- 2026-10-30: source branch now contains `tests/e2e/sway/wpaperd_native.py`, offline negative helper tests and `.github/workflows/ci.yml` native build/EGL/pixel steps. Original eight jobs retained; no local tests or real native compositor were run, so PASS remains UNASSESSED pending GitHub CI.
+
 - 2026-10-30: inspected upstream pinned v1.3.0 `ipc/src/lib.rs`, `cli/src/main.rs`, `daemon/src/ipc_server.rs`, `daemon/src/main.rs`, `daemon/src/opts.rs`, `daemon/src/config.rs`, Cargo.lock and current `tests/e2e/sway/dual.py`. Source #109 already merged and exact-head CI verified. No native wpaperd executable was run, no screenshot collected, no user desktop touched.
 
 ## Deviations and discoveries
@@ -79,7 +81,7 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Resume from here
 
-Implement the smallest disposable wpaperd 1.3.0 native Sway harness on this branch, reusing `tests/e2e/sway/dual.py` pixel/topology helpers; first validate upstream EGL and native IPC readiness with isolated two-output Sway, record exact command/output, then add real screenshots and one-output CLI rotation. No source PR until the plan and coherent test slice are ready.
+Open source PR for Issue #111 and this active plan. Inspect latest exact-head CI, run native helper tests, and diagnose any pinned build/EGL/IPC/framebuffer failure using original job logs and artifacts; fix on this branch without weakening checks. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
 
 ## Completion
 
