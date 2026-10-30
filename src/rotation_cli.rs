@@ -424,6 +424,7 @@ fn run_with_adapter_interval(
 /// The controller owns state transitions, not desktop transport. One backend
 /// instance services the full transaction; capabilities are checked before
 /// lock/state-directory creation or any IPC.
+#[cfg(test)]
 fn run_with_backend_interval(
     profile_path: &Path,
     state_path: &Path,
@@ -624,6 +625,54 @@ mod tests {
         assert_ne!(result[0].content_id, result[1].content_id);
         assert!(!state.exists());
         assert!(!state_lock_path(&state).exists());
+    }
+
+    #[test]
+    fn wpaperd_scope_never_reuses_noctalia_state_identity() {
+        let (_dir, profile, state) = fixture();
+        let mut backend = CallbackBackend {
+            apply_fn: |_, _| Ok(ApplyStatus::PathObserved),
+        };
+        let applied = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3_600),
+            Some(&mut backend),
+            Some("wpaperd"),
+        )
+        .expect("offline scoped apply");
+        assert_eq!(applied.len(), 2);
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("state")).expect("JSON");
+        assert!(saved.profile.starts_with("ezwallpaper-backend:wpaperd:"));
+        assert!(run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            RotationClock::simulated(60, 3_600),
+            None,
+            None,
+        )
+        .is_err(), "Noctalia cannot consume wpaperd state");
+        let preview = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            RotationClock::simulated(60, 3_600),
+            None,
+            Some("wpaperd"),
+        )
+        .expect("wpaperd offline preview");
+        assert!(preview
+            .iter()
+            .all(|item| item.decision == RotationDecision::AlreadyApplied));
     }
 
     #[test]
