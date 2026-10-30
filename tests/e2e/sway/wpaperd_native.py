@@ -167,7 +167,9 @@ def execute(binary: Path, daemon: Path, artifacts: Path, config: Path, source_sh
             "XDG_CACHE_HOME": str(root / "cache"),
             "XDG_STATE_HOME": str(root / "state"),
             "XDG_CURRENT_DESKTOP": "sway", "XDG_SESSION_TYPE": "wayland",
-            "WLR_BACKENDS": "headless", "WLR_HEADLESS_OUTPUTS": "2",\n            # wlroots 0.17 headless cannot create GLES2 without a DRM FD.\n            # Use proven pixman compositor; native wpaperd still uses EGL/GLES.
+            "WLR_BACKENDS": "headless", "WLR_HEADLESS_OUTPUTS": "2",
+            # wlroots 0.17 headless cannot create GLES2 without a DRM FD.
+            # Use proven pixman compositor; native wpaperd still uses EGL/GLES.
             "WLR_RENDERER": "pixman", "WLR_LIBINPUT_NO_DEVICES": "1",
             "LIBGL_ALWAYS_SOFTWARE": "1", "EGL_PLATFORM": "wayland",
         })
