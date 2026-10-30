@@ -37,17 +37,17 @@ Repo `AGENTS.md`, `docs/agents/workflow.md`, `docs/agents/testing.md`, ADR 0010,
 
 ## Acceptance criteria
 
-- [ ] Explicit `--rotation-backend wpaperd` is accepted and default Noctalia unchanged; offline preview touches no socket/state, no new Cargo deps.
-- [ ] Typed JSON/UnixStream and per-output preflight/readback implementation in named `backend/wpaperd.rs`, no desktop commands in Core/controller; timeout, error, stale result, duplicate/unknown monitor fail closed.
-- [ ] Backend-specific state isolation and CLI parsing tests preserve prior Noctalia hourly/JSON behavior.
-- [ ] Deterministic mock UnixListener integration tests exercise real adapter: unavailable daemon, dual-output identity, preflight before mutation, server errors/timeout, successful set→readback and stale→success; no real desktop mutation.
+- [x] Explicit `--rotation-backend wpaperd` is accepted and default Noctalia unchanged; offline preview touches no socket/state, no new Cargo deps.
+- [x] Typed JSON/UnixStream and per-output preflight/readback implementation in named `backend/wpaperd.rs`, no desktop commands in Core/controller; timeout, error, stale result, duplicate/unknown monitor fail closed.
+- [x] Backend-specific state isolation and CLI parsing tests preserve prior Noctalia hourly/JSON behavior.
+- [x] Deterministic mock UnixListener integration tests exercise real adapter: unavailable daemon, dual-output identity, preflight before mutation, server errors/timeout, successful set→readback and stale→success; no real desktop mutation.
 - [ ] Source PR latest exact-head CI all 8 SUCCESS and mergeable, code reviewed and squash merged; independent archive PR latest exact-head CI all 8 success; close child Issue #108 only after archive, parent #83 remains OPEN.
 
 ## Implementation slices
 
 - [x] Create issue #108, branch and plan before code, with explicit user decision A and pinned upstream source.
-- [ ] Implement typed Rust adapter with socket IPC and strict preflight/readback.
-- [ ] Add additive CLI opt-in, isolated default state, regression tests, docs and independent PR.
+- [x] Implemented `backend/wpaperd.rs`: Linux-only structured IPC, read-only inventory, one-target set, bounded independent readback, duplicate/unknown rejection, no external process management. Source committed; CI not yet run.
+- [x] Added additive CLI `--rotation-backend`, backend-qualified state and separate default path, offline tests and README/architecture/SVG. Independent PR still pending.
 - [ ] Verify all eight exact-head CI checks and archive independently.
 
 ## Verification matrix
@@ -65,15 +65,18 @@ User chose **A**: reuse existing daemon, never start/kill, preserve existing def
 
 ## Evidence log
 
+- 2026-10-30: implementation work on branch `agent/wpaperd-runtime-opt-in-108`: added Linux-only `backend/wpaperd.rs` (UnixStream + typed JSON), explicit registry/CLI selection with Noctalia unchanged, wpaperd-specific default state and qualified profile identity, mock UnixListener tests, README/architecture/diagram. No production desktop operation was performed. Await exact-head CI and source PR review.
 - 2026-10-30: inspected wpaperd release 1.3.0 IPC client/server source; typed JSON framing, asynchronous `SetWallpaper` and `CurrentWallpaper`, empty-list broadcast. Verified selected current Rust port/registry/controller and clap. No real wallpaper actions.
 
 ## Deviations and discoveries
 
-None at plan creation.
+- Upstream release v1.3.0 IPC types and client framing exactly match separately audited main snapshot; server handler differs in error-serialization implementation but uses same named-output SetWallpaper/CurrentWallpaper branches. This code implements only that typed JSON contract, not unversioned future protocols.
+- `wpaperd::collect_surfaces` treats an EMPTY monitor vector as all monitors. The adapter must reject unknown targets against a read-only inventory and always send exactly one string, never a broadcast.
+- User-approved A does not authorize stopping existing Noctalia/wpaperd or changing systemd/desktop state. Current code only connects to an existing session socket and never starts a renderer; no physical/compositor proof is claimed.
 
 ## Resume from here
 
-Implement production `src/backend/wpaperd.rs` with runtime-only Unix socket and configurable test-only UnixListener, add `--rotation-backend` CLI and separate wpaperd state identity; test actual adapter with an in-process fake server, no user daemon. Open independent Issue #108 source PR, require latest exact-HEAD 8/8 CI before source merge, archive plan separately; parent #83 remains OPEN.
+Open source PR for branch `agent/wpaperd-runtime-opt-in-108` with exact Issue #108 and this active Plan. Inspect changed files; run latest exact-head CI, diagnose rustfmt/Clippy/Windows/macOS/native E2E failures from actual job logs without weakening gates. On 8/8 SUCCESS and mergeable=true, squash merge with expected head; then independent docs-only archive PR with own eight checks, close #108 only after archive, keep #83 OPEN. Do not automatically start/kill any renderer.
 
 ## Completion
 
