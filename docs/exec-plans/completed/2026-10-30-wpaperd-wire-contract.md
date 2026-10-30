@@ -1,7 +1,7 @@
 # 2026-10-30-wpaperd-wire-contract: pinned upstream IPC fixture validation
 
 Issue: #104
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-30
 Last checkpoint: 2026-10-30
@@ -39,31 +39,32 @@ No live compositor, renderer startup, desktop/wallpaper mutation, daemon install
 
 - [x] Deterministic UnixStream pair fixture proves exactly one named `SetWallpaper` target and stable JSON serde encoding.
 - [x] Independent `CurrentWallpaper` request after `Ok` is required and path must exactly match the requested value; timeout/stale/EOF/error/other-monitor negative cases covered.
-- [ ] Cargo fmt, clippy, unit tests and eight CI jobs pass at exact final source HEAD; PR patch only test file + active plan.
-- [ ] Source PR merged with expected tested head; independently tested archive PR moves plan to completed; #104 closed only after archive merge; parent #83 open.
+- [x] Source PR #105 exact HEAD `67f4f5b000968f3973f3a38c37b2b39bdd5c761c`: eight individual jobs completed/success and workflow completed/success ([CI #41080116105](https://github.com/pkking/ezwallpaper/actions/runs/41080116105)). Patch verified only test file plus active plan.
+- [x] Source PR #105 merged with exact expected tested head, squash commit `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`; this independent archive PR moves plan to completed and has its **own** CI gate. Close #104 only after archive merge; #83 remains OPEN.
 
 ## Implementation slices
 
 - [x] Read current repository, parent issue, source audit, pinned upstream client/server wire protocol; create #104 and active plan first.
 - [x] Added integration tests in `tests/wpaperd_wire_contract.rs`: real UnixStream::pair byte exchange, serde externally tagged request/reply, two monitor identities, stale/valid readback, errors and malformed/EOF. No actual wpaperd daemon. CI still pending.
-- [ ] Open source PR, inspect changed files, validate latest-head CI, normal squash merge only after 8/8.
-- [ ] Independent completion-only PR for plan archiving and CI; close #104 afterward, keep #83 open.
+- [x] PR #105 exact source HEAD verified 8/8 SUCCESS, mergeable=true, only two intended Markdown/test paths; normal expected-head squash merge completed.
+- [x] Independent completion-only PR created to archive this plan; separately requires its OWN 8/8 exact-head CI before merge, #104 closing and #83 remains open.
 
 ## Verification matrix
 
 | Scope | Gate | Expected | Status |
 |---|---|---|---|
-| Rust fixture | `cargo test --test wpaperd_wire_contract` | success, no live socket | NOT RUN |
-| Static quality | `cargo fmt --all -- --check` / strict Clippy | no warnings | INITIAL FMT FAIL, PATCHED from CI job log; rerun pending |
-| Full headless checks | 8 GitHub Actions jobs | all SUCCESS at latest HEAD | NOT RUN |
+| Rust fixture | `cargo test --test wpaperd_wire_contract` | source final-head CI Rust tests explicitly ran six wpaperd fixtures, all pass, no live socket | PASS (source CI) |
+| Static quality | `cargo fmt --all -- --check` / strict Clippy | no warnings | PASS (source CI #41080116105 Rust quality) |
+| Full headless checks | 8 GitHub Actions jobs | all SUCCESS at latest HEAD | PASS (8/8, exact source HEAD `67f4f5b`) |
 | Physical desktop, daemon restarts | manual/native later | UNASSESSED | UNASSESSED |
 
 ## Decision gates
 
-No new user decision required for deterministic tests with no runtime behavior change. Whether to **enable** an alternative wallpaper renderer, add a persisted runtime selector, install/start a daemon or define new supported OS/DE defaults remains separate and unapproved.
+No new user decision was required for deterministic wire tests. On 2026-10-30, user independently approved **Decision A** for a future explicit already-running wpaperd runtime adapter ([Issue #108](https://github.com/pkking/ezwallpaper/issues/108)); it is separate from this completed wire-fixture task. Automatic daemon management and default migration remain unapproved.
 
 ## Evidence log
 
+- 2026-10-30: independently verified PR #105 final HEAD `67f4f5b000968f3973f3a38c37b2b39bdd5c761c`, exact [CI #41080116105](https://github.com/pkking/ezwallpaper/actions/runs/41080116105) workflow `completed/success`, all 8 job `completed/success`, PR mergeable and only two allowed file paths; merged expected-head at `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`, independently verified merged. Original no-wallpaper-mutation fixture limits unchanged.
 - 2026-10-30: added a sixth negative test verifying a **silent but still-connected fake Unix socket** returns `TimedOut` or `WouldBlock` rather than pretending `PathObserved`, using a bounded 50ms read timeout and no daemon. Source commit `42c9a0d125c4d437fa87bdcf49a877965daeccba`; this invalidates previous CI job results on older SHA and requires a fresh 8/8 run.
 - 2026-10-30: authored six deterministic tests in `tests/wpaperd_wire_contract.rs`, no new crate or daemon, UnixStream pairs only; independent GitHub CI pending. Source commit `1f48d422e52ba4b6fd94dc507444b454be928c2a`.
 - 2026-10-30: source review fixed wpaperd SHA `483225a9...`; identified `cli/src/main.rs` write/read framing, `ipc/src/lib.rs` enum JSON shapes, `daemon/src/ipc_server.rs` `CurrentWallpaper` vs async `SetWallpaper` code. No daemon or real desktop was touched.
@@ -76,11 +77,11 @@ No new user decision required for deterministic tests with no runtime behavior c
 
 ## Resume from here
 
-Continue existing [PR #105](https://github.com/pkking/ezwallpaper/pull/105): fetch its latest HEAD after this plan update, obtain the new CI run, inspect all eight jobs and job logs. The initial CI #41079057713 failed Rust quality at rustfmt-only differences; those exact differences were fixed in `d8fffe8a...`. The later #41079289247 had seven completed successes (Rust/Windows/macOS/Sway and agent) while Noctalia still building, then a sixth timeout regression was added at `42c9a0d`; **none of these old-head results can validate the current HEAD**. Require a new fresh 8/8 run. Repair any additional fail without removing gates; merge source with expected final HEAD only on 8/8 SUCCESS and mergeable=true. Then independent completed-plan archive PR with its own eight checks; close #104 only after archive, keep parent #83 open.
+Verify this independent completed-plan archive PR's **own latest exact HEAD**, all eight job statuses, and mergeable=true. Squash merge only on 8/8 SUCCESS with expected-head; verify master completed file status and old active file absent, close only child #104, leave #83 OPEN. Runtime feature #108 is independently tracked.
 
 ## Completion
 
-Source final SHA: pending
-CI run: pending
-Archive: pending
-Real wpaperd E2E: UNASSESSED
+Final commit: `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72` (PR #105 squash merge; tested HEAD `67f4f5b000968f3973f3a38c37b2b39bdd5c761c`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41080116105 (8/8 SUCCESS)
+Archive: this separately gated completed-plan PR
+Remaining unassessed items: native wpaperd daemon/compositor session, physical framebuffer, hotplug, daemon restart and renderer ownership. The six wire tests are intentionally offline.
