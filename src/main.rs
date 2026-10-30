@@ -617,13 +617,17 @@ mod rotate_cli_tests {
         .expect("explicit wpaperd preview parses without runtime daemon");
         match wpaperd.command {
             Some(CliCommand::Rotate {
-                operation: RotateOperation::Next {
-                    rotation_backend,
-                    apply,
-                    ..
-                },
+                operation:
+                    RotateOperation::Next {
+                        rotation_backend,
+                        apply,
+                        ..
+                    },
             }) => {
-                assert_eq!(rotation_backend, backend::registry::RotationBackend::Wpaperd);
+                assert_eq!(
+                    rotation_backend,
+                    backend::registry::RotationBackend::Wpaperd
+                );
                 assert!(!apply);
             }
             _ => panic!("expected opt-in wpaperd rotation"),
