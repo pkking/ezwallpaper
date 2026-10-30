@@ -167,20 +167,23 @@ enum CliCommand {
 
 #[derive(Subcommand, Debug)]
 enum RotateOperation {
-    /// Plan the current UTC-minute bucket wallpaper choice, optionally apply via Noctalia v5 IPC.
+    /// Plan the current UTC-minute bucket wallpaper choice; apply via an explicit backend.
     Next {
-        /// Versioned JSON profile declaring Noctalia outputs and local image pools.
+        /// Versioned JSON profile declaring backend-specific output names and image pools.
         #[arg(long)]
         profile: PathBuf,
         /// Optional state file; defaults to the user's XDG state directory.
         #[arg(long)]
         state: Option<PathBuf>,
-        /// Explicitly apply through Noctalia v5 and commit path-readback acknowledgements.
+        /// Explicitly apply through the selected existing wallpaper backend.
         #[arg(long, conflicts_with = "dry_run")]
         apply: bool,
         /// Preview only (default); never creates state files or changes a wallpaper.
         #[arg(long)]
         dry_run: bool,
+        /// Opt-in running wpaperd; default remains Noctalia v5. Never starts a daemon.
+        #[arg(long, value_enum, default_value_t = backend::registry::RotationBackend::Noctalia)]
+        rotation_backend: backend::registry::RotationBackend,
         /// Replan even if this UTC epoch has already been acknowledged.
         #[arg(long)]
         force: bool,
@@ -366,6 +369,7 @@ fn main() -> Result<()> {
                     epoch,
                     interval_minutes,
                     json,
+                    rotation_backend,
                 },
         }) => {
             let results = rotation_cli::run_rotation(
@@ -375,6 +379,7 @@ fn main() -> Result<()> {
                 *force,
                 *apply,
                 *interval_minutes,
+                *rotation_backend,
             )?;
             if *json {
                 println!(
@@ -600,6 +605,29 @@ mod rotate_cli_tests {
             }
             _ => panic!("expected opt-in rotate next"),
         }
+        let wpaperd = Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--rotation-backend",
+            "wpaperd",
+        ])
+        .expect("explicit wpaperd preview parses without runtime daemon");
+        match wpaperd.command {
+            Some(CliCommand::Rotate {
+                operation: RotateOperation::Next {
+                    rotation_backend,
+                    apply,
+                    ..
+                },
+            }) => {
+                assert_eq!(rotation_backend, backend::registry::RotationBackend::Wpaperd);
+                assert!(!apply);
+            }
+            _ => panic!("expected opt-in wpaperd rotation"),
+        }
         // Legacy invocation keeps hourly buckets. The desired 30-minute
         // dotfiles deployment opts in explicitly rather than changing defaults.
         let legacy =
@@ -615,6 +643,7 @@ mod rotate_cli_tests {
                     },
             }) => {
                 assert_eq!(interval_minutes, 60);
+                // Unspecified backend remains Noctalia on every platform.
                 assert_eq!(epoch, None);
             }
             _ => panic!("expected legacy rotate next"),
