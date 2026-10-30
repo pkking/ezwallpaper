@@ -54,7 +54,7 @@ No live compositor, renderer startup, desktop/wallpaper mutation, daemon install
 | Scope | Gate | Expected | Status |
 |---|---|---|---|
 | Rust fixture | `cargo test --test wpaperd_wire_contract` | success, no live socket | NOT RUN |
-| Static quality | `cargo fmt --all -- --check` / strict Clippy | no warnings | NOT RUN |
+| Static quality | `cargo fmt --all -- --check` / strict Clippy | no warnings | INITIAL FMT FAIL, PATCHED from CI job log; rerun pending |
 | Full headless checks | 8 GitHub Actions jobs | all SUCCESS at latest HEAD | NOT RUN |
 | Physical desktop, daemon restarts | manual/native later | UNASSESSED | UNASSESSED |
 
@@ -69,12 +69,13 @@ No new user decision required for deterministic tests with no runtime behavior c
 
 ## Deviations and discoveries
 
+- [CI #41079057713](https://github.com/pkking/ezwallpaper/actions/runs/41079057713) on initial source HEAD `cc8251a1721982029e1e0760c67e5d80cf526b15`: Rust quality failed solely at `cargo fmt --all -- --check`; exact rustfmt diff retrieved from GitHub job #124142972528 and applied to test source in commit `d8fffe8a45a7f21b84ff0d1bc3f4c17f36e14e79`. The old run is invalid for a subsequent head. New CI required on the plan-updated final head. No check disabled.
 - Upstream `cli/src/main.rs` is authoritative for the wire protocol: JSON request written once, JSON `Result<IpcResponse,IpcError>` read until server socket close. Tests use UnixStream::pair without real daemon. They intentionally cannot establish actual async timing or compositor pixels; those remain UNASSESSED.
 - Upstream `daemon/src/ipc_server.rs::collect_surfaces` interprets an empty monitors vector as ALL surfaces. Test specifically forbids confusing a named target with empty-list global broadcast.
 
 ## Resume from here
 
-Open a source PR for branch `agent/wpaperd-wire-contract-104` linked to Issue #104 and this plan, then inspect patch (only `tests/wpaperd_wire_contract.rs` and this active plan). Recheck exact HEAD, run all eight GitHub CI jobs including macOS/Linux/Windows; fix rustfmt, compiler or test errors on same branch, never suppress checks. Squash merge only after verified 8/8 success. After source merge create independent archive PR, preserve parent #83 open.
+Continue existing [PR #105](https://github.com/pkking/ezwallpaper/pull/105): fetch its latest HEAD after this plan update, obtain the new CI run, inspect all eight jobs and job logs. The initial CI #41079057713 failed Rust quality at rustfmt-only differences; those exact differences were fixed in `d8fffe8a...`. Do not reuse the initial run. Repair any additional fail without removing gates; merge source with expected final HEAD only on 8/8 SUCCESS and mergeable=true. Then independent completed-plan archive PR with its own eight checks; close #104 only after archive, keep parent #83 open.
 
 ## Completion
 
