@@ -61,6 +61,9 @@ jobs:
           set -euo pipefail
           # OpenWiki may offer a managed AGENTS.md block. The existing
           # root AGENTS.md is authoritative; never publish generated edits.
+          # Do not trust any index changes made by model-driven tooling.
+          # Reset the staging area before adding the strict documentation allowlist.
+          git reset -q HEAD
           git restore -- AGENTS.md
           rm -f -- openwiki/.run.json
           if [[ ! -d openwiki ]]; then
