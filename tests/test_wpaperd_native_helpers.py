@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).parent / "e2e" / "sway"))
 from run import E2EFailure  # noqa: E402
-from wpaperd_native import decode_ok, parse_current, parse_inventory  # noqa: E402
+from wpaperd_native import decode_ok, parse_cli_outcomes, parse_current, parse_inventory  # noqa: E402
 
 
 class WpaperdNativeHelperTests(unittest.TestCase):
@@ -39,6 +39,22 @@ class WpaperdNativeHelperTests(unittest.TestCase):
         ]:
             with self.assertRaises(E2EFailure):
                 parse_inventory({"AllWallpapers": {"entries": entries}})
+
+    def test_rotation_cli_schema_v1_envelope(self):
+        # src/main.rs serializes {schema_version: 1, outputs: Vec<RotationOutcome>}.
+        valid = {"schema_version": 1, "outputs": [
+            {"output": "HEADLESS-1", "applied_path_observed": True},
+            {"output": "HEADLESS-2", "applied_path_observed": False},
+        ]}
+        parsed = parse_cli_outcomes(valid)
+        self.assertTrue(parsed["HEADLESS-1"]["applied_path_observed"])
+        self.assertFalse(parsed["HEADLESS-2"]["applied_path_observed"])
+        for invalid in [valid["outputs"], {"schema_version": 2, "outputs": valid["outputs"]},
+                        {"schema_version": 1, "outputs": valid["outputs"][:1]},
+                        {"schema_version": 1, "outputs": [valid["outputs"][0]] * 2},
+                        {"schema_version": 1, "outputs": [valid["outputs"][0], {"output": "other"}]}]:
+            with self.assertRaises(E2EFailure):
+                parse_cli_outcomes(invalid)
 
     def test_malformed_or_remote_error_never_passes(self):
         for data in [b"", b"broken", b"{}", b'{"Err":"bad"}',
