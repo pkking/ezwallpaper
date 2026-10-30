@@ -24,8 +24,8 @@ No installation, process management, daemon launch or fallback in production cod
 ## Current facts
 
 - Gate cleared: source PR #109 tested HEAD `52e52bdf735069acf3308e36124466272437f35c`, exact CI #41084832566 completed/success with all 8 jobs success, then expected-head squash merged to master commit `1ee33c82b70cada7a83984ccd78c74db914243d9`.
-- Wire fixture PR #105 separately merged at `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`; archive PR #110 independently merged as `dcd77057bbd9e6a321558f1a38e08fe206b67efb`. The #108 plan archive PR #112 is independently pending and must not be confused with #111.
-- Existing `src/backend/wpaperd.rs` connects only to an already-running XDG_RUNTIME_DIR/wpaperd/wpaperd.sock, inventories AllWallpapers, sends a single named SetWallpaper and waits for separate exact CurrentWallpaper path. Its mock UnixListener tests do NOT prove native pixels.
+- Wire fixture PR #105 separately merged at `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`; archive PR #110 independently merged as `dcd77057bbd9e6a321558f1a38e08fe206b67efb`. The #108 plan archive PR #112 merged at `6bb89f82004eaa8969982dd71b90149b72437952`; #108 is closed. Separate #114 socket fix PR #115 merged at `407f355b8c36424ace15dd1676adc3fb7c380fa9`; its docs-only archive #116 is independently gated. Neither is native pixel proof.
+- Merged PR #115 corrects `src/backend/wpaperd.rs` to connect only to an already-running XDG_RUNTIME_DIR/wpaperd.sock, inventories AllWallpapers, sends a single named SetWallpaper and waits for separate exact CurrentWallpaper path. Its mock UnixListener tests do NOT prove native pixels.
 - Existing Sway virtual dual-output screenshot harness uses swaybg, not wpaperd. The pinned upstream daemon uses EGL/Wayland, so software-headless EGL compatibility and native compile time remain UNASSESSED. Do not turn unsupported startup into a passing skip.
 - Parent Issue #83 remains OPEN. CI currently has eight jobs; add native E2E within an existing appropriate Linux visual job, preserving every original job and check.
 
@@ -40,7 +40,7 @@ No installation, process management, daemon launch or fallback in production cod
 
 ## Acceptance criteria
 
-- [ ] Exact upstream source pin verified in CI with SHA, build/version logs and source/build failure surfaced.
+- [x] Exact upstream source pin verified in CI with SHA and `cargo build --locked --release -p wpaperd` succeeded in CI #41104263669 and #41116832430; daemon IPC/pixels still pending.
 - [ ] Real test-owned native daemon starts in isolated Sway two-output session; native AllWallpapers enumerates exactly two expected named outputs.
 - [ ] Two distinct simultaneous per-output screenshot colors meet existing strict sampled pixel threshold; one-output CLI rotation changes only its own screenshot, and both native CurrentWallpaper paths independently agree.
 - [ ] Failure cases reject unknown output, absent daemon and false acknowledgement without state commit; no broadcast, fallback or host mutation.
@@ -58,7 +58,7 @@ No installation, process management, daemon launch or fallback in production cod
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Upstream source | git checkout exact tag `1.3.0` commit and cargo --locked build | SHA, version and full build log | UNASSESSED |
+| Upstream source | git checkout exact tag `1.3.0` commit and cargo --locked build | SHA, version and full build log | PASS (CI #41104263669 and #41116832430) |
 | Native IPC | isolated wpaperd 1.3.0 AllWallpapers/CurrentWallpaper | exact output names and paths | UNASSESSED |
 | Visual | actual Sway HEADLESS-1/2 grim PPM/PNG and pixel_fraction | >=0.97 on both screens, before and after one-screen rotation | UNASSESSED |
 | Negative and cleanup | fake/no daemon, unknown monitor, state and process isolation | failures and no state commit | UNASSESSED |
@@ -76,6 +76,8 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Deviations and discoveries
 
+- 2026-10-30: native CI #41116832430 exact HEAD `eadca5367864395ba82c4baafdb4b3fdd716be24` finished 7/8; Sway headless E2E failed after pinned native wpaperd built and created two native layer surfaces. Harness waited 25 seconds on `$XDG_RUNTIME_DIR/wpaperd/wpaperd.sock`; pinned upstream `ipc::socket_path()` actually uses `$XDG_RUNTIME_DIR/wpaperd.sock` because xdg 3.0.0 `get_runtime_directory()` is unprefixed. Independent production fix PR #115 HEAD `c0cf7816c56d98c6da9a7f3278b3eb9d44340668` passed exact-head CI #41118101838 8/8 and expected-head squash merged into master `407f355b8c36424ace15dd1676adc3fb7c380fa9`. Test harness now polls the correct root socket. No real native IPC or pixel proof yet; new exact-head CI required.
+
 - Existing dual-output Sway E2E uses swaybg and real pixels; it does not test wpaperd. Pinned wpaperd's EGL requirements may conflict with existing pixman-only headless configuration; must validate in CI, never infer success.
 - A native daemon path reply is not a framebuffer assertion; both must be observed independently and retained as artifacts.
 
@@ -85,7 +87,7 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Resume from here
 
-PR #113 is open. Inspect new exact-head CI after replacing unsupported headless GLES2 with the existing proven pixman compositor; confirm the pinned native daemon actually starts and obtain real native IPC and grim framebuffer artifacts. Diagnose any EGL/IPC/pixel failure from original job logs and artifact `wpaperd.log`/`sway.log`, fix on this branch without weakening checks. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
+PR #113 is open. Source socket fix #115 is merged into master as `407f355b8c36424ace15dd1676adc3fb7c380fa9`; native harness now uses the upstream runtime-root socket. Inspect new exact-head CI, ensuring GitHub pull_request merge ref includes corrected master. Inspect new exact-head CI after replacing unsupported headless GLES2 with the existing proven pixman compositor; confirm the pinned native daemon actually starts and obtain real native IPC and grim framebuffer artifacts. Diagnose any EGL/IPC/pixel failure from original job logs and artifact `wpaperd.log`/`sway.log`, fix on this branch without weakening checks. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
 
 ## Completion
 
