@@ -189,7 +189,10 @@ impl WallpaperBackend for WpaperdBackend {
     fn apply(&mut self, output: &str, path: &Path) -> Result<ApplyStatus> {
         self.validate_output(output)?;
         if !path.is_file() {
-            bail!("wpaperd image path is not a regular file: {}", path.display());
+            bail!(
+                "wpaperd image path is not a regular file: {}",
+                path.display()
+            );
         }
         let requested = path
             .canonicalize()
@@ -268,8 +271,7 @@ mod tests {
             let (mut conn, _) = listener.accept().expect("accept");
             let mut buf = [0; 4096];
             let n = conn.read(&mut buf).expect("request");
-            let query: serde_json::Value =
-                serde_json::from_slice(&buf[..n]).expect("JSON request");
+            let query: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("JSON request");
             assert_eq!(query, json!("AllWallpapers"));
             conn.write_all(
                 br#"{"Ok":{"AllWallpapers":{"entries":[["DP-1","/tmp/a.png"],["DP-1","/tmp/b.png"]]}}}"#,
@@ -326,7 +328,9 @@ mod tests {
         assert!(backend.validate_output("HDMI-A-1").is_ok());
         assert!(backend.validate_output("NO-SUCH-OUTPUT").is_err());
         assert_eq!(
-            backend.apply("DP-1", &file).expect("independent path readback"),
+            backend
+                .apply("DP-1", &file)
+                .expect("independent path readback"),
             ApplyStatus::PathObserved
         );
         server.join().expect("fake daemon join");
