@@ -152,7 +152,11 @@ fn load_profile(path: &Path) -> Result<Profile> {
     })
 }
 
-fn default_state_path() -> Result<PathBuf> {
+fn default_state_path(choice: registry::RotationBackend) -> Result<PathBuf> {
+    let file = match choice {
+        registry::RotationBackend::Noctalia => "rotation-v1.json",
+        registry::RotationBackend::Wpaperd => "rotation-wpaperd-v1.json",
+    };
     #[cfg(target_os = "linux")]
     {
         if let Some(xdg) = std::env::var_os("XDG_STATE_HOME") {
@@ -160,16 +164,16 @@ fn default_state_path() -> Result<PathBuf> {
             if !root.is_absolute() {
                 bail!("XDG_STATE_HOME must be an absolute directory");
             }
-            return Ok(root.join("ezwallpaper/rotation-v1.json"));
+            return Ok(root.join("ezwallpaper").join(file));
         }
         let home = dirs::home_dir().ok_or_else(|| anyhow!("HOME directory unavailable"))?;
-        Ok(home.join(".local/state/ezwallpaper/rotation-v1.json"))
+        Ok(home.join(".local/state/ezwallpaper").join(file))
     }
     #[cfg(not(target_os = "linux"))]
     {
         let root = dirs::data_local_dir()
             .ok_or_else(|| anyhow!("local user data directory unavailable"))?;
-        Ok(root.join("ezwallpaper/rotation-v1.json"))
+        Ok(root.join("ezwallpaper").join(file))
     }
 }
 
@@ -306,35 +310,48 @@ pub fn run_rotation(
     force: bool,
     apply: bool,
     interval_minutes: u64,
+    choice: registry::RotationBackend,
 ) -> Result<Vec<RotationOutcome>> {
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
         Some(path) => path.to_path_buf(),
-        None => default_state_path()?,
+        None => default_state_path(choice)?,
     };
     // Preview remains offline and independent of any desktop session.
     // Keep the Box alive for exactly the duration of the borrowed trait port.
     if apply {
-        let mut backend = registry::rotation_backend()?;
-        run_with_backend_interval(
+        let mut backend = registry::rotation_backend(choice)?;
+        run_with_backend_interval_scoped(
             profile_path,
             &state,
             epoch_override,
             force,
             true,
             RotationClock::realtime(interval_minutes),
-            Some(backend.as_mut()),
+            RotationPort {
+                backend: Some(backend.as_mut()),
+                state_scope: match choice {
+                    registry::RotationBackend::Noctalia => None,
+                    registry::RotationBackend::Wpaperd => Some("wpaperd"),
+                },
+            },
         )
     } else {
-        run_with_backend_interval(
+        run_with_backend_interval_scoped(
             profile_path,
             &state,
             epoch_override,
             force,
             false,
             RotationClock::realtime(interval_minutes),
-            None,
+            RotationPort {
+                backend: None,
+                state_scope: match choice {
+                    registry::RotationBackend::Noctalia => None,
+                    registry::RotationBackend::Wpaperd => Some("wpaperd"),
+                },
+            },
         )
     }
 }
@@ -411,6 +428,7 @@ fn run_with_adapter_interval(
 /// The controller owns state transitions, not desktop transport. One backend
 /// instance services the full transaction; capabilities are checked before
 /// lock/state-directory creation or any IPC.
+#[cfg(test)]
 fn run_with_backend_interval(
     profile_path: &Path,
     state_path: &Path,
@@ -418,8 +436,42 @@ fn run_with_backend_interval(
     force: bool,
     apply: bool,
     clock: RotationClock,
-    mut backend: Option<&mut dyn WallpaperBackend>,
+    backend: Option<&mut dyn WallpaperBackend>,
 ) -> Result<Vec<RotationOutcome>> {
+    run_with_backend_interval_scoped(
+        profile_path,
+        state_path,
+        epoch_override,
+        force,
+        apply,
+        clock,
+        RotationPort {
+            backend,
+            state_scope: None,
+        },
+    )
+}
+
+/// The backend port and optional state namespace are one invocation contract.
+/// This keeps the controller signature within the repository's strict Clippy gate.
+struct RotationPort<'a> {
+    backend: Option<&'a mut dyn WallpaperBackend>,
+    state_scope: Option<&'static str>,
+}
+
+fn run_with_backend_interval_scoped(
+    profile_path: &Path,
+    state_path: &Path,
+    epoch_override: Option<i64>,
+    force: bool,
+    apply: bool,
+    clock: RotationClock,
+    port: RotationPort<'_>,
+) -> Result<Vec<RotationOutcome>> {
+    let RotationPort {
+        mut backend,
+        state_scope,
+    } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
     utc_bucket_for_seconds(0, interval_minutes)?;
@@ -437,6 +489,12 @@ fn run_with_backend_interval(
             .map(|o| o.name.clone())
             .collect::<Vec<_>>();
         require_acknowledged_outputs(selected, &names)?;
+    }
+    // Preserve the Noctalia v1 identity exactly. An explicitly selected
+    // alternative renderer receives a distinct state identity to prevent
+    // cross-backend replay even when the user passes the same --state file.
+    if let Some(scope) = state_scope {
+        profile.identity = format!("ezwallpaper-backend:{scope}:{}", profile.identity);
     }
     // The on-disk state format stays exactly schema v1. Only non-default
     // periods use a qualified identity, so old hourly state remains readable;
@@ -583,6 +641,63 @@ mod tests {
         assert_ne!(result[0].content_id, result[1].content_id);
         assert!(!state.exists());
         assert!(!state_lock_path(&state).exists());
+    }
+
+    #[test]
+    fn wpaperd_scope_never_reuses_noctalia_state_identity() {
+        let (_dir, profile, state) = fixture();
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> { Ok(ApplyStatus::PathObserved) },
+        };
+        let applied = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3_600),
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: Some("wpaperd"),
+            },
+        )
+        .expect("offline scoped apply");
+        assert_eq!(applied.len(), 2);
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("state")).expect("JSON");
+        assert!(saved.profile.starts_with("ezwallpaper-backend:wpaperd:"));
+        assert!(
+            run_with_backend_interval_scoped(
+                &profile,
+                &state,
+                None,
+                false,
+                false,
+                RotationClock::simulated(60, 3_600),
+                RotationPort {
+                    backend: None,
+                    state_scope: None,
+                },
+            )
+            .is_err(),
+            "Noctalia cannot consume wpaperd state"
+        );
+        let preview = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            RotationClock::simulated(60, 3_600),
+            RotationPort {
+                backend: None,
+                state_scope: Some("wpaperd"),
+            },
+        )
+        .expect("wpaperd offline preview");
+        assert!(preview
+            .iter()
+            .all(|item| item.decision == RotationDecision::AlreadyApplied));
     }
 
     #[test]
