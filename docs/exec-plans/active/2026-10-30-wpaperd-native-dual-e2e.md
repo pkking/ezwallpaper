@@ -31,7 +31,7 @@ No installation, process management, daemon launch or fallback in production cod
 
 ## Constraints and invariants
 
-- Clone exact wpaperd tag v1.3.0 and verify commit SHA; use pinned Cargo.lock and no unpinned replacement or binary from a package manager.
+- Clone exact upstream wpaperd tag `1.3.0` (not `v1.3.0`) and verify commit SHA; use pinned Cargo.lock and no unpinned replacement or binary from a package manager.
 - Run native daemon only as a test-owned child of a disposable, isolated compositor with private HOME, XDG_RUNTIME_DIR, XDG_CONFIG_HOME, XDG_STATE_HOME, Wayland socket and profile assets. Explicit --config and no daemon detach; never reuse ambient desktop/session/socket.
 - Generate deterministic valid PNG files and a matching two-output profile; wait for two actual active compositor outputs and native daemon AllWallpapers inventory before testing.
 - Independently read both native CurrentWallpaper values and take both real grim screenshots; assert strict per-output pixel fractions before and after rotating exactly one target. Do not treat a fake socket, successful CLI return or daemon path readback alone as pixel evidence.
@@ -58,7 +58,7 @@ No installation, process management, daemon launch or fallback in production cod
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Upstream source | git checkout exact v1.3.0 commit and cargo --locked build | SHA, version and full build log | UNASSESSED |
+| Upstream source | git checkout exact tag `1.3.0` commit and cargo --locked build | SHA, version and full build log | UNASSESSED |
 | Native IPC | isolated wpaperd 1.3.0 AllWallpapers/CurrentWallpaper | exact output names and paths | UNASSESSED |
 | Visual | actual Sway HEADLESS-1/2 grim PPM/PNG and pixel_fraction | >=0.97 on both screens, before and after one-screen rotation | UNASSESSED |
 | Negative and cleanup | fake/no daemon, unknown monitor, state and process isolation | failures and no state commit | UNASSESSED |
@@ -79,9 +79,11 @@ User already approved Decision A for the product runtime. Starting and stopping 
 - Existing dual-output Sway E2E uses swaybg and real pixels; it does not test wpaperd. Pinned wpaperd's EGL requirements may conflict with existing pixman-only headless configuration; must validate in CI, never infer success.
 - A native daemon path reply is not a framebuffer assertion; both must be observed independently and retained as artifacts.
 
+- 2026-10-30: PR #113 first CI #41100973397 at HEAD `50de2d2dbc8c07530648b442f26d18fb4eea944a`: Sway visual job failed at `git clone --branch v1.3.0` with `fatal: Remote branch v1.3.0 not found`. Other six jobs passed and native Noctalia remained in progress when checked. GitHub source `danyspin97/wpaperd` resolves tag `1.3.0` to exactly `9e71fdd10e1f2d94532edaf0f54402aac3c0b01c` (`compare_commits` identical, zero ahead/behind); `v1.3.0` ref returns 404. Corrected the clone and exact-tag check to `1.3.0` in `.github/workflows/ci.yml`, preserving the independent SHA guard, pinned Cargo.lock, original eight jobs, and pixel assertions. New exact-head CI is required; no native pixels verified yet.
+
 ## Resume from here
 
-Open source PR for Issue #111 and this active plan. Inspect latest exact-head CI, run native helper tests, and diagnose any pinned build/EGL/IPC/framebuffer failure using original job logs and artifacts; fix on this branch without weakening checks. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
+PR #113 is open. Inspect latest exact-head CI after the upstream tag correction, run native helper tests, and diagnose any pinned build/EGL/IPC/framebuffer failure using original job logs and artifacts; fix on this branch without weakening checks. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
 
 ## Completion
 
