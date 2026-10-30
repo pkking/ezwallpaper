@@ -20,8 +20,8 @@ Repo `AGENTS.md`, `docs/agents/workflow.md`, `docs/agents/testing.md`, ADR 0010,
 
 ## Current facts
 
-- Base `master` following merged selection #102/#103, at `69c290eb6e3b41e6044c78c1852df879250c32c1` (verify before merge). Parent #83 OPEN.
-- Previous isolated offline wire tests [#105](https://github.com/pkking/ezwallpaper/pull/105) on its own branch: currently still CI pending (separate task #104); do not merge or assume its tests unless its own eight-check gate passes. This runtime slice may carry independent unit tests.
+- Source PR #109 began from master `69c290eb6e3b41e6044c78c1852df879250c32c1`; after independently verified exact-head 8/8 CI it merged as `1ee33c82b70cada7a83984ccd78c74db914243d9`. Parent #83 remains OPEN.
+- Isolated wire contract source PR [#105](https://github.com/pkking/ezwallpaper/pull/105) independently passed exact-head eight-job CI #41080116105 and merged as `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`. Its separate plan archive PR #110 is independently gated under Issue #104; this runtime slice has its own tests and merge evidence.
 - wpaperd v1.3.0 emits serde externally-tagged `{"SetWallpaper":{"path": "...", "monitors":["DP-1"]}}`, `{"CurrentWallpaper":{"monitor":"DP-1"}}` and `Result<IpcResponse,IpcError>` JSON with `{"Ok":"Ok"}`, `{"Ok":{"CurrentWallpaper":{"path":"..."}}}`, or `{"Err":...}` via UnixStream. Upstream daemon uses empty monitor vec as ALL, so always exactly one.
 - `SetWallpaper` queue may return `Ok` before asynchronous image decoder loads; later independent `CurrentWallpaper` can read its `current_img` but cannot prove pixels. Version compatibility beyond pinned 1.3.0 remains unassessed.
 - `require_acknowledged_outputs` runs before any state/lock dirs; current `rotation_backend()` is Noctalia-only, and `run_rotation` with apply=false never touches a backend. This contract must remain true.
