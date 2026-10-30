@@ -32,16 +32,16 @@ Preserve explicit `--rotation-backend wpaperd --apply` and existing Noctalia def
 
 ## Acceptance criteria
 
-- [ ] Correct production socket path to the upstream 1.3.0 root socket; document exact source evidence.
-- [ ] Add deterministic regression checking path construction and absent-socket rejection without touching ambient XDG environment or a real daemon.
-- [ ] README path corrected; no other runtime behavior change.
+- [x] Correct production socket path to the upstream 1.3.0 root socket; document exact source evidence.
+- [x] Add deterministic regression checking path construction and absent-socket rejection without touching ambient XDG environment or a real daemon.
+- [x] README path corrected; no other runtime behavior change.
 - [ ] Final source PR exact-head 8/8 completed/success, workflow completed/success, mergeable=true, diff/security reviewed, expected-head squash merged.
 - [ ] Separate docs-only completion archive PR has its own exact-head 8/8 success before #114 closes; parent #83 remains OPEN.
 
 ## Implementation slices
 
 - [x] Inspect pinned upstream path chain, real native CI failure, merged source and README.
-- [ ] Add production path correction, deterministic regression and README fix in this branch.
+- [x] Add production path correction, deterministic regression and README fix in this branch.
 - [ ] Run exact-head eight-job source CI, review and merge only after gates.
 - [ ] Archive through independent completion PR; close #114 only after archive merges.
 
@@ -50,7 +50,7 @@ Preserve explicit `--rotation-backend wpaperd --apply` and existing Noctalia def
 | Scope | Gate | Status |
 |---|---|---|
 | Upstream path | Fixed wpaperd 1.3.0 source + xdg 3.0.0 source | CODE reviewed |
-| Offline regression | Rust test for exact runtime root socket and absent endpoint | UNASSESSED |
+| Offline regression | Rust test for exact runtime root socket and absent endpoint | IMPLEMENTED, CI pending |
 | Full CI | Eight jobs on latest exact PR HEAD | UNASSESSED |
 | Native pixels | #111 separate actual compositor evidence | UNASSESSED |
 
@@ -61,6 +61,7 @@ User already approved A. Correcting a verified integration path is a routine bug
 ## Evidence log
 
 - 2026-10-30: upstream source, xdg 3.0.0 source and CI #41116832430 artifact #13007420138 inspected; wpaperd.log empty, Sway log shows two native layer surfaces, test failed waiting for nested socket. No user desktop touched.
+- 2026-10-30: branch `agent/fix-wpaperd-runtime-socket-114` source commits `9ed9c567140c8f0a012fd71fefa1361858e57f62`, `efa09652a5e3c78235e035b220c6a0aa8aca7f19`: root socket helper and deterministic fake listener test, README corrected. Tests not yet run; no green claim.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ Merged mock-only CI #109 was green despite a wrong production socket path; this 
 
 ## Resume from here
 
-Update `src/backend/wpaperd.rs` to use the raw XDG_RUNTIME_DIR root socket, add a deterministic regression, fix README path, then open a linked PR and inspect its new exact-head eight-job CI.
+Open the linked source PR for Issue #114 and inspect its exact-head eight-job CI; do not merge until all eight jobs and workflow succeed, mergeable=true and diff/security reviewed.
 
 ## Completion
 
