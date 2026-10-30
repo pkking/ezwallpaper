@@ -25,7 +25,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - Repository baseline (observed master 2026-10-30): `69c290eb6e3b41e6044c78c1852df879250c32c1`.
 - This repository currently has `.github/workflows/ci.yml` only; its PR validator requires exactly one open Issue, a matching plan and that plan changed by each PR.
 - Verified OpenWiki v0.7.2 package declares Node.js `>=22.22.0` and upstream supplies `openwiki code --update --print` plus a scheduled PR example.
-- GitHub repository secrets cannot be inspected here. Real OpenRouter inference, PR-token permissions and first-generation output are **UNVERIFIED**.
+- GitHub repository secrets cannot be inspected here. Real Volcengine Ark inference, PR-token permissions and first-generation output are **UNVERIFIED**.
 - CI checks actually observed for this change: none yet. Existing Rust CI remains unchanged.
 - Supported platforms: OpenWiki runs in Linux CI; Windows/macOS local generation not assessed.
 
@@ -46,6 +46,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] Generated PR contains exactly one open Issue and active plan identity, modifies that plan and does not include executable files.
 - [x] Only material generated wiki changes create/update a PR; generation or missing credentials fail closed.
 - [x] Document required secret setup and security/maintenance constraints.
+- [x] Replace initial OpenRouter configuration with official Volcengine Ark OpenAI-compatible API endpoint and model; retain separate PR token and fail-closed behavior.
 - [ ] Required CI on this integration PR's latest HEAD is successful.
 - [ ] First real OpenWiki generation and its generated documentation PR verified after secrets are configured.
 
@@ -54,13 +55,15 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] 1. Inspect upstream OpenWiki v0.7.2 and the existing PR integrity validator.
 - [x] 2. Add restricted weekly/manual generation workflow and token separation.
 - [x] 3. Add human-readable setup/runbook and persistent checkpoint protocol.
+- [x] 3a. Switch provider to Volcengine Ark per user request, and update secrets/verification notes.
 - [ ] 4. Verify final integration PR CI and independently review generated docs on first manual run.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Upstream compatibility | OpenWiki v0.7.2 package/official workflow | Node runtime and CLI semantics | inspected |
+| Upstream compatibility | OpenWiki v0.7.2 package/official workflow, `src/agent/index.ts` | Node runtime, OpenAI-compatible model transport and CLI semantics | inspected |
+| Ark API compatibility | Official Ark SDK guide/model list | Endpoint, published model ID and tool-call capability | documented, runtime unverified |
 | YAML | Parse workflow, check schedule and permissions | Valid syntax, restricted output | pending |
 | PR governance | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v`; PR `plan-integrity` | Original validator continues to pass | pending |
 | Rust quality and tests | Existing GitHub Actions eight-job suite | Latest PR HEAD passing | pending |
@@ -68,10 +71,11 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 
 ## Decision gates
 
-No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require an explicit `OPENROUTER_API_KEY` secret before execution.
+No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require an explicit `ARK_API_KEY` secret before execution. The configured provider is `openai-compatible` with Ark base URL `https://ark.cn-beijing.volces.com/api/v3` and published model ID `doubao-seed-2-1-pro-260915` (not the Coding Plan endpoint).
 
 ## Evidence log
 
+- 2026-10-30: Ark integration selection: reviewed [OpenWiki v0.7.2 `createModel()`](https://github.com/langchain-ai/openwiki/blob/v0.7.2/src/agent/index.ts) and [Volcengine Ark OpenAI SDK compatibility guide](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh), including official model identifier and base URL. Changed provider env to `openai-compatible`, changed required secret from `OPENROUTER_API_KEY` to `ARK_API_KEY`, and restricted concurrency to 1. No real inference run or credential availability observed.
 - 2026-10-30: GitHub `master` commit `69c290eb6e3b41e6044c78c1852df879250c32c1`; read `AGENTS.md`, `docs/agents/workflow.md`, `scripts/validate_agent_plan.py`, existing Actions workflow and upstream `v0.7.2` example. No new CI/production runtime test asserted.
 
 ## Deviations and discoveries
@@ -82,13 +86,13 @@ No automatic merge. Maintaining the currently enforced Issue/plan linkage takes 
 
 ## Resume from here
 
-After the integration PR's final HEAD passes CI and merges, configure the two documented Actions secrets and manually dispatch `OpenWiki documentation` on master; inspect the resulting run and governed generated-docs PR before merge.
+After the integration PR's final HEAD passes CI and merges, configure the `ARK_API_KEY` and `OPENWIKI_PR_TOKEN` Actions secrets and manually dispatch `OpenWiki documentation` on master; inspect the resulting run and governed generated-docs PR before merge.
 
 ## Completion
 
 Final commit: pending
 CI run: pending
 E2E artifact: not applicable (documentation automation; first real generation pending secrets)
-Remaining unassessed items: credential availability, OpenRouter model availability/cost, initial wiki accuracy, generated PR head CI, real publication after merge
+Remaining unassessed items: credential availability, Ark model access/tool-call success/usage cost, initial wiki accuracy, generated PR head CI, real publication after merge
 
 Keep this plan active while generated documentation PRs reference Issue #106. Retire the automation's validation linkage before archiving/closing.
