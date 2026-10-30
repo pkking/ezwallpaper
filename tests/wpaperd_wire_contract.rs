@@ -54,8 +54,7 @@ fn round_trip(
             let mut buf = [0_u8; 4096];
             let n = fake_server.read(&mut buf).map_err(|e| e.to_string())?;
             // The real handler reads a bounded, single JSON request.
-            let decoded: Value =
-                serde_json::from_slice(&buf[..n]).map_err(|e| e.to_string())?;
+            let decoded: Value = serde_json::from_slice(&buf[..n]).map_err(|e| e.to_string())?;
             if let Some(reply) = fake_response {
                 fake_server
                     .write_all(reply.as_bytes())
@@ -112,14 +111,12 @@ fn send_one_named_monitor_preserving_unicode_and_spaces() {
     );
     assert_eq!(result, Ok(Reply::Ok));
     // A successful SetWallpaper returns before async image decode completes.
-    assert!(!observed_exact_output(
-        &request,
-        &result,
-        "DP-1",
-        &image
-    ));
+    assert!(!observed_exact_output(&request, &result, "DP-1", &image));
     // The upstream server treats monitors=[] as broadcast; never send it.
-    assert_eq!(wire["SetWallpaper"]["monitors"].as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        wire["SetWallpaper"]["monitors"].as_array().map(Vec::len),
+        Some(1)
+    );
 }
 
 #[test]
@@ -149,10 +146,14 @@ fn independent_per_output_readback_is_required_after_ack() {
         Some(r#"{"Ok":{"CurrentWallpaper":{"path":"/tmp/new wallpaper.png"}}}"#),
     )
     .expect("fake independent reply");
-    assert!(observed_exact_output(&readback, &confirmed, output, &target));
+    assert!(observed_exact_output(
+        &readback, &confirmed, output, &target
+    ));
 
     // A query for one output must never be accepted as proof for another.
-    assert!(!observed_exact_output(&readback, &confirmed, "DP-1", &target));
+    assert!(!observed_exact_output(
+        &readback, &confirmed, "DP-1", &target
+    ));
 }
 
 #[test]
@@ -168,9 +169,7 @@ fn server_rejections_and_wrong_variant_cannot_commit() {
         r#"{"Ok":"Ok"}"#,
     ] {
         let (_, result) = round_trip(&readback, Some(remote)).expect("valid fake wire reply");
-        assert!(!observed_exact_output(
-            &readback, &result, "DP-1", target
-        ));
+        assert!(!observed_exact_output(&readback, &result, "DP-1", target));
     }
 }
 
