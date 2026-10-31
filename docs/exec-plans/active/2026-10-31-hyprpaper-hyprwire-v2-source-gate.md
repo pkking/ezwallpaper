@@ -37,15 +37,15 @@ Repo AGENTS.md, docs/agents/{workflow,testing}.md, existing [source-selection re
 
 ## Acceptance criteria
 
-- [ ] Fixed release v0.8.4 code review records exact socket, apply, matcher/UI, event vs fresh snapshot, timer and monitor wildcard.
-- [ ] A source-backed GO/NO-GO gate, honest unresolved Hyprwire client/binary framing and cross-process status ordering; compare historical source-selection assumptions.
+- [x] Fixed release v0.8.4 code review recorded in `docs/architecture/hyprpaper-hyprwire-v2-source-gate-127.md`, anchored to source IPC.cpp/XML/UI.cpp/WallpaperMatcher.cpp. Full CI pending.
+- [x] **CONDITIONAL / NOT READY**: independently created status object may give fresh path snapshot; long-lived subscription is insufficiently evidenced for IPC-triggered updates; ABI/handshake and ordering remain UNASSESSED. Historical assessment cross-linked.
 - [ ] Only independent docs/plan paths changed, with Issue/Plan metadata, eight exact-head CI checks PASS, no production/default/diagram change.
 - [ ] Source PR exact-head squash merged, then separate completed-plan archive PR with own eight-check CI; close #127 only when archive verified, parent #83 stays OPEN.
 
 ## Implementation slices
 
 - [x] Read fixed current release and previous pinned main IPC/XML/UI/WallpaperMatcher sources; opened Issue #127 and active plan before report.
-- [ ] Write code-anchored assessment in `docs/architecture/hyprpaper-hyprwire-v2-source-gate-127.md`, cross-link historical selection report without misrepresenting original 2026-10-28 point-in-time selection.
+- [x] Created fixed-release function-anchored report and cross-linked original research as a later supplement without changing historical claims.
 - [ ] Open independent docs-only source PR, pass CI, merge; separately archive plan and close child issue.
 
 ## Verification matrix
@@ -64,6 +64,7 @@ No user decision required for source research. Production Hyprpaper enabling, ne
 
 ## Evidence log
 
+- 2026-10-31: authored released Hyprpaper v0.8.4 source report with explicit conditional gate and future client-native test sequence, added historical report cross-link. Only documentation changes; CI pending. Important finding: status snapshot is sent on object creation, but manual IPC apply does not visibly send `onWallpaperChanged` along inspected call graph. Nothing actually executed on user desktop.
 - 2026-10-31: GitHub source at release commit `20fc0fa6...`: `IPC.cpp`, protocol XML, `WallpaperMatcher.cpp`, `UI.cpp` reviewed. Most significant surprise: get_status_object sends immediate current target snapshot, but onWallpaperChanged call found on timer path only, not targetChanged. Must test refresh-style readback rather than assume subscription updates.
 
 ## Deviations and discoveries
@@ -72,7 +73,7 @@ None beyond disclosed upstream event boundary.
 
 ## Resume from here
 
-Write fixed-version report and link from prior selection report. Verify only docs+plan changes, create PR with Issue #127 and this active Plan metadata; all eight exact-head CI checks required. Source PR merge only if all pass and mergeable=true, then independent archive PR own CI, close child #127 and leave #83 OPEN.
+Open independent docs-only PR with Issue #127 and this active plan, verify exactly three Markdown paths. Check all eight mandatory latest exact-head CI jobs and mergeable=true; only then normal expected-head squash merge. Independently archive plan to completed in a separate docs-only PR with its own 8/8 exact-head CI; close #127 afterward, keep #83 OPEN. Do not introduce an unproven Hyprwire client or a default backend change.
 
 ## Completion
 
