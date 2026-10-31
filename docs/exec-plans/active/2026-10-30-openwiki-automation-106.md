@@ -48,6 +48,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] Document required secret setup and security/maintenance constraints.
 - [x] Replace initial OpenRouter configuration with Volcengine Ark OpenAI-compatible API and model; retain separate PR token and fail-closed behavior.
 - [x] Make Ark Base URL configurable via required `ARK_BASE_URL` repository secret; document private endpoint runner-network requirement.
+- [x] Add a pre-generation live Ark smoke test for endpoint reachability, API-key authentication, model ID and forced tool calling; mask secrets and do not log the custom URL or response body.
 - [ ] Required CI on this integration PR's latest HEAD is successful.
 - [ ] First real OpenWiki generation and its generated documentation PR verified after secrets are configured.
 
@@ -57,6 +58,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] 2. Add restricted weekly/manual generation workflow and token separation.
 - [x] 3. Add human-readable setup/runbook and persistent checkpoint protocol.
 - [x] 3a. Switch provider to Volcengine Ark per user request, and update secrets/verification notes.
+- [x] 3b. Add live API preflight before OpenWiki runs; keep it in the trusted master schedule/manual workflow, not generic PR CI.
 - [ ] 4. Verify final integration PR CI and independently review generated docs on first manual run.
 
 ## Verification matrix
@@ -66,6 +68,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 | Upstream compatibility | OpenWiki v0.7.2 package/official workflow, `src/agent/index.ts` | Node runtime, OpenAI-compatible model transport and CLI semantics | inspected |
 | Ark API compatibility | Official Ark SDK guide/model list | Endpoint, published model ID and tool-call capability | documented, runtime unverified |
 | Custom endpoint configuration | `ARK_BASE_URL` Actions secret | Workflow does not hardcode provider host; endpoint reachable from runner | configured, actual value/reachability unverified |
+| Ark live preflight | Python stdlib HTTPS POST to `/chat/completions`, forced `openwiki_ci_probe` tool call | Validates network/TLS, API key, model ID and tool calling; secrets/URL/body not logged | implemented; live run pending secrets |
 | YAML | Parse workflow, check schedule and permissions | Valid syntax, restricted output | pending |
 | PR governance | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v`; PR `plan-integrity` | Original validator continues to pass | pending |
 | Rust quality and tests | Existing GitHub Actions eight-job suite | Latest PR HEAD passing | pending |
@@ -73,13 +76,14 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 
 ## Decision gates
 
-No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible`; model ID `glm-5.3-flash` was explicitly requested by the repository owner. The API Base URL is supplied through `ARK_BASE_URL`; no public provider URL is hardcoded. The custom gateway's exact model-ID mapping, tool-calling compatibility and runtime behavior remain unverified.
+No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible`; model ID `glm-5.3-flash` was explicitly requested by the repository owner. The API Base URL is supplied through `ARK_BASE_URL`; no public provider URL is hardcoded. The custom gateway's exact model-ID mapping, tool-calling compatibility and runtime behavior remain unverified. A one-request, 32-token live preflight now runs before OpenWiki; it can incur a small API charge and intentionally runs only on trusted master schedule/manual events, not generic PR CI.
 
 ## Evidence log
 
 - 2026-10-30: User requirement: Ark API Base URL is deployment-specific and must not be hardcoded. Added required `ARK_BASE_URL` secret to workflow preflight and wired it to `OPENAI_COMPATIBLE_BASE_URL`; documented base URL path semantics and GitHub runner network reachability. No custom endpoint value or network connectivity was provided/verified.
 - 2026-10-30: Ark integration selection: reviewed [OpenWiki v0.7.2 `createModel()`](https://github.com/langchain-ai/openwiki/blob/v0.7.2/src/agent/index.ts) and [Volcengine Ark OpenAI SDK compatibility guide](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh), including official model identifier and base URL. Changed provider env to `openai-compatible`, changed required secret from `OPENROUTER_API_KEY` to `ARK_API_KEY`, and restricted concurrency to 1. No real inference run or credential availability observed.
 - 2026-10-31: User requested model ID `glm-5.3-flash`; updated workflow, runbook and plan. This identifier is configured as supplied, but the custom Ark gateway's mapping and tool-call compatibility have not been verified against live credentials.
+- 2026-10-31: Added live Ark preflight before OpenWiki generation. The probe validates HTTPS URL structure, network/TLS connectivity, API-key authentication, configured model ID and forced function calling; it masks credentials and URL and never prints the response body. Probe execution is pending repository secrets; one small billable model request is expected.
 - 2026-10-30: GitHub `master` commit `69c290eb6e3b41e6044c78c1852df879250c32c1`; read `AGENTS.md`, `docs/agents/workflow.md`, `scripts/validate_agent_plan.py`, existing Actions workflow and upstream `v0.7.2` example. No new CI/production runtime test asserted.
 
 ## Deviations and discoveries
@@ -90,13 +94,13 @@ No automatic merge. Maintaining the currently enforced Issue/plan linkage takes 
 
 ## Resume from here
 
-After the integration PR's final HEAD passes CI and merges, configure `ARK_API_KEY`, `ARK_BASE_URL` and `OPENWIKI_PR_TOKEN` Actions secrets and manually dispatch `OpenWiki documentation` on master; inspect the resulting run and governed generated-docs PR before merge.
+After the integration PR's final HEAD passes CI and merges, configure `ARK_API_KEY`, `ARK_BASE_URL` and `OPENWIKI_PR_TOKEN` Actions secrets and manually dispatch `OpenWiki documentation` on master. Confirm the Ark preflight passes before reviewing the generated wiki and its governed PR; then inspect all required PR checks before merge.
 
 ## Completion
 
 Final commit: pending
 CI run: pending
 E2E artifact: not applicable (documentation automation; first real generation pending secrets)
-Remaining unassessed items: credential availability, custom Ark Base URL reachability, Ark model access/tool-call success/usage cost, initial wiki accuracy, generated PR head CI, real publication after merge
+Remaining unassessed items: credential availability, custom Ark Base URL reachability, live Ark preflight result and probe cost, initial wiki accuracy, generated PR head CI, real publication after merge
 
 Keep this plan active while generated documentation PRs reference Issue #106. Retire the automation's validation linkage before archiving/closing.
