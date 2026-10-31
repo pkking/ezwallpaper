@@ -1,0 +1,274 @@
+name: OpenWiki documentation
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Monday 08:17 UTC (GitHub Actions cron uses UTC).
+    - cron: "17 8 * * 1"
+
+# Only the dedicated, repository-scoped PR token writes to GitHub.
+permissions:
+  contents: read
+
+concurrency:
+  group: openwiki-documentation
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Shared by the live preflight and the actual OpenWiki generation.
+      OPENWIKI_MODEL_ID: glm-5.3-flash
+    steps:
+      - name: Verify unattended credentials are configured
+        shell: bash
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_BASE_URL: ${{ secrets.ARK_BASE_URL }}
+          OPENWIKI_PR_TOKEN: ${{ secrets.OPENWIKI_PR_TOKEN }}
+        run: |
+          if [[ -z "$ARK_API_KEY" || -z "$ARK_BASE_URL" || -z "$OPENWIKI_PR_TOKEN" ]]; then
+            echo "::error::Configure ARK_API_KEY, ARK_BASE_URL and OPENWIKI_PR_TOKEN as Actions secrets before running OpenWiki."
+            exit 1
+          fi
+
+      - name: Verify Ark endpoint, API key, model and tool calling
+        shell: bash
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_BASE_URL: ${{ secrets.ARK_BASE_URL }}
+          OPENWIKI_PR_TOKEN: ${{ secrets.OPENWIKI_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$ARK_API_KEY" || -z "$ARK_BASE_URL" || -z "$OPENWIKI_PR_TOKEN" ]]; then
+            echo "::error::Configure ARK_API_KEY, ARK_BASE_URL and OPENWIKI_PR_TOKEN as repository Actions secrets."
+            exit 1
+          fi
+          # Mask the custom endpoint as well as credentials in all subsequent logs.
+          echo "::add-mask::$ARK_API_KEY"
+          echo "::add-mask::$ARK_BASE_URL"
+          echo "::add-mask::$OPENWIKI_PR_TOKEN"
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          base_url = os.environ["ARK_BASE_URL"].strip()
+          api_key = os.environ["ARK_API_KEY"]
+          model = os.environ["OPENWIKI_MODEL_ID"]
+
+          parsed = urllib.parse.urlsplit(base_url)
+          if (
+              parsed.scheme != "https"
+              or not parsed.netloc
+              or parsed.username
+              or parsed.password
+              or parsed.query
+              or parsed.fragment
+              or parsed.path.rstrip("/").endswith("/chat/completions")
+          ):
+              print("::error::ARK_BASE_URL must be an HTTPS OpenAI-compatible API base URL, without credentials, query, fragment or /chat/completions suffix.")
+              sys.exit(1)
+
+          endpoint = base_url.rstrip("/") + "/chat/completions"
+          payload = {
+              "model": model,
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Call the openwiki_ci_probe function with ok=true."
+                  }
+              ],
+              "tools": [
+                  {
+                      "type": "function",
+                      "function": {
+                          "name": "openwiki_ci_probe",
+                          "description": "CI compatibility probe. Return ok=true.",
+                          "parameters": {
+                              "type": "object",
+                              "properties": {"ok": {"type": "boolean"}},
+                              "required": ["ok"],
+                              "additionalProperties": False
+                          }
+                      }
+                  }
+              ],
+              "tool_choice": {
+                  "type": "function",
+                  "function": {"name": "openwiki_ci_probe"}
+              },
+              "parallel_tool_calls": False,
+              "max_tokens": 32,
+              "temperature": 0
+          }
+          request = urllib.request.Request(
+              endpoint,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": "Bearer " + api_key,
+                  "Content-Type": "application/json"
+              },
+              method="POST"
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  status = response.status
+                  response_bytes = response.read(1024 * 1024)
+          except urllib.error.HTTPError as error:
+              status = error.code
+              response_bytes = error.read(1024 * 1024)
+          except (urllib.error.URLError, TimeoutError, OSError):
+              print("::error::Cannot reach the configured Ark endpoint (DNS, TLS, network or timeout). Check ARK_BASE_URL and GitHub runner network access.")
+              sys.exit(1)
+
+          if status != 200:
+              hints = {
+                  400: "Request rejected. Check model ID, endpoint compatibility and tool-calling support.",
+                  401: "Authentication failed. Check ARK_API_KEY.",
+                  403: "Access denied. Check API-key permissions and model entitlement.",
+                  404: "Endpoint or model not found. Check ARK_BASE_URL and model ID.",
+                  429: "Rate limit or quota exceeded. Check Ark quota and retry later.",
+              }
+              print(f"::error::Ark smoke test failed with HTTP {status}. {hints.get(status, 'Check endpoint configuration and Ark service status.')}")
+              sys.exit(1)
+
+          try:
+              result = json.loads(response_bytes)
+              choice = result["choices"][0]
+              message = choice["message"]
+              tool_calls = message.get("tool_calls") or []
+              probe = next(
+                  (
+                      call for call in tool_calls
+                      if call.get("function", {}).get("name") == "openwiki_ci_probe"
+                  ),
+                  None
+              )
+              arguments = json.loads(probe["function"]["arguments"]) if probe else {}
+          except (ValueError, KeyError, IndexError, TypeError):
+              print("::error::Ark returned HTTP 200 but the response was not a valid OpenAI-compatible chat-completions response.")
+              sys.exit(1)
+
+          if choice.get("finish_reason") != "tool_calls" or not probe or arguments.get("ok") is not True:
+              print("::error::Ark accepted the request but did not complete the forced function call. Check glm-5.3-flash tool-calling compatibility.")
+              sys.exit(1)
+
+          print("Ark smoke test passed: HTTPS endpoint reachable, API key accepted, model responded, and function/tool calling works.")
+          PY
+
+      - name: Checkout full repository history
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up supported Node.js runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.22.0"
+
+      - name: Install pinned upstream OpenWiki
+        run: npm install --global openwiki@0.7.2 mermaid@11.16.0 jsdom@29.1.1
+
+      - name: Generate or incrementally update source-grounded wiki
+        env:
+          OPENWIKI_PROVIDER: openai-compatible
+          OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
+          OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
+          OPENWIKI_TELEMETRY_DISABLED: "1"
+          OPENWIKI_PAGE_CONCURRENCY: "1"
+        run: openwiki code --update --print
+
+      - name: Restrict generated changes to wiki documents
+        id: wiki
+        shell: bash
+        run: |
+          set -euo pipefail
+          # OpenWiki may offer a managed AGENTS.md block. The existing
+          # root AGENTS.md is authoritative; never publish generated edits.
+          # Do not trust any index changes made by model-driven tooling.
+          # Reset the staging area before adding the strict documentation allowlist.
+          git reset -q HEAD
+          git restore -- AGENTS.md
+          rm -f -- openwiki/.run.json
+          if [[ ! -d openwiki ]]; then
+            echo "::error::OpenWiki succeeded without creating openwiki/."
+            exit 1
+          fi
+          git add -A -- openwiki/
+          # A no-op update can touch only the check timestamp; do not open
+          # documentation PRs for timestamp-only churn.
+          if git diff --cached --quiet -- . ':(exclude)openwiki/.last-update.json'; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkpoint the ongoing documentation maintenance plan
+        if: steps.wiki.outputs.changed == 'true'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Never allow an LLM-authored change to the governance plan.
+          git restore -- docs/exec-plans/active/2026-10-30-openwiki-automation-106.md
+          python3 - <<'PY'
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path("docs/exec-plans/active/2026-10-30-openwiki-automation-106.md")
+          content = path.read_text(encoding="utf-8")
+          marker = "## Evidence log\n"
+          if content.count(marker) != 1:
+              raise SystemExit("Unexpected execution-plan evidence section")
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          line = (
+              f"- {timestamp}: OpenWiki 0.7.2 generated documentation from "
+              f"`{os.environ['BASE_SHA']}`; Actions run {os.environ['RUN_URL']}. "
+              "Generated-docs PR CI and human review remain pending.\n"
+          )
+          path.write_text(content.replace(marker, marker + "\n" + line, 1), encoding="utf-8")
+          PY
+
+      - name: Open or update the governed documentation PR
+        if: steps.wiki.outputs.changed == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.OPENWIKI_PR_TOKEN }}
+          branch: openwiki/update
+          base: master
+          add-paths: |
+            openwiki
+            docs/exec-plans/active/2026-10-30-openwiki-automation-106.md
+          commit-message: "docs(openwiki): refresh generated knowledge base"
+          title: "docs(openwiki): refresh generated knowledge base"
+          body: |
+            Issue: #106
+            Plan: docs/exec-plans/active/2026-10-30-openwiki-automation-106.md
+
+            Generated by the version-pinned OpenWiki CLI from master.
+
+            Review the source evidence and Markdown content before merging.
+            Generated changes are intentionally restricted to `openwiki/` and
+            the ongoing maintenance plan checkpoint. No auto-merge is enabled.
+
+            Architecture diagram: not applicable
+          delete-branch: true
+
+      - name: Link generated documentation PR
+        if: steps.create-pr.outputs.pull-request-url != ''
+        env:
+          PR_URL: ${{ steps.create-pr.outputs.pull-request-url }}
+        run: echo "::notice title=OpenWiki documentation PR::$PR_URL"
