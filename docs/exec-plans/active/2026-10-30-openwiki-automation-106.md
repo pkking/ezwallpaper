@@ -26,7 +26,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - This repository currently has `.github/workflows/ci.yml` only; its PR validator requires exactly one open Issue, a matching plan and that plan changed by each PR.
 - Verified OpenWiki v0.7.2 package declares Node.js `>=22.22.0` and upstream supplies `openwiki code --update --print` plus a scheduled PR example.
 - GitHub repository secrets cannot be inspected here. Real Volcengine Ark inference, custom Base URL secret, PR-token permissions and first-generation output are **UNVERIFIED**.
-- CI checks actually observed for this change: none yet. Existing Rust CI remains unchanged.
+- CI checks actually observed for this change: none yet. Product Rust code and test assertions remain unchanged; CI now selects the Noctalia-specific safety and heavyweight E2E jobs from relevant source/test paths.
 - Supported platforms: OpenWiki runs in Linux CI; Windows/macOS local generation not assessed.
 
 ## Constraints and invariants
@@ -49,6 +49,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] Replace initial OpenRouter configuration with Volcengine Ark OpenAI-compatible API and model; retain separate PR token and fail-closed behavior.
 - [x] Make Ark Base URL configurable via required `ARK_BASE_URL` repository secret; document private endpoint runner-network requirement.
 - [x] Add a pre-generation live Ark smoke test for endpoint reachability, API-key authentication, model ID and forced tool calling; mask secrets and do not log the custom URL or response body.
+- [x] Add path-based Noctalia test selection: skip Noctalia-only safety/E2E for docs-only or unrelated CI changes; retain execution for source, dependency, integration harness, Noctalia helper or Noctalia-job changes.
 - [ ] Required CI on this integration PR's latest HEAD is successful.
 - [ ] First real OpenWiki generation and its generated documentation PR verified after secrets are configured.
 
@@ -59,6 +60,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 - [x] 3. Add human-readable setup/runbook and persistent checkpoint protocol.
 - [x] 3a. Switch provider to Volcengine Ark per user request, and update secrets/verification notes.
 - [x] 3b. Add live API preflight before OpenWiki runs; keep it in the trusted master schedule/manual workflow, not generic PR CI.
+- [x] 3c. Add a CI change-scope detector and gate only Noctalia-specific tests; keep general Rust/Sway/agent CI unaffected.
 - [ ] 4. Verify final integration PR CI and independently review generated docs on first manual run.
 
 ## Verification matrix
@@ -69,6 +71,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 | Ark API compatibility | Official Ark SDK guide/model list | Endpoint, published model ID and tool-call capability | documented, runtime unverified |
 | Custom endpoint configuration | `ARK_BASE_URL` Actions secret | Workflow does not hardcode provider host; endpoint reachable from runner | configured, actual value/reachability unverified |
 | Ark live preflight | Python stdlib HTTPS POST to `/chat/completions`, forced `openwiki_ci_probe` tool call | Validates network/TLS, API key, model ID and tool calling; secrets/URL/body not logged | implemented; live run pending secrets |
+| Noctalia test selection | `change-scope` job compares changed paths and the Noctalia CI job block | Docs-only changes skip Noctalia safety + 75-minute native E2E; source/dependency/harness/job changes run them | implemented; latest PR CI pending |
 | GitHub PR token | Preflight checks secret presence; `create-pull-request` performs actual write when content changes | Token can create/update branch and PR | presence check implemented; write permission pending first real PR |
 | YAML | Parse workflow, check schedule and permissions | Valid syntax, restricted output | pending |
 | PR governance | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v`; PR `plan-integrity` | Original validator continues to pass | pending |
@@ -84,6 +87,7 @@ No automatic merge. Maintaining the currently enforced Issue/plan linkage takes 
 - 2026-10-30: User requirement: Ark API Base URL is deployment-specific and must not be hardcoded. Added required `ARK_BASE_URL` secret to workflow preflight and wired it to `OPENAI_COMPATIBLE_BASE_URL`; documented base URL path semantics and GitHub runner network reachability. No custom endpoint value or network connectivity was provided/verified.
 - 2026-10-30: Ark integration selection: reviewed [OpenWiki v0.7.2 `createModel()`](https://github.com/langchain-ai/openwiki/blob/v0.7.2/src/agent/index.ts) and [Volcengine Ark OpenAI SDK compatibility guide](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh), including official model identifier and base URL. Changed provider env to `openai-compatible`, changed required secret from `OPENROUTER_API_KEY` to `ARK_API_KEY`, and restricted concurrency to 1. No real inference run or credential availability observed.
 - 2026-10-31: User requested model ID `glm-5.3-flash`; updated workflow, runbook and plan. This identifier is configured as supplied, but the custom Ark gateway's mapping and tool-call compatibility have not been verified against live credentials.
+- 2026-10-31: Added path-based Noctalia test selection. The selector checks `src/**`, Cargo manifests, Sway/Noctalia harnesses, Noctalia safety scripts/tests, and changes to the Noctalia job definition. It ignores only the selector's own `needs`/`if` wiring when comparing that job, so this PR's unrelated CI changes do not trigger Noctalia. The Noctalia-only unit test was moved out of the general Rust test step into its own gated job; core Rust tests remain independent.
 - 2026-10-31: Added live Ark preflight before OpenWiki generation. The probe validates HTTPS URL structure, network/TLS connectivity, API-key authentication, configured model ID and forced function calling; it masks credentials and URL and never prints the response body. Probe execution is pending repository secrets; one small billable model request is expected.
 - 2026-10-30: GitHub `master` commit `69c290eb6e3b41e6044c78c1852df879250c32c1`; read `AGENTS.md`, `docs/agents/workflow.md`, `scripts/validate_agent_plan.py`, existing Actions workflow and upstream `v0.7.2` example. No new CI/production runtime test asserted.
 
@@ -102,6 +106,6 @@ After the integration PR's final HEAD passes CI and merges, configure `ARK_API_K
 Final commit: pending
 CI run: pending
 E2E artifact: not applicable (documentation automation; first real generation pending secrets)
-Remaining unassessed items: credential availability, custom Ark Base URL reachability, live Ark preflight result and probe cost, initial wiki accuracy, generated PR head CI, real publication after merge
+Remaining unassessed items: credential availability, custom Ark Base URL reachability, live Ark preflight result and probe cost, Noctalia path-selector result on latest CI, initial wiki accuracy, generated PR head CI, real publication after merge
 
 Keep this plan active while generated documentation PRs reference Issue #106. Retire the automation's validation linkage before archiving/closing.
