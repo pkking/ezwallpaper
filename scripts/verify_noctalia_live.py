@@ -108,6 +108,22 @@ def call(runner, argv: list[str], error: str) -> str:
     return proc.stdout.rstrip("\r\n")
 
 
+def doctor_ready(report: str) -> bool:
+    """Require unique, unambiguous standalone capability booleans."""
+    required = {"available", "noctalia_ipc_reachable"}
+    seen = {}
+    for line in report.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        if key in required:
+            if key in seen or value.strip() not in ("true", "false"):
+                return False
+            seen[key] = value.strip()
+    return all(seen.get(key) == "true" for key in required)
+
+
 def current_wallpaper(runner, output: str) -> str:
     observed = call(runner, ["noctalia", "msg", "wallpaper-get", output], "wallpaper_get_failed")
     if not observed or "\n" in observed or "\r" in observed:
@@ -150,7 +166,7 @@ def verify_dual(
     """Injected command runner/ask keep all unit tests strictly offline."""
     preconditions(outputs, env, confirmed)
     doctor = call(runner, [binary, "--setter", "noctalia", "doctor"], "noctalia_doctor_failed")
-    if "available: true" not in doctor or "noctalia_ipc_reachable: true" not in doctor:
+    if not doctor_ready(doctor):
         raise VerificationError("noctalia_ipc_unavailable")
 
     # Snapshot every output BEFORE creating a fixture or changing anything.
