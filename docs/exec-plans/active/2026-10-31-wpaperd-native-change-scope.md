@@ -36,17 +36,17 @@ AGENTS.md; docs/agents/{workflow,testing}.md; CI `.github/workflows/ci.yml` exis
 
 ## Acceptance criteria
 
-- [ ] Pure offline conservative selector and positive/negative tests, imported into current `change-scope` with new output.
-- [ ] Three native-only steps gated, all original jobs/real Sway tests preserved and failure evidence preserved when selected.
+- [x] Added pure `scripts/ci_integration_scope.py::requires_wpaperd_native`, offline test matrix, and new `change-scope.outputs.wpaperd`; source committed, CI execution pending.
+- [x] Gated exactly three native-only steps; `sway-visual-e2e` still runs real Sway/swaybg pixel assertions, offline native helper tests and the existing eight-check CI structure. GitHub CI pending.
 - [ ] CI changes force native E2E on source PR latest head; inspect exact job step results and uploaded native evidence; all eight required jobs SUCCESS. Report native selection explicitly.
-- [ ] Relevant source-change and docs-only selector tests cover path edges; no false evidence that a skipped E2E passed.
+- [x] Added `tests/test_ci_integration_scope.py` cases: docs/plan-only false, source/Core/dependency/workflow/shared tests true, mixed and deleted/rename paths; docs/agents/testing.md distinguishes NOT SELECTED from actual native pixel PASS.
 - [ ] Source PR merged using exact expected HEAD only on 8/8 SUCCESS and compatible reviews/ruleset; independent archive docs PR own CI, child #121 closed afterward; parent #83 OPEN.
 
 ## Implementation slices
 
 - [x] Inspected exact source, existing Noctalia path filter, actual pinned native build/pixel E2E, source CI and open issues; created #121 and this active plan before code.
-- [ ] Add pure Python path filter and offline tests; integrate into existing CI selector.
-- [ ] Add native-step-only gate, evidence documentation, source PR.
+- [x] Added testable pure filter and offline matrix; added test invocation and output to existing change-scope Noctalia workflow without changing Noctalia filter logic.
+- [x] Added native-only build/run/upload gates and evidence document; source PR creation pending.
 - [ ] Verify exact-head CI (source PR must run real wpaperd!), squash merge and independently archive.
 
 ## Verification matrix
@@ -65,15 +65,16 @@ No new human decision required. Original Decision A (already-running wpaperd onl
 
 ## Evidence log
 
+- 2026-10-31: authored pure source-based selector, positive/negative offline tests, change-scope output, scoped three native steps and explicit NOT SELECTED evidence documentation. No local Rust/Cargo/native test run claimed. Source PR CI pending; CI workflow change itself must select pinned native wpaperd E2E.
 - 2026-10-31: fixed upstream 1.3.0 native E2E source PR #113 8/8 and tests/e2e/sway/wpaperd_native.py reviewed. Existing workflow L345–375 always builds upstream even on docs-only, while Noctalia already filters by changed paths. CI selection is requested in #121; not yet tested or merged.
 
 ## Deviations and discoveries
 
-None yet.
+- The existing Noctalia change-scope classifier inspects workflow header and its native job text. Introducing a new `wpaperd` output and `needs: change-scope` on the Sway visual job leaves Noctalia classifier unchanged. Any change to the workflow file itself deliberately forces the expensive wpaperd native test; docs-only changes exclude it. The original Sway/swaybg framebuffer tests and Python native helper tests remain unconditional.
 
 ## Resume from here
 
-Implement `scripts/ci_integration_scope.py` and `tests/test_ci_integration_scope.py`, wire `change-scope.outputs.wpaperd` and only native build/run/artifact step `if` expressions. Update docs/agents/testing.md. Open PR with this exact Plan and Issue metadata. Inspect latest HEAD source CI step status for real native wpaperd build and screenshot; do not merge until all required checks succeed. Then independent completed-plan PR and close #121. Parent #83 OPEN.
+Open source PR for branch `agent/wpaperd-native-path-scoping-121`, with exact Issue #121 and Plan metadata. Inspect full diff and latest exact-HEAD CI. As the PR edits `.github/workflows/ci.yml`, its `change-scope.outputs.wpaperd` MUST be `true` and actual native build, real IPC/pixel validation, and artifact upload MUST all complete SUCCESS; on false selection or missing artifacts fail closed and repair. All eight required jobs must be SUCCESS, mergeable and reviewed before expected-HEAD squash merge. Then independent docs-only archive PR own green CI; check that the native steps show SKIPPED for docs-only but ordinary Sway remains SUCCESS. Parent #83 OPEN.
 
 ## Completion
 
