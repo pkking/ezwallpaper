@@ -24,6 +24,15 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 - [ ] Latest exact-head PR workflow completed/success, all eight jobs completed/success, mergeable=true and reviewed diff before expected-head squash merge.
 - [ ] Independently verify master and close #118 only after separate completion archive PR passes its own eight jobs and merges.
 
+## Verification matrix
+
+| Scope | Required evidence | Current result |
+|---|---|---|
+| Documentation | #111 archive final CI/merge/Issue state matches GitHub API | PASS: #117 run #41144950839, 8/8 |
+| Runtime safety | No production code or CI configuration changes | PASS: docs-only patch |
+| PR integrity | Latest exact-head workflow and all eight jobs successful | PENDING: rerun on updated head |
+| Master and archive | Independently verify master and separately archive #118 plan | PENDING |
+
 ## Implementation slices
 - [x] Inspect authoritative AGENTS.md, docs/agents/workflow.md, source archive and exact-head CI evidence.
 - [x] Update stale final archive assertions in completed #111 plan.
@@ -34,6 +43,7 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 Risk: confusing a historical pending checkpoint with current status, or overstating virtual compositor evidence. Validate final plan text and PR diff; require all original eight CI checks. No local CI has been run.
 
 ## Evidence log
+- 2026-10-31: PR #119 CI #41167975980 failed solely in Agent plan integrity: raw job #124439565150 states `PLAN INTEGRITY FAILED: Plan missing section: Verification matrix`. All other seven jobs passed. Added required Verification matrix to plan; require fresh complete eight-job CI on new HEAD.
 - 2026-10-31: corrected completed #111 plan on branch, commit `b52363bd308217c73e02a4ee83e34adb7ba026f3`; no runtime changes. PR CI not yet observed.
 - 2026-10-31: GitHub API verified PR #117 merged, workflow #41144950839 eight successful jobs, master commit c6e647fe8c96b022cadb1afb63629f83aef9c88b, completed plan Status: COMPLETED, old active path 404 and #111 closed.
 
