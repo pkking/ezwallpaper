@@ -1,7 +1,7 @@
 # 2026-10-31-wpaperd-native-change-scope — run pinned native E2E only when affected
 
 Issue: #121
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-31
 Last checkpoint: 2026-10-31
@@ -38,32 +38,34 @@ AGENTS.md; docs/agents/{workflow,testing}.md; CI `.github/workflows/ci.yml` exis
 
 - [x] Added pure `scripts/ci_integration_scope.py::requires_wpaperd_native`, offline test matrix, and new `change-scope.outputs.wpaperd`; source committed, CI execution pending.
 - [x] Gated exactly three native-only steps; `sway-visual-e2e` still runs real Sway/swaybg pixel assertions, offline native helper tests and the existing eight-check CI structure. GitHub CI pending.
-- [ ] CI changes force native E2E on source PR latest head; inspect exact job step results and uploaded native evidence; all eight required jobs SUCCESS. Report native selection explicitly.
+- [x] Source PR #122 exact HEAD `4a630b662407e3dcda43ff38b2006f9a8664a7c8`, [CI #41192566717](https://github.com/pkking/ezwallpaper/actions/runs/41192566717) 8 required jobs SUCCESS, classifier prints `Native wpaperd E2E selection: run`, three native steps SUCCESS and [artifact #13039477146](https://github.com/pkking/ezwallpaper/actions/runs/41192566717/artifacts/13039477146) uploaded.
 - [x] Added `tests/test_ci_integration_scope.py` cases: docs/plan-only false, source/Core/dependency/workflow/shared tests true, mixed and deleted/rename paths; docs/agents/testing.md distinguishes NOT SELECTED from actual native pixel PASS.
-- [ ] Source PR merged using exact expected HEAD only on 8/8 SUCCESS and compatible reviews/ruleset; independent archive docs PR own CI, child #121 closed afterward; parent #83 OPEN.
+- [x] Source #122 expected-HEAD squash merged `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9` after eight jobs SUCCESS; independent archive PR has its own CI gate before closing #121. Parent #83 OPEN.
 
 ## Implementation slices
 
 - [x] Inspected exact source, existing Noctalia path filter, actual pinned native build/pixel E2E, source CI and open issues; created #121 and this active plan before code.
 - [x] Added testable pure filter and offline matrix; added test invocation and output to existing change-scope Noctalia workflow without changing Noctalia filter logic.
 - [x] Added native-only build/run/upload gates and evidence document; source PR creation pending.
-- [ ] Verify exact-head CI (source PR must run real wpaperd!), squash merge and independently archive.
+- [x] Exact source HEAD and native run, real screenshots and artifact verified. Source merged, independent archive PR now prepared and must pass its own CI before merge.
 
 ## Verification matrix
 
 | Scope | Command | Expected | Status |
 |---|---|---|---|
-| Selectors | `python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v` | docs-only false; source/CI/native true | NOT RUN |
-| Rust quality | fmt + strict clippy and workspace | no warnings | NOT RUN |
-| 8 GitHub jobs | exact PR HEAD | all completed/success; Sway real visual + native wpaperd both run on CI-source change | NOT RUN |
-| Native evidence | pinned 1.3.0 SHA, actual framebuffer and artifacts | real Sway virtual pixel checks, not physical | NOT RUN |
-| Docs-only skip proof | offline selector tests and post-merge archive PR | native steps skipped, Sway pixel steps still run | NOT RUN |
+| Selectors | `python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v` | docs-only false; source/CI/native true | PASS, 5 tests on source HEAD |
+| Rust quality | fmt + strict clippy and workspace | no warnings | PASS, source Rust quality and tests |
+| 8 GitHub jobs | exact PR HEAD | all completed/success; Sway real visual + native wpaperd both run on CI-source change | PASS #41192566717, 8 required jobs |
+| Native evidence | pinned 1.3.0 SHA, actual framebuffer and artifacts | real Sway virtual pixel checks, not physical | PASS, native source, dual IPC/pixels and artifact #13039477146 |
+| Docs-only skip proof | offline selector tests and post-merge archive PR | native steps skipped, Sway pixel steps still run | Offline docs-only classification PASS, archive PR's actual skip remains a required premerge check |
 
 ## Decision gates
 
 No new human decision required. Original Decision A (already-running wpaperd only in product) unchanged; CI's disposable test-owned daemon is not production daemon management.
 
 ## Evidence log
+
+- 2026-10-31: source PR #122 exact HEAD `4a630b662407e3dcda43ff38b2006f9a8664a7c8`, CI #41192566717 completed/success, 8 required jobs SUCCESS, 2 conditional Noctalia jobs SKIPPED. Classifier printed wpaperd run; native build, IPC+actual two virtual framebuffer pixels and artifact upload SUCCESS, pinned release SHA `9e71fdd10e1f2d94532edaf0f54402aac3c0b01c`. [Native artifact #13039477146](https://github.com/pkking/ezwallpaper/actions/runs/41192566717/artifacts/13039477146). Expected-HEAD squash merged to master at `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9`. Independent docs-only archive CI is not yet verified.
 
 - 2026-10-31: authored pure source-based selector, positive/negative offline tests, change-scope output, scoped three native steps and explicit NOT SELECTED evidence documentation. No local Rust/Cargo/native test run claimed. Source PR CI pending; CI workflow change itself must select pinned native wpaperd E2E.
 - 2026-10-31: fixed upstream 1.3.0 native E2E source PR #113 8/8 and tests/e2e/sway/wpaperd_native.py reviewed. Existing workflow L345–375 always builds upstream even on docs-only, while Noctalia already filters by changed paths. CI selection is requested in #121; not yet tested or merged.
@@ -74,10 +76,10 @@ No new human decision required. Original Decision A (already-running wpaperd onl
 
 ## Resume from here
 
-Open source PR for branch `agent/wpaperd-native-path-scoping-121`, with exact Issue #121 and Plan metadata. Inspect full diff and latest exact-HEAD CI. As the PR edits `.github/workflows/ci.yml`, its `change-scope.outputs.wpaperd` MUST be `true` and actual native build, real IPC/pixel validation, and artifact upload MUST all complete SUCCESS; on false selection or missing artifacts fail closed and repair. All eight required jobs must be SUCCESS, mergeable and reviewed before expected-HEAD squash merge. Then independent docs-only archive PR own green CI; check that the native steps show SKIPPED for docs-only but ordinary Sway remains SUCCESS. Parent #83 OPEN.
+Fetch the independent docs-only archive PR's latest exact HEAD and CI. Confirm classifier prints `Native wpaperd E2E selection: skip`, native build/pixel/upload steps are SKIPPED (not PASS), while ordinary Sway/swaybg real frame tests PASS. Verify all eight mandatory jobs SUCCESS, mergeable=true and exact-head expected SHA; only then squash merge, confirm completed plan on master and active path absent, close child #121. Parent #83 remains OPEN.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-Remaining unassessed items: filtered docs-only workflow in GitHub PR (not yet observed), physical monitors/GPU/4K/hotplug outside this task
+Final commit: `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9` (source #122 merge; tested HEAD `4a630b662407e3dcda43ff38b2006f9a8664a7c8`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41192566717 (8 required SUCCESS; native build/pixels/upload SUCCESS)
+Remaining unassessed items: docs-only archive GitHub real skip must be checked before merging archive PR; physical monitors/GPU/4K/hotplug outside this task
