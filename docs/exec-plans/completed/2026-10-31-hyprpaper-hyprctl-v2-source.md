@@ -1,7 +1,7 @@
 # 2026-10-31-hyprpaper-hyprctl-v2-source — released Hyprwire client source correction
 
 Issue: #128
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-31
 Last checkpoint: 2026-10-31
@@ -35,22 +35,22 @@ No `src/backend`/registry/CLI/core code, `Cargo.toml`, screenshots, startup/syst
 - [x] Corrected Hyprpaper row, previously overbroad rejection and selection priority, with exact Hyprland v0.57.0 hyprctl client → hyprpaper v0.8.4 server → separate status roundtrip; explained that Oct 28 checked only server source. Source PR CI pending.
 - [x] Corrected architecture.md's historical hyprctl claim with released-client proof; scoped CODE vs UNASSESSED, no implementation or support claim. Source PR CI pending.
 - [x] Source report appendix traces the independent client/server/readback and failure constraints (empty wildcard, comma, stale/missing/duplicate output, subprocess timeout, timer collisions, no daemon ownership), with no production/Cargo changes.
-- [ ] One source PR with exact Issue and active Plan; all eight required latest-head CI SUCCESS, normal expected-HEAD squash merge; independent plan archive PR with its own exact-head CI, close #128 only afterward and keep #83 OPEN.
+- [x] Source [PR #130](https://github.com/pkking/ezwallpaper/pull/130) latest HEAD `68d8c4c29a2a4f0c5ace836628b488b3ccd1801e`, [CI #41209929264](https://github.com/pkking/ezwallpaper/actions/runs/41209929264) 8 mandatory SUCCESS, mergeable true, only three intended Markdown files, expected-HEAD squash merged at `0ba633c26667e77a749b89a0b6115eb665685560`. Independent archive PR has a separate latest-head 8/8 gate; #128 remains OPEN until it merges; #83 OPEN.
 
 ## Implementation slices
 
 - [x] Read current master/Issue/prs and upstream fixed *release* commits: hyprctl client, Hyprpaper server, XML and UI. Create Issue #128 and active plan before edits.
 - [x] Edited source evidence report and docs/architecture.md with immutable release-code anchors; no registry/CLI/Cargo/diagram changes.
-- [ ] Open source PR and verify latest exact-head 8 required CI, merge only when green.
-- [ ] Independently archive completed plan with its own eight checks.
+- [x] Opened PR #130 and verified exact final HEAD with 8 required CI jobs completed/success and workflow completed/success; source-only diff reviewed and expected-head squash merged.
+- [x] Separate docs-only archive PR prepared; must pass its own latest-head eight mandatory CI jobs before merge/closing child Issue. No prior source CI reused as archive evidence.
 
 ## Verification matrix
 
 | Scope | Gate | Status |
 |---|---|---|
 | Source/contract | fixed v0.57.0 and v0.8.4 code + protocol XML | CODE VERIFIED, no runtime |
-| Rust/code invariants | PR patch only docs assessment, architecture and plan | NOT RUN |
-| Source PR CI | all eight jobs latest-head | NOT RUN |
+| Rust/code invariants | PR patch only docs assessment, architecture and plan | Verified source PR #130 three Markdown paths only |
+| Source PR CI | all eight jobs latest-head | PASS, #41209929264, eight mandatory success; unrelated native wpaperd and Noctalia checks SKIPPED by code-based change-scope; real Sway visual SUCCESS |
 | Real hyprctl/hyprpaper + Hyprland compositor | independently executed native E2E | UNASSESSED |
 
 ## Decision gates
@@ -58,6 +58,8 @@ No `src/backend`/registry/CLI/core code, `Cargo.toml`, screenshots, startup/syst
 Research correction does not change user-facing behavior; no decision required. Enabling a **new** Hyprpaper option/third renderer (even with no Rust crate) would introduce user-visible CLI semantics: request a separate decision after research, without silently expanding Decision A for wpaperd. No default change or daemon ownership is authorized.
 
 ## Evidence log
+
+- 2026-10-31: corrected source PR #130 exact HEAD `68d8c4c29a2a4f0c5ace836628b488b3ccd1801e`, [CI #41209929264](https://github.com/pkking/ezwallpaper/actions/runs/41209929264) completed/success, 8 required jobs SUCCESS, 2 conditional Noctalia SKIPPED, native wpaperd NOT SELECTED, regular real Sway visual tests SUCCESS. Verified intended three Markdown paths, normal exact-head squash merge at `0ba633c26667e77a749b89a0b6115eb665685560`. GitHub auto-closed #128 on source merge; reopened for separate archiving per workflow. No new runtime backend or deps.
 
 - 2026-10-31: source-corrected two docs: Hyprland v0.57.0 `hyprctl` actual v2 generated client (not obsolete command), hyprpaper v0.8.4 matching server, separated status snapshot, edge cases and version/timeout limits. No runtime/Cargo change or desktop operation; exact-head CI pending.
 - 2026-10-31: GitHub source confirmed Hyprland v0.57.0 client file byte-identical to `4b9ac40...` current source (blob `1d2589ba...`), Hyprpaper v0.8.4 server/protocol byte-identical to `83395d4...` reviewed snapshot (IPC blob `052b1b5...`, XML blob `3d26a1...`). This is source version matching, not executed interoperability. Existing documented negative claim about hyprctl needs explicit correction.
@@ -68,10 +70,10 @@ Research correction does not change user-facing behavior; no decision required. 
 
 ## Resume from here
 
-Open one source docs-only PR from `agent/hyprpaper-v2-client-code-audit-128` linked to Issue #128 and this active Plan; inspect the exact diff (only the selection report, docs/architecture.md and plan). Require latest exact-head 8 mandatory CI jobs completed/success, workflow completed/success and mergeable=true before normal expected-head squash merge. Native wpaperd E2E can legitimately be SKIPPED on docs-only while real Sway tests still PASS. Create independent completed-plan archive PR with its own eight mandatory CI checks; close #128 only after archive, keep parent #83 OPEN.
+Inspect independent docs-only archive PR latest exact HEAD and its OWN CI, require eight mandatory job SUCCESS, workflow completed/success, mergeable true, and only a plan move to completed. Native wpaperd/Noctalia expensive checks can show SKIPPED on docs-only but the ordinary Sway visual must PASS. Only then normal expected-head squash merge; verify master completed plan Status COMPLETED and old active path absent; close child #128, leave parent #83 OPEN. No runtime adapter introduced.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: `0ba633c26667e77a749b89a0b6115eb665685560` (PR #130 squash merge; tested HEAD `68d8c4c29a2a4f0c5ace836628b488b3ccd1801e`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41209929264 (8 mandatory SUCCESS, real standard Sway PASS, irrelevant native E2Es NOT SELECTED)
 Remaining unassessed items: native hyprctl/hyprpaper interoperability, actual compositor path timing and pixels, older versions, path commas, timeouts, hotplug, real GPU/monitor
