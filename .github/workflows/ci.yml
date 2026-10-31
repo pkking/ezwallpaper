@@ -106,7 +106,13 @@ jobs:
               if (
                   path.startswith("src/")
                   or path in {"Cargo.toml", "Cargo.lock"}
-                  or path.startswith("tests/e2e/sway/")
+                  or path in {
+                      "tests/e2e/sway/noctalia_v5.py",
+                      "tests/e2e/sway/niri_noctalia.py",
+                      "tests/e2e/sway/dual.py",
+                      "tests/e2e/sway/run.py",
+                      "tests/e2e/sway/sway-dual.conf",
+                  }
                   or path in noctalia_test_files
                   or path == "scripts/verify_noctalia_live.py"
               ):
