@@ -24,11 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       noctalia: ${{ steps.filter.outputs.noctalia }}
+      wpaperd: ${{ steps.filter.outputs.wpaperd }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Detect Noctalia/Niri integration impact
+      - name: Test native wpaperd path selector (no network)
+        run: python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
+      - name: Detect Noctalia/Niri and wpaperd integration impact
         id: filter
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -41,6 +44,7 @@ jobs:
           import os
           import re
           import subprocess
+          from scripts.ci_integration_scope import requires_wpaperd_native
 
           base = os.environ["BASE_SHA"]
           head = os.environ["HEAD_SHA"]
@@ -129,6 +133,8 @@ jobs:
           should_run = bool(relevant)
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"noctalia={str(should_run).lower()}\n")
+              output.write(f"wpaperd={str(requires_wpaperd_native(changed)).lower()}\n")
+          print(f"Native wpaperd E2E selection: {'run' if requires_wpaperd_native(changed) else 'skip'}")
           print(f"Noctalia/Niri E2E selection: {'run' if should_run else 'skip'}")
           print("Relevant paths: " + (", ".join(relevant) if relevant else "(none)"))
           PY
@@ -299,8 +305,10 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v
   sway-visual-e2e:
     name: Sway headless visual E2E
+    needs: change-scope
     runs-on: ubuntu-24.04
-    # Includes a pinned native wpaperd build and isolated two-output pixel test.
+    # Sway/swaybg framebuffer tests always run. Native wpaperd builds only on
+    # relevant code/CI changes, not docs-only/plan archival changes.
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
@@ -345,6 +353,7 @@ jobs:
       - name: Verify native wpaperd IPC helper contracts offline
         run: python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v
       - name: Build exact upstream wpaperd 1.3.0 for isolated CI only
+        if: needs.change-scope.outputs.wpaperd == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -358,6 +367,7 @@ jobs:
           /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd --version | tee artifacts/wpaperd-native-e2e/upstream-version.txt
           grep -F '1.3.0' artifacts/wpaperd-native-e2e/upstream-version.txt
       - name: Verify real wpaperd native IPC and two-output rendered pixels
+        if: needs.change-scope.outputs.wpaperd == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -368,7 +378,7 @@ jobs:
             --artifact-dir artifacts/wpaperd-native-e2e \
             2>&1 | tee artifacts/wpaperd-native-e2e/test.log
       - name: Always preserve native wpaperd source, IPC and framebuffer evidence
-        if: always()
+        if: always() && needs.change-scope.outputs.wpaperd == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: native-wpaperd-1.3.0-sway-dual-evidence
