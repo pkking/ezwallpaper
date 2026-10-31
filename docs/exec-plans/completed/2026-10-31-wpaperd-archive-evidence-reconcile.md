@@ -1,7 +1,7 @@
 # 2026-10-31 — Reconcile completed wpaperd native E2E archive evidence
 
 Issue: #118
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-31
 Last checkpoint: 2026-10-31
@@ -21,8 +21,8 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 ## Acceptance criteria
 - [x] Completed #111 plan accurately reports final archive run, merged SHA and closed Issue; historical intermediate statements clearly identified as historical.
 - [x] PR is docs-only, with no changes to behavior or CI configuration.
-- [ ] Latest exact-head PR workflow completed/success, all eight jobs completed/success, mergeable=true and reviewed diff before expected-head squash merge.
-- [ ] Independently verify master and close #118 only after separate completion archive PR passes its own eight jobs and merges.
+- [x] PR #119 HEAD `56753523e75d877867a9b780555572054ef51c38` workflow #41171805053 completed/success, all eight jobs completed/success; mergeable=true, docs-only diff/security reviewed, expected-head squash merged as `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3`.
+- [x] Independently verified master at `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3`, corrected completed #111 plan; separate docs-only completion archive prepared. Close #118 only after that archive PR passes its own eight jobs and merges.
 
 ## Verification matrix
 
@@ -30,19 +30,21 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 |---|---|---|
 | Documentation | #111 archive final CI/merge/Issue state matches GitHub API | PASS: #117 run #41144950839, 8/8 |
 | Runtime safety | No production code or CI configuration changes | PASS: docs-only patch |
-| PR integrity | Latest exact-head workflow and all eight jobs successful | PENDING: rerun on updated head |
-| Master and archive | Independently verify master and separately archive #118 plan | PENDING |
+| PR integrity | Latest exact-head workflow and all eight jobs successful | PASS: #119 HEAD `56753523e75d877867a9b780555572054ef51c38`, #41171805053 8/8 |
+| Master and archive | Independently verify master and separately archive #118 plan | Master verified at `b71a5995`; completion-only archive PR has independent pending gate |
 
 ## Implementation slices
 - [x] Inspect authoritative AGENTS.md, docs/agents/workflow.md, source archive and exact-head CI evidence.
 - [x] Update stale final archive assertions in completed #111 plan.
-- [ ] Review and merge evidence correction PR only after exact-head CI success.
-- [ ] Archive this plan via separate docs-only PR and close #118; preserve #83 open.
+- [x] Reviewed and merged #119 only after exact-head CI #41171805053 success (8/8), expected-head squash `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3`.
+- [x] Prepared separate docs-only completion archive for this plan. Close #118 only after the archive PR independently passes exact-head 8/8 CI and merges; #83 remains open.
 
 ## Risks and validation
 Risk: confusing a historical pending checkpoint with current status, or overstating virtual compositor evidence. Validate final plan text and PR diff; require all original eight CI checks. No local CI has been run.
 
 ## Evidence log
+- 2026-10-31: archive PR #120 initial exact-head CI #41175415287 failed Agent plan integrity raw job #124461836547: `Archived plan missing actual Remaining unassessed items evidence`. Fixed the completion field name to match validator; original checks remain unchanged. Revalidate at new HEAD.
+- 2026-10-31: PR #119 exact HEAD `56753523e75d877867a9b780555572054ef51c38`, workflow #41171805053 completed/success with eight of eight jobs success. Diff limited to two plan Markdown files, no executable or workflow changes; mergeable=true, expected-head squash merged `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3`. Independently read master and verified corrected #111 plan, #118 and #83 both open before archive.
 - 2026-10-31: exact-head run #41171094579 Agent plan integrity raw job #124449018928 failed `Plan missing section: Completion`; seven other jobs completed success or still in progress at inspection. Added required Completion section; no checks weakened.
 - 2026-10-31: PR #119 CI #41167975980 failed solely in Agent plan integrity: raw job #124439565150 states `PLAN INTEGRITY FAILED: Plan missing section: Verification matrix`. All other seven jobs passed. Added required Verification matrix to plan; require fresh complete eight-job CI on new HEAD.
 - 2026-10-31: corrected completed #111 plan on branch, commit `b52363bd308217c73e02a4ee83e34adb7ba026f3`; no runtime changes. PR CI not yet observed.
@@ -50,10 +52,10 @@ Risk: confusing a historical pending checkpoint with current status, or overstat
 
 ## Completion
 
-Final correction commit: pending exact-head CI and expected-head squash merge.
-CI run: pending complete 8/8 success.
-Archive: pending separate completion-only PR.
-Remaining unassessed: physical display, real GPU/4K, hotplug and released niri.
+Final commit: `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3` (PR #119 expected-head squash; tested HEAD `56753523e75d877867a9b780555572054ef51c38`).
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41171805053 (exact-head completed/success, all eight jobs completed/success).
+Archive: separate docs-only completion PR prepared; its own exact-head eight-job CI must pass before merge and Issue #118 closure.
+Remaining unassessed items: physical display, real GPU/4K, hotplug and released niri.
 
 ## Resume from here
-Inspect the exact-head eight-job CI for the docs-only correction PR. If all eight and workflow complete successfully, review diff and merge using expected head SHA; then independently verify master, open separate completion archive PR for #118, and close #118 only after its own eight-job CI and merge.
+Verify this separate docs-only completion archive PR latest exact HEAD has workflow completed/success and eight jobs completed/success; review diff and mergeable=true, then squash merge with expected head SHA. Independently verify master has this plan in completed/ with Status: COMPLETED, active/ path returns 404, close Issue #118, and keep parent Issue #83 OPEN.
