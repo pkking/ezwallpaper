@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
@@ -101,7 +101,15 @@ fn read_small_file(path: &Path, maximum: u64) -> Result<Vec<u8>> {
             path.display()
         );
     }
-    fs::read(path).with_context(|| format!("cannot read {}", path.display()))
+    let file = File::open(path).with_context(|| format!("cannot open {}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(maximum + 1)
+        .read_to_end(&mut bytes)
+        .with_context(|| format!("cannot read {}", path.display()))?;
+    if bytes.len() as u64 > maximum {
+        bail!("input exceeded size limit while reading: {}", path.display());
+    }
+    Ok(bytes)
 }
 
 fn load_profile(path: &Path) -> Result<Profile> {
@@ -633,6 +641,15 @@ mod tests {
         assert!(!valid_connector(".."));
         assert!(valid_connector("DP.1"));
         assert!(valid_connector("HDMI-A-1"));
+    }
+
+    #[test]
+    fn bounded_small_file_read_rejects_oversize() {
+        let dir = tempfile::tempdir().expect("temporary input");
+        let path = dir.path().join("small.txt");
+        fs::write(&path, b"12345").expect("write");
+        assert_eq!(read_small_file(&path, 5).expect("limit"), b"12345");
+        assert!(read_small_file(&path, 4).is_err());
     }
 
     #[test]
