@@ -51,7 +51,7 @@ jobs:
           OPENWIKI_PROVIDER: openai-compatible
           OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
           OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
-          OPENWIKI_MODEL_ID: doubao-seed-2-1-pro-260915
+          OPENWIKI_MODEL_ID: glm-5.3-flash
           OPENWIKI_TELEMETRY_DISABLED: "1"
           OPENWIKI_PAGE_CONCURRENCY: "1"
         run: openwiki code --update --print
