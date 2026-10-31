@@ -73,12 +73,13 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 
 ## Decision gates
 
-No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible` and model ID is `glm-5.3-flash`. The configured provider is `openai-compatible` with Ark base URL `https://ark.cn-beijing.volces.com/api/v3` and published model ID `glm-5.3-flash` (not the Coding Plan endpoint).
+No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible`; model ID `glm-5.3-flash` was explicitly requested by the repository owner. The API Base URL is supplied through `ARK_BASE_URL`; no public provider URL is hardcoded. The custom gateway's exact model-ID mapping, tool-calling compatibility and runtime behavior remain unverified.
 
 ## Evidence log
 
 - 2026-10-30: User requirement: Ark API Base URL is deployment-specific and must not be hardcoded. Added required `ARK_BASE_URL` secret to workflow preflight and wired it to `OPENAI_COMPATIBLE_BASE_URL`; documented base URL path semantics and GitHub runner network reachability. No custom endpoint value or network connectivity was provided/verified.
 - 2026-10-30: Ark integration selection: reviewed [OpenWiki v0.7.2 `createModel()`](https://github.com/langchain-ai/openwiki/blob/v0.7.2/src/agent/index.ts) and [Volcengine Ark OpenAI SDK compatibility guide](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh), including official model identifier and base URL. Changed provider env to `openai-compatible`, changed required secret from `OPENROUTER_API_KEY` to `ARK_API_KEY`, and restricted concurrency to 1. No real inference run or credential availability observed.
+- 2026-10-31: User requested model ID `glm-5.3-flash`; updated workflow, runbook and plan. This identifier is configured as supplied, but the custom Ark gateway's mapping and tool-call compatibility have not been verified against live credentials.
 - 2026-10-30: GitHub `master` commit `69c290eb6e3b41e6044c78c1852df879250c32c1`; read `AGENTS.md`, `docs/agents/workflow.md`, `scripts/validate_agent_plan.py`, existing Actions workflow and upstream `v0.7.2` example. No new CI/production runtime test asserted.
 
 ## Deviations and discoveries
