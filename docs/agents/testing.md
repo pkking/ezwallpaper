@@ -39,6 +39,16 @@ The dedicated `Sway headless visual E2E` job installs `sway`, `swaybg` and `grim
 
 `python3 -m unittest discover -s tests -p 'test_sway_e2e_helpers.py' -v` checks fixture PNG and PPM assertion logic without a compositor. It cannot substitute for the real visual CI job. A green headless Sway screenshot confirms only this compositor/backend/output combination, **not** niri, other physical displays or multi-monitor support. See [desktop integration evidence](desktop-integration-evidence.md#automatic-sway-headless-rendered-frame-e2e).
 
+## Native wpaperd cost-aware CI scope
+
+The original **Sway headless visual E2E job** and its real single/dual-output Sway/swaybg framebuffer tests remain mandatory for every PR. The lightweight native wpaperd Python fixture helpers also always run. Only the expensive *pinned wpaperd 1.3.0 source clone/build, isolated wpaperd IPC + dual-output framebuffer test, and native artifact upload* are selected by `change-scope.outputs.wpaperd`. The selector is source-controlled in `scripts/ci_integration_scope.py` with offline regression tests in `tests/test_ci_integration_scope.py`; run them with:
+
+    python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
+
+The selector is conservative: changed `src/`, `crates/`, Cargo workspace manifests, toolchain, native Sway E2E source/common helpers, native wpaperd helper tests, selector/tests, and **any edit to `.github/workflows/ci.yml`** all select the exact-release native build and pixel E2E. Only documentation/unrelated tests and similar unaffected paths can skip these native-only steps. The original Noctalia classifier is unchanged. Git path discovery failure is a CI failure, not a request to skip.
+
+**Evidence semantics:** a skipped native step is **NOT** a newly passing wpaperd compositor test. For docs-only PRs, report native wpaperd as `NOT SELECTED`/skipped and retain the source-and-revision-specific evidence from the latest independently executed native workflow (e.g. [source PR #113 CI #41134580160](https://github.com/pkking/ezwallpaper/actions/runs/41134580160)); the normal Sway/swaybg framebuffer and Rust quality checks still run. For production/CI changes, obtain a new native log, exact upstream SHA, `CurrentWallpaper`, rendered pixels and artifact on that PR's **latest HEAD** before claiming native verification. Physical monitors/GPU/4K/hotplug remain UNASSESSED.
+
 ## Evidence vocabulary
 
 Record command, revision SHA, status code, relevant output, artifact path and CI run URL. Mark not executed as UNASSESSED, not PASS. For external APIs, separate simulated fixture coverage from live diagnostic observations.
