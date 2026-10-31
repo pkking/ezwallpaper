@@ -82,7 +82,7 @@ The following changes run both the offline Noctalia safety tests and the full No
 
 Changes limited to documentation, OpenWiki output, execution plans, or unrelated workflows/jobs skip the Noctalia-specific tests. For `.github/workflows/ci.yml`, the selector compares the Noctalia job definition and ignores only the two lines that connect it to the selector, so adding or changing unrelated CI jobs does not trigger the expensive Noctalia build.
 
-The filter skips only the Noctalia-specific safety test and the 75-minute Noctalia native build/render job. General Rust tests, Rust quality, agent-plan checks and the separate Sway E2E continue to run. This keeps broad regression coverage while avoiding unrelated Noctalia builds for docs-only PRs.
+The filter skips only the Noctalia-specific safety test and the 75-minute Noctalia native build/render job. General Rust tests, Rust quality, agent-plan checks and the separate Sway E2E continue to run. This keeps broad regression coverage while avoiding unrelated Noctalia builds for docs-only PRs. This selection was verified on OpenWiki PR #107: the classifier returned `skip`, both Noctalia-specific jobs were skipped, and the general Rust/platform/Sway jobs continued.
 
 ## Verification and operating procedure
 
