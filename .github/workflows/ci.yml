@@ -58,6 +58,18 @@ jobs:
           else:
               changed = git("diff", "--name-only", base, head).splitlines()
 
+          def workflow_header(ref):
+              try:
+                  content = git("show", f"{ref}:.github/workflows/ci.yml")
+              except subprocess.CalledProcessError:
+                  return None
+              lines = content.splitlines()
+              jobs_index = next(
+                  (i for i, line in enumerate(lines) if line == "jobs:"),
+                  None,
+              )
+              return lines[:jobs_index] if jobs_index is not None else lines
+
           def noctalia_job(ref):
               try:
                   content = git("show", f"{ref}:.github/workflows/ci.yml")
@@ -102,7 +114,10 @@ jobs:
               elif path == ".github/workflows/ci.yml":
                   # CI-only changes trigger this expensive job only when its
                   # own definition changes, not when unrelated filters/jobs do.
-                  if noctalia_job(base) != noctalia_job(head):
+                  if (
+                      workflow_header(base) != workflow_header(head)
+                      or noctalia_job(base) != noctalia_job(head)
+                  ):
                       relevant.append(path)
 
           should_run = bool(relevant)
