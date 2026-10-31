@@ -43,9 +43,17 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 Risk: confusing a historical pending checkpoint with current status, or overstating virtual compositor evidence. Validate final plan text and PR diff; require all original eight CI checks. No local CI has been run.
 
 ## Evidence log
+- 2026-10-31: exact-head run #41171094579 Agent plan integrity raw job #124449018928 failed `Plan missing section: Completion`; seven other jobs completed success or still in progress at inspection. Added required Completion section; no checks weakened.
 - 2026-10-31: PR #119 CI #41167975980 failed solely in Agent plan integrity: raw job #124439565150 states `PLAN INTEGRITY FAILED: Plan missing section: Verification matrix`. All other seven jobs passed. Added required Verification matrix to plan; require fresh complete eight-job CI on new HEAD.
 - 2026-10-31: corrected completed #111 plan on branch, commit `b52363bd308217c73e02a4ee83e34adb7ba026f3`; no runtime changes. PR CI not yet observed.
 - 2026-10-31: GitHub API verified PR #117 merged, workflow #41144950839 eight successful jobs, master commit c6e647fe8c96b022cadb1afb63629f83aef9c88b, completed plan Status: COMPLETED, old active path 404 and #111 closed.
+
+## Completion
+
+Final correction commit: pending exact-head CI and expected-head squash merge.
+CI run: pending complete 8/8 success.
+Archive: pending separate completion-only PR.
+Remaining unassessed: physical display, real GPU/4K, hotplug and released niri.
 
 ## Resume from here
 Inspect the exact-head eight-job CI for the docs-only correction PR. If all eight and workflow complete successfully, review diff and merge using expected head SHA; then independently verify master, open separate completion archive PR for #118, and close #118 only after its own eight-job CI and merge.
