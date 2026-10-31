@@ -19,6 +19,9 @@ jobs:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      # Shared by the live preflight and the actual OpenWiki generation.
+      OPENWIKI_MODEL_ID: glm-5.3-flash
     steps:
       - name: Verify unattended credentials are configured
         shell: bash
@@ -38,7 +41,6 @@ jobs:
           ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
           ARK_BASE_URL: ${{ secrets.ARK_BASE_URL }}
           OPENWIKI_PR_TOKEN: ${{ secrets.OPENWIKI_PR_TOKEN }}
-          ARK_MODEL_ID: glm-5.3-flash
         run: |
           set -euo pipefail
           if [[ -z "$ARK_API_KEY" || -z "$ARK_BASE_URL" || -z "$OPENWIKI_PR_TOKEN" ]]; then
@@ -59,7 +61,7 @@ jobs:
 
           base_url = os.environ["ARK_BASE_URL"].strip()
           api_key = os.environ["ARK_API_KEY"]
-          model = os.environ["ARK_MODEL_ID"]
+          model = os.environ["OPENWIKI_MODEL_ID"]
 
           parsed = urllib.parse.urlsplit(base_url)
           if (
@@ -181,7 +183,6 @@ jobs:
           OPENWIKI_PROVIDER: openai-compatible
           OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
           OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
-          OPENWIKI_MODEL_ID: glm-5.3-flash
           OPENWIKI_TELEMETRY_DISABLED: "1"
           OPENWIKI_PAGE_CONCURRENCY: "1"
         run: openwiki code --update --print
