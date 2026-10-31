@@ -69,6 +69,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 | Ark API compatibility | Official Ark SDK guide/model list | Endpoint, published model ID and tool-call capability | documented, runtime unverified |
 | Custom endpoint configuration | `ARK_BASE_URL` Actions secret | Workflow does not hardcode provider host; endpoint reachable from runner | configured, actual value/reachability unverified |
 | Ark live preflight | Python stdlib HTTPS POST to `/chat/completions`, forced `openwiki_ci_probe` tool call | Validates network/TLS, API key, model ID and tool calling; secrets/URL/body not logged | implemented; live run pending secrets |
+| GitHub PR token | Preflight checks secret presence; `create-pull-request` performs actual write when content changes | Token can create/update branch and PR | presence check implemented; write permission pending first real PR |
 | YAML | Parse workflow, check schedule and permissions | Valid syntax, restricted output | pending |
 | PR governance | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v`; PR `plan-integrity` | Original validator continues to pass | pending |
 | Rust quality and tests | Existing GitHub Actions eight-job suite | Latest PR HEAD passing | pending |
@@ -76,7 +77,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 
 ## Decision gates
 
-No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible`; model ID `glm-5.3-flash` was explicitly requested by the repository owner. The API Base URL is supplied through `ARK_BASE_URL`; no public provider URL is hardcoded. The custom gateway's exact model-ID mapping, tool-calling compatibility and runtime behavior remain unverified. A one-request, 32-token live preflight now runs before OpenWiki; it can incur a small API charge and intentionally runs only on trusted master schedule/manual events, not generic PR CI.
+No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible`; model ID `glm-5.3-flash` was explicitly requested by the repository owner. The API Base URL is supplied through `ARK_BASE_URL`; no public provider URL is hardcoded. The custom gateway's exact model-ID mapping, tool-calling compatibility and runtime behavior remain unverified. A one-request, 32-token live preflight now runs before OpenWiki; it can incur a small API charge and intentionally runs only on trusted master schedule/manual events, not generic PR CI. The PR token is checked for presence only; its write permission is exercised by the create/update PR action when generated content changes.
 
 ## Evidence log
 
