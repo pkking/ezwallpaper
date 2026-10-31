@@ -32,6 +32,136 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Ark endpoint, API key, model and tool calling
+        shell: bash
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_BASE_URL: ${{ secrets.ARK_BASE_URL }}
+          OPENWIKI_PR_TOKEN: ${{ secrets.OPENWIKI_PR_TOKEN }}
+          ARK_MODEL_ID: glm-5.3-flash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ARK_API_KEY" || -z "$ARK_BASE_URL" || -z "$OPENWIKI_PR_TOKEN" ]]; then
+            echo "::error::Configure ARK_API_KEY, ARK_BASE_URL and OPENWIKI_PR_TOKEN as repository Actions secrets."
+            exit 1
+          fi
+          # Mask the custom endpoint as well as credentials in all subsequent logs.
+          echo "::add-mask::$ARK_API_KEY"
+          echo "::add-mask::$ARK_BASE_URL"
+          echo "::add-mask::$OPENWIKI_PR_TOKEN"
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          base_url = os.environ["ARK_BASE_URL"].strip()
+          api_key = os.environ["ARK_API_KEY"]
+          model = os.environ["ARK_MODEL_ID"]
+
+          parsed = urllib.parse.urlsplit(base_url)
+          if (
+              parsed.scheme != "https"
+              or not parsed.netloc
+              or parsed.username
+              or parsed.password
+              or parsed.query
+              or parsed.fragment
+              or parsed.path.rstrip("/").endswith("/chat/completions")
+          ):
+              print("::error::ARK_BASE_URL must be an HTTPS OpenAI-compatible API base URL, without credentials, query, fragment or /chat/completions suffix.")
+              sys.exit(1)
+
+          endpoint = base_url.rstrip("/") + "/chat/completions"
+          payload = {
+              "model": model,
+              "messages": [
+                  {
+                      "role": "user",
+                      "content": "Call the openwiki_ci_probe function with ok=true."
+                  }
+              ],
+              "tools": [
+                  {
+                      "type": "function",
+                      "function": {
+                          "name": "openwiki_ci_probe",
+                          "description": "CI compatibility probe. Return ok=true.",
+                          "parameters": {
+                              "type": "object",
+                              "properties": {"ok": {"type": "boolean"}},
+                              "required": ["ok"],
+                              "additionalProperties": False
+                          }
+                      }
+                  }
+              ],
+              "tool_choice": {
+                  "type": "function",
+                  "function": {"name": "openwiki_ci_probe"}
+              },
+              "parallel_tool_calls": False,
+              "max_tokens": 32,
+              "temperature": 0
+          }
+          request = urllib.request.Request(
+              endpoint,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": "Bearer " + api_key,
+                  "Content-Type": "application/json"
+              },
+              method="POST"
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  status = response.status
+                  response_bytes = response.read(1024 * 1024)
+          except urllib.error.HTTPError as error:
+              status = error.code
+              response_bytes = error.read(1024 * 1024)
+          except (urllib.error.URLError, TimeoutError, OSError):
+              print("::error::Cannot reach the configured Ark endpoint (DNS, TLS, network or timeout). Check ARK_BASE_URL and GitHub runner network access.")
+              sys.exit(1)
+
+          if status != 200:
+              hints = {
+                  400: "Request rejected. Check model ID, endpoint compatibility and tool-calling support.",
+                  401: "Authentication failed. Check ARK_API_KEY.",
+                  403: "Access denied. Check API-key permissions and model entitlement.",
+                  404: "Endpoint or model not found. Check ARK_BASE_URL and model ID.",
+                  429: "Rate limit or quota exceeded. Check Ark quota and retry later.",
+              }
+              print(f"::error::Ark smoke test failed with HTTP {status}. {hints.get(status, 'Check endpoint configuration and Ark service status.')}")
+              sys.exit(1)
+
+          try:
+              result = json.loads(response_bytes)
+              choice = result["choices"][0]
+              message = choice["message"]
+              tool_calls = message.get("tool_calls") or []
+              probe = next(
+                  (
+                      call for call in tool_calls
+                      if call.get("function", {}).get("name") == "openwiki_ci_probe"
+                  ),
+                  None
+              )
+              arguments = json.loads(probe["function"]["arguments"]) if probe else {}
+          except (ValueError, KeyError, IndexError, TypeError):
+              print("::error::Ark returned HTTP 200 but the response was not a valid OpenAI-compatible chat-completions response.")
+              sys.exit(1)
+
+          if choice.get("finish_reason") != "tool_calls" or not probe or arguments.get("ok") is not True:
+              print("::error::Ark accepted the request but did not complete the forced function call. Check glm-5.3-flash tool-calling compatibility.")
+              sys.exit(1)
+
+          print("Ark smoke test passed: HTTPS endpoint reachable, API key accepted, model responded, and function/tool calling works.")
+          PY
+
       - name: Checkout full repository history
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
