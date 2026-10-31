@@ -69,6 +69,21 @@ The workflow records a run checkpoint in the plan **only when OpenWiki changes s
 
 OpenWiki may update root `AGENTS.md`, but this project owns it as its authoritative agent contract. The workflow deliberately discards such edits. Do not include generated workflow files, production code, ADRs, or user wallpaper data in documentation PRs.
 
+## CI test selection
+
+The CI workflow classifies changed paths before selecting Noctalia/Niri-specific tests. It does **not** weaken or change any test assertions.
+
+The following changes run both the offline Noctalia safety tests and the full Noctalia v5.2.1 + Sway/Niri dual-render E2E:
+
+- Any production Rust source under `src/`, or dependency manifests `Cargo.toml` / `Cargo.lock`.
+- Sway/Noctalia integration harnesses under `tests/e2e/sway/`.
+- `tests/test_noctalia_live_verification.py`, `tests/test_noctalia_sway_helpers.py`, `tests/test_niri_noctalia_helpers.py`, and `scripts/verify_noctalia_live.py`.
+- A change to the `noctalia-sway-visual-e2e` job definition itself in `.github/workflows/ci.yml`.
+
+Changes limited to documentation, OpenWiki output, execution plans, or unrelated workflows/jobs skip the Noctalia-specific tests. For `.github/workflows/ci.yml`, the selector compares the Noctalia job definition and ignores only the two lines that connect it to the selector, so adding or changing unrelated CI jobs does not trigger the expensive Noctalia build.
+
+The filter skips only the Noctalia-specific safety test and the 75-minute Noctalia native build/render job. General Rust tests, Rust quality, agent-plan checks and the separate Sway E2E continue to run. This keeps broad regression coverage while avoiding unrelated Noctalia builds for docs-only PRs.
+
 ## Verification and operating procedure
 
 1. Merge the integration PR after all current-head CI gates pass.
