@@ -168,6 +168,19 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             with self.assertRaises(verifier.VerificationError):
                 verifier.pixel_coverage(malformed, verifier.COLORS[0])
 
+    def test_doctor_preflight_rejects_spoofed_ambiguous_fields(self):
+        self.assertTrue(verifier.doctor_ready(
+            "available: true\nnoctalia_ipc_reachable: true\nverified_desktop_change: false\n"))
+        for report in (
+            "not_available: true\nnoctalia_ipc_reachable: true\n",
+            "available: true-ish\nnoctalia_ipc_reachable: true\n",
+            "available: true\nnoctalia_ipc_reachable: true\navailable: false\n",
+            "available: true\nnoctalia_ipc_reachable: true\nnoctalia_ipc_reachable: true\n",
+            "available: true\nnoctalia_ipc_reachable: false\n",
+            "available: true\nmessage: noctalia_ipc_reachable: true\n",
+        ):
+            self.assertFalse(verifier.doctor_ready(report), report)
+
     def test_entrypoint_fails_without_tty_or_consent(self):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
