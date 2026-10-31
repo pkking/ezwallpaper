@@ -94,7 +94,7 @@ def preconditions(outputs: tuple[str, str], env: dict[str, str], confirmed: bool
         raise VerificationError("active_linux_wayland_session_required")
     if "niri" not in {s.strip().lower() for s in re.split(r"[:;]", env.get("XDG_CURRENT_DESKTOP", ""))}:
         raise VerificationError("niri_desktop_required")
-    if outputs[0] == outputs[1] or not all(OUTPUT.fullmatch(s) and s not in (".", "..") for s in outputs):
+    if outputs[0] == outputs[1] or not all(len(s) <= 128 and OUTPUT.fullmatch(s) and s not in (".", "..") for s in outputs):
         raise VerificationError("two_distinct_safe_output_names_required")
 
 
