@@ -44,7 +44,7 @@ No installation, process management, daemon launch or fallback in production cod
 - [x] Real test-owned wpaperd starts in private-XDG Sway 1.9 headless session; AllWallpapers enumerates HEADLESS-1 and HEADLESS-2, independent CurrentWallpaper returns correct initial paths (artifact #13017260091).
 - [x] Actual grim PPM framebuffer evidence: initial HEADLESS-1 red (232,36,42) and HEADLESS-2 blue (35,78,216), after rotation HEADLESS-1 green (26,182,91) and HEADLESS-2 unchanged blue; all four sampled pixel ratios 1.0, both 76,800 pixels, and independent CurrentWallpaper readbacks match (artifact #13017260091). Virtual compositor pixels only, NOT physical monitors.
 - [x] Unknown output and missing daemon rejected (exit 1, no state creation) in native artifact; strict CLI outcome parsing, named-output readback and state isolation verified; mock wire contract separately covers stale/false acknowledgements. No broadcast/fallback/host mutation; test-owned process groups cleaned up.
-- [x] Source PR #113 HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab` exact CI #41134580160 completed/success with all eight original jobs completed/success; mergeable=true, diff/security reviewed; expected-head squash merged as `b48310d3f475a580a1c0cfbda85a95cf97f0e956` and independently verified on master. Independent docs-only archive PR prepared with its **own pending** 8/8 gate; #111 remains OPEN until that archive merges.
+- [x] Source PR #113 HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab` exact CI #41134580160 completed/success with all eight original jobs completed/success; mergeable=true, diff/security reviewed; expected-head squash merged as `b48310d3f475a580a1c0cfbda85a95cf97f0e956` and independently verified on master. Independent docs-only archive PR #117 subsequently passed exact-head CI #41144950839 (8/8), merged as `c6e647fe8c96b022cadb1afb63629f83aef9c88b`, and #111 is CLOSED.
 
 ## Implementation slices
 
@@ -91,12 +91,12 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Resume from here
 
-Verify this independent docs-only archive PR latest exact HEAD has eight completed/success jobs and workflow completed/success; confirm mergeable=true and only this plan moved from active/ to completed/. Squash merge with expected HEAD, independently fetch master completed plan (`Status: COMPLETED`) and verify active plan HTTP 404, then close only Issue #111. Keep parent #83 OPEN. Physical monitors, GPU/4K, hotplug and released niri remain unassessed.
+Completed: archive PR #117 HEAD `cae2ed8e0351abb1a6954e0afdd9af7f21c245a1` passed workflow #41144950839 (8/8 completed/success), merged to master as `c6e647fe8c96b022cadb1afb63629f83aef9c88b`. Master completed plan has `Status: COMPLETED`; former active path returns HTTP 404; Issue #111 CLOSED, parent #83 OPEN. Physical monitors, GPU/4K, hotplug and released niri remain unassessed.
 
 ## Completion
 
 Final commit: `b48310d3f475a580a1c0cfbda85a95cf97f0e956` (source PR #113 expected-head squash, tested HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/41134580160 (source exact HEAD completed/success, all 8/8 jobs)
 Native screenshot artifact: https://github.com/pkking/ezwallpaper/actions/runs/41134580160/artifacts/13017260091 (real Sway virtual framebuffer PPMs, native IPC, verdict PASS)
-Archive CI: separate docs-only PR exact-head eight-job gate required; pending, not counted as passed.
+Archive CI: PR #117 HEAD `cae2ed8e0351abb1a6954e0afdd9af7f21c245a1`, https://github.com/pkking/ezwallpaper/actions/runs/41144950839 completed/success, all eight jobs completed/success; expected-head squash merge `c6e647fe8c96b022cadb1afb63629f83aef9c88b`.
 Remaining unassessed items: physical monitors, hotplug, real GPU/4K, released niri and other real desktop configurations.
