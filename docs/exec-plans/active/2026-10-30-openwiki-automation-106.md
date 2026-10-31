@@ -73,7 +73,7 @@ No wallpaper backend change, runtime dependency, GUI interaction, automatic PR m
 
 ## Decision gates
 
-No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible` and model ID is `doubao-seed-2-1-pro-260915`. The configured provider is `openai-compatible` with Ark base URL `https://ark.cn-beijing.volces.com/api/v3` and published model ID `doubao-seed-2-1-pro-260915` (not the Coding Plan endpoint).
+No automatic merge. Maintaining the currently enforced Issue/plan linkage takes priority over a special-case bypass in `scripts/validate_agent_plan.py`. External model usage and spending require explicit `ARK_API_KEY` and `ARK_BASE_URL` secrets before execution. The Base URL is supplied by the repository secret, not hardcoded; it must be reachable from the GitHub-hosted runner. The configured provider is `openai-compatible` and model ID is `glm-5.3-flash`. The configured provider is `openai-compatible` with Ark base URL `https://ark.cn-beijing.volces.com/api/v3` and published model ID `glm-5.3-flash` (not the Coding Plan endpoint).
 
 ## Evidence log
 
