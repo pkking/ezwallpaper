@@ -76,7 +76,7 @@ The CI workflow classifies changed paths before selecting Noctalia/Niri-specific
 The following changes run both the offline Noctalia safety tests and the full Noctalia v5.2.1 + Sway/Niri dual-render E2E:
 
 - Any production Rust source under `src/`, or dependency manifests `Cargo.toml` / `Cargo.lock`.
-- Sway/Noctalia integration harnesses under `tests/e2e/sway/`.
+- The Noctalia/Niri harness and its shared dependencies: `tests/e2e/sway/noctalia_v5.py`, `niri_noctalia.py`, `dual.py`, `run.py`, and `sway-dual.conf`.
 - `tests/test_noctalia_live_verification.py`, `tests/test_noctalia_sway_helpers.py`, `tests/test_niri_noctalia_helpers.py`, and `scripts/verify_noctalia_live.py`.
 - A change to shared workflow configuration (triggers, permissions, concurrency or global environment) or the `noctalia-sway-visual-e2e` job definition in `.github/workflows/ci.yml`.
 
