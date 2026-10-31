@@ -107,7 +107,10 @@ fn read_small_file(path: &Path, maximum: u64) -> Result<Vec<u8>> {
         .read_to_end(&mut bytes)
         .with_context(|| format!("cannot read {}", path.display()))?;
     if bytes.len() as u64 > maximum {
-        bail!("input exceeded size limit while reading: {}", path.display());
+        bail!(
+            "input exceeded size limit while reading: {}",
+            path.display()
+        );
     }
     Ok(bytes)
 }
