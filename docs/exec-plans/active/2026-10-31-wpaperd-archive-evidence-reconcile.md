@@ -1,7 +1,7 @@
 # 2026-10-31 — Reconcile completed wpaperd native E2E archive evidence
 
 Issue: #118
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-10-31
 Last checkpoint: 2026-10-31
@@ -19,14 +19,14 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 - Completed #111 plan exists on master with Status: COMPLETED; active #111 plan returns 404; #111 closed; #83 open.
 
 ## Acceptance criteria
-- [ ] Completed #111 plan accurately reports final archive run, merged SHA and closed Issue; historical intermediate statements clearly identified as historical.
-- [ ] PR is docs-only, with no changes to behavior or CI configuration.
+- [x] Completed #111 plan accurately reports final archive run, merged SHA and closed Issue; historical intermediate statements clearly identified as historical.
+- [x] PR is docs-only, with no changes to behavior or CI configuration.
 - [ ] Latest exact-head PR workflow completed/success, all eight jobs completed/success, mergeable=true and reviewed diff before expected-head squash merge.
 - [ ] Independently verify master and close #118 only after separate completion archive PR passes its own eight jobs and merges.
 
 ## Implementation slices
 - [x] Inspect authoritative AGENTS.md, docs/agents/workflow.md, source archive and exact-head CI evidence.
-- [ ] Update stale final archive assertions in completed #111 plan.
+- [x] Update stale final archive assertions in completed #111 plan.
 - [ ] Review and merge evidence correction PR only after exact-head CI success.
 - [ ] Archive this plan via separate docs-only PR and close #118; preserve #83 open.
 
@@ -34,7 +34,8 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 Risk: confusing a historical pending checkpoint with current status, or overstating virtual compositor evidence. Validate final plan text and PR diff; require all original eight CI checks. No local CI has been run.
 
 ## Evidence log
+- 2026-10-31: corrected completed #111 plan on branch, commit `b52363bd308217c73e02a4ee83e34adb7ba026f3`; no runtime changes. PR CI not yet observed.
 - 2026-10-31: GitHub API verified PR #117 merged, workflow #41144950839 eight successful jobs, master commit c6e647fe8c96b022cadb1afb63629f83aef9c88b, completed plan Status: COMPLETED, old active path 404 and #111 closed.
 
 ## Resume from here
-Edit the completed #111 plan's stale present-tense archive CI/Issue statements on this branch, update this plan checkpoint, open PR linked to #118 and this plan, and require full exact-head CI before merging.
+Inspect the exact-head eight-job CI for the docs-only correction PR. If all eight and workflow complete successfully, review diff and merge using expected head SHA; then independently verify master, open separate completion archive PR for #118, and close #118 only after its own eight-job CI and merge.
