@@ -20,6 +20,7 @@ Configure these via GitHub repository **Settings > Secrets and variables > Actio
 | Secret | Purpose |
 |---|---|
 | `ARK_API_KEY` | 火山引擎方舟（Volcengine Ark）通用模型 API Key，需已开通对应模型。OpenWiki 通过 OpenAI-compatible 接口使用 `doubao-seed-2-1-pro-260915`，调用可能产生费用。 |
+| `ARK_BASE_URL` | 你的方舟自定义 OpenAI-compatible API Base URL。工作流不再写死官方公开地址。 |
 | `OPENWIKI_PR_TOKEN` | Fine-grained PAT or GitHub App token scoped to `pkking/ezwallpaper` with **Contents: read/write** and **Pull requests: read/write**. Required to open a PR that triggers required GitHub CI. |
 
 Use a dedicated automation identity if possible. Never commit tokens or include them in generated documents. Missing secrets produce a failing workflow with a configuration message, not a silently skipped docs run. The default GitHub `GITHUB_TOKEN` cannot be used as a drop-in replacement: PRs it creates normally do not trigger `pull_request` workflows.
@@ -32,13 +33,13 @@ The workflow selects the OpenWiki `openai-compatible` provider (not the native `
 
 ```yaml
 OPENWIKI_PROVIDER: openai-compatible
-OPENAI_COMPATIBLE_BASE_URL: https://ark.cn-beijing.volces.com/api/v3
+OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
 OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
 OPENWIKI_MODEL_ID: doubao-seed-2-1-pro-260915
 OPENWIKI_PAGE_CONCURRENCY: "1"
 ```
 
-The endpoint and model ID are from the [official Ark OpenAI SDK compatibility example](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh); [model capabilities](https://docs.volcengine.com/docs/ark/model-list?lang=zh) include tool calling. The model must be enabled for the API key. This integration is **source/API compatible but not runtime-tested** until a real generation run succeeds. A different region or a Coding Plan subscription may require a **different base URL, token and model ID**; do not use a Coding Plan key with this ordinary metered endpoint. For Coding Plan use, consult [Ark third-party tool integration guidance](https://console.volcengine.com/ark/region%3Acn-beijing/docs/integrate-third-party-tools). No automatic paid fallback or model selection is configured.
+The endpoint and model ID are from the [official Ark OpenAI SDK compatibility example](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh); [model capabilities](https://docs.volcengine.com/docs/ark/model-list?lang=zh) include tool calling. The model must be enabled for the API key. This integration is **source/API compatible but not runtime-tested** until a real generation run succeeds. Set `ARK_BASE_URL` to the Base URL root expected by the OpenAI-compatible SDK (the SDK appends `/chat/completions`; do not append that path yourself unless your gateway explicitly requires a rewritten route). The custom host must be reachable from the GitHub Actions runner. A private VPC-only endpoint is not reachable from `ubuntu-latest` without private networking, a self-hosted runner or an approved gateway. A different region or a Coding Plan subscription may require a **different base URL, token and model ID**; do not use a Coding Plan key with this ordinary metered endpoint. For Coding Plan use, consult [Ark third-party tool integration guidance](https://console.volcengine.com/ark/region%3Acn-beijing/docs/integrate-third-party-tools). No automatic paid fallback or model selection is configured.
 
 ## Repository governance
 
