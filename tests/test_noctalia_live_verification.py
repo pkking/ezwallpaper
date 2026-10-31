@@ -150,6 +150,9 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         for outputs in (("DP-1", "DP-1"), ("DP-1", "../bad"), ("DP 1", "HDMI-A-1")):
             with self.assertRaises(verifier.VerificationError):
                 verifier.preconditions(outputs, self.env, True)
+        verifier.preconditions(("A" * 128, "HDMI-A-1"), self.env, True)
+        with self.assertRaisesRegex(verifier.VerificationError, "two_distinct_safe_output_names_required"):
+            verifier.preconditions(("A" * 129, "HDMI-A-1"), self.env, True)
         for override in ({"XDG_CURRENT_DESKTOP": "sway"}, {"WAYLAND_DISPLAY": ""},
                          {"XDG_SESSION_TYPE": "x11"}):
             with self.assertRaises(verifier.VerificationError):
