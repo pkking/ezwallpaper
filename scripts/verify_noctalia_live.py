@@ -133,6 +133,11 @@ def current_wallpaper(runner, output: str) -> str:
 
 def capture(runner, output: str, filename: Path, rgb: tuple[int, int, int]) -> float:
     for attempt in range(5):
+        # Never accept an old frame if grim exits successfully without writing.
+        try:
+            filename.unlink(missing_ok=True)
+        except OSError as exc:
+            raise VerificationError("cannot_clear_previous_capture") from exc
         call(runner, ["grim", "-o", output, "-t", "ppm", str(filename)], "grim_capture_failed")
         try:
             if filename.stat().st_size > MAX_PPM_BYTES:
