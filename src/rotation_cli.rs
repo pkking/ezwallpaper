@@ -85,6 +85,7 @@ pub struct RotationOutcome {
 
 fn valid_connector(name: &str) -> bool {
     !name.is_empty()
+        && !matches!(name, "." | "..")
         && name.len() <= 128
         && name
             .bytes()
@@ -624,6 +625,14 @@ mod tests {
         )
         .expect("profile");
         (dir, p, state)
+    }
+
+    #[test]
+    fn reserved_dot_only_output_names_are_invalid() {
+        assert!(!valid_connector("."));
+        assert!(!valid_connector(".."));
+        assert!(valid_connector("DP.1"));
+        assert!(valid_connector("HDMI-A-1"));
     }
 
     #[test]
