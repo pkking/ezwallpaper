@@ -96,6 +96,7 @@ jobs:
                   or path in {"Cargo.toml", "Cargo.lock"}
                   or path.startswith("tests/e2e/sway/")
                   or path in noctalia_test_files
+                  or path == "scripts/verify_noctalia_live.py"
               ):
                   relevant.append(path)
               elif path == ".github/workflows/ci.yml":
@@ -155,7 +156,6 @@ jobs:
 
   rust-tests:
     name: Rust tests and CLI smoke
-    needs: change-scope
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -259,12 +259,6 @@ jobs:
           set -e
           test "$status" -ne 0
           grep -q -- 'unsupported backend' artifacts/ci/invalid.stderr
-      - name: Noctalia live-verification safety tests
-        if: needs.change-scope.outputs.noctalia == 'true'
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v 2>&1 | tee artifacts/ci/noctalia-live-safety.log
       - name: Preserve offline test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -273,6 +267,15 @@ jobs:
           path: artifacts/ci/
           if-no-files-found: warn
 
+  noctalia-safety-tests:
+    name: Noctalia live-verification safety tests
+    needs: change-scope
+    if: needs.change-scope.outputs.noctalia == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline Noctalia safety tests
+        run: python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v
   sway-visual-e2e:
     name: Sway headless visual E2E
     runs-on: ubuntu-24.04
