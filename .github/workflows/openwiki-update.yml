@@ -24,10 +24,11 @@ jobs:
         shell: bash
         env:
           ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_BASE_URL: ${{ secrets.ARK_BASE_URL }}
           OPENWIKI_PR_TOKEN: ${{ secrets.OPENWIKI_PR_TOKEN }}
         run: |
-          if [[ -z "$ARK_API_KEY" || -z "$OPENWIKI_PR_TOKEN" ]]; then
-            echo "::error::Configure ARK_API_KEY and OPENWIKI_PR_TOKEN as Actions secrets before running OpenWiki."
+          if [[ -z "$ARK_API_KEY" || -z "$ARK_BASE_URL" || -z "$OPENWIKI_PR_TOKEN" ]]; then
+            echo "::error::Configure ARK_API_KEY, ARK_BASE_URL and OPENWIKI_PR_TOKEN as Actions secrets before running OpenWiki."
             exit 1
           fi
 
@@ -48,7 +49,7 @@ jobs:
       - name: Generate or incrementally update source-grounded wiki
         env:
           OPENWIKI_PROVIDER: openai-compatible
-          OPENAI_COMPATIBLE_BASE_URL: https://ark.cn-beijing.volces.com/api/v3
+          OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
           OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
           OPENWIKI_MODEL_ID: doubao-seed-2-1-pro-260915
           OPENWIKI_TELEMETRY_DISABLED: "1"
