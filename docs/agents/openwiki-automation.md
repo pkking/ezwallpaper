@@ -41,6 +41,21 @@ OPENWIKI_PAGE_CONCURRENCY: "1"
 
 The OpenAI-compatible transport is documented in the [official Ark SDK compatibility guide](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh). The configured model ID `glm-5.3-flash` is the requested identifier for the custom gateway; confirm that this gateway exposes the model under this exact ID and supports tool calling. See the [Ark model list](https://docs.volcengine.com/docs/ark/model-list?lang=zh) for provider-side capability details. The model must be enabled for the API key. This integration is **source/API compatible but not runtime-tested** until a real generation run succeeds. Set `ARK_BASE_URL` to the Base URL root expected by the OpenAI-compatible SDK (the SDK appends `/chat/completions`; do not append that path yourself unless your gateway explicitly requires a rewritten route). The custom host must be reachable from the GitHub Actions runner. A private VPC-only endpoint is not reachable from `ubuntu-latest` without private networking, a self-hosted runner or an approved gateway. A different region or a Coding Plan subscription may require a **different base URL, token and model ID**; do not use a Coding Plan key with this ordinary metered endpoint. For Coding Plan use, consult [Ark third-party tool integration guidance](https://console.volcengine.com/ark/region%3Acn-beijing/docs/integrate-third-party-tools). No automatic paid fallback or model selection is configured.
 
+### Live Ark preflight check
+
+Before installing or running OpenWiki, the scheduled/manual workflow performs one small OpenAI-compatible `POST /chat/completions` request using `ARK_BASE_URL`, `ARK_API_KEY` and model ID `glm-5.3-flash`. It forces a tiny function call, so a successful check verifies all of the following:
+
+- the runner can resolve, connect to and complete TLS with the custom HTTPS endpoint;
+- the API key is accepted and has access to the configured model;
+- the custom model ID is recognized;
+- the endpoint returns an OpenAI-compatible response and supports the function/tool calling OpenWiki needs.
+
+The probe is limited to 32 output tokens. It is a real model request and may incur a small provider charge. It runs before OpenWiki generation; any network, authentication, quota, model or tool-calling failure stops the job. The workflow masks the API key, custom Base URL and PR token, and reports only a generic error category / HTTP status—not the URL, credentials or provider response body.
+
+This live check runs only in the `OpenWiki documentation` workflow on `master` (schedule or manual dispatch). It is deliberately not added to generic `pull_request` CI, where exposing provider secrets to PR-controlled code would be unsafe. The first real check requires all three repository secrets to be configured.
+
+`ARK_BASE_URL` must be an HTTPS API base URL, not the full `/chat/completions` URL. The runner must have network access to the host. A private VPC-only endpoint requires a self-hosted runner with VPC connectivity or a controlled reachable gateway.
+
 ## Repository governance
 
 The existing [agent execution protocol](workflow.md) and `scripts/validate_agent_plan.py` apply to **every** generated PR. Each automated PR references:
