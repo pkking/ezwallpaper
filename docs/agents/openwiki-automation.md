@@ -50,7 +50,7 @@ Before installing or running OpenWiki, the scheduled/manual workflow performs on
 - the custom model ID is recognized;
 - the endpoint returns an OpenAI-compatible response and supports the function/tool calling OpenWiki needs.
 
-The probe is limited to 32 output tokens. It is a real model request and may incur a small provider charge. It runs before OpenWiki generation; any network, authentication, quota, model or tool-calling failure stops the job. The workflow masks the API key, custom Base URL and PR token, and reports only a generic error category / HTTP status—not the URL, credentials or provider response body.
+The probe is limited to 32 output tokens. It is a real model request and may incur a small provider charge. It runs before OpenWiki generation; any network, authentication, quota, model or tool-calling failure stops the job. The workflow masks the API key, custom Base URL and PR token, and reports only a generic error category / HTTP status—not the URL, credentials or provider response body. The preflight checks that `OPENWIKI_PR_TOKEN` is present, but does not perform a write operation with it; its repository write permissions are exercised when `create-pull-request` creates or updates a documentation PR.
 
 This live check runs only in the `OpenWiki documentation` workflow on `master` (schedule or manual dispatch). It is deliberately not added to generic `pull_request` CI, where exposing provider secrets to PR-controlled code would be unsafe. The first real check requires all three repository secrets to be configured.
 
