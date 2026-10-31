@@ -34,16 +34,16 @@ AGENTS.md; docs/agents/{workflow,testing}.md; README wpaperd section; docs/archi
 
 ## Acceptance criteria
 
-- [ ] README accurately cites native wpaperd v1.3.0/Sway 1.9 virtual dual-output + source/CI/artifact, limits real hardware and existing daemon policy.
-- [ ] docs/architecture.md aligns the historical selection text, implemented backend tree and current exact native evidence without an ADR/diagram change.
+- [x] README now cites fixed wpaperd 1.3.0/Sway 1.9 native CI #41134580160, source PR #113 and artifact #13017260091; preserves no daemon management/default change and physical support UNASSESSED. Source submitted, CI pending.
+- [x] docs/architecture.md updated historical selection prose, implemented ASCII backend tree and independent actual native virtual pixel evidence; canonical SVG/ADR unchanged (already accurately represents wpaperd).
 - [ ] After #122 merge, docs-only PR's CI classifier prints `wpaperd=skip`/false; pinned native build, native dual-pixel test, native artifact upload SKIPPED while real Sway/swaybg visual E2E runs SUCCESS. Eight required jobs green. Record NOT SELECTED, not native PASS.
 - [ ] Expected-head normal PR merge and independent docs-only archive PR with its own 8/8 success; Issue #123 then closed, #83 stays open.
 
 ## Implementation slices
 
 - [x] Read real backend, E2E script, PR #113 and #117 exact CI, README/architecture and current native filter PR #122. Create Issue #123 and active Plan before editing.
-- [ ] Update two docs with bounded evidence classification and no overclaim.
-- [ ] Open source PR only after #122 merges; observe actual docs-only CI steps and all eight jobs.
+- [x] Updated README + architecture text; historical selection clearly labeled; no production/diagram changes.
+- [x] Source PR opened after #122 merged to master at `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9`; native skip vs regular Sway job verification pending on new exact-head CI.
 - [ ] Archive Plan separately after source merge, with independent CI.
 
 ## Verification matrix
@@ -61,15 +61,17 @@ None. Documentation reflects already executed and merged evidence, no new platfo
 
 ## Evidence log
 
+- 2026-10-31: authored bounded source/CI artifact references in README and docs/architecture.md, no source or workflow/diagram changes. CI selector from #122 now on master. Source PR has not yet obtained exact-head CI result; no PASS claim.
 - 2026-10-31: verified native screenshot source test and CI #41134580160 8/8 plus archive #41144950839 8/8. User-approved Decision A remains intact. No claims of hardware/4K/GPU.
 
 ## Deviations and discoveries
 
-None yet.
+- Canonical SVG already includes wpaperd opt-in from merged PR #109; only ASCII/text synchronization is necessary. Evidence is restricted to isolated Sway 1.9 virtual outputs and does not imply pixels from production `PathObserved`.
+- CI source PR #122 merged at `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9` with full pinned native real pixel E2E, so this docs-only PR is the first independent proof of new CI path filtering.
 
 ## Resume from here
 
-Update README.md and docs/architecture.md in branch `agent/wpaperd-virtual-pixels-evidence-123` with exact native virtual evidence and narrow UNASSESSED constraints. Hold PR creation until #122 source merges, then create docs-only PR with Issue #123/this plan and verify its own selector chooses wpaperd NOT SELECTED while ordinary Sway visual executes; merge only latest exact-head 8/8, independent plan archive and close #123. Parent #83 OPEN.
+Open source docs-only PR from `agent/wpaperd-virtual-pixels-evidence-123` against master and inspect diff (only README, docs/architecture.md, active plan). Its classifier MUST print wpaperd=skip/false, native build/IPC pixel/artifact steps SKIPPED but original Sway/swaybg real E2E SUCCESS, all eight mandatory jobs SUCCESS. Review docs evidence links and scope, merge only expected latest HEAD and mergeable=true. Then independent archived plan PR with its own CI; close #123 and keep #83 OPEN.
 
 ## Completion
 
