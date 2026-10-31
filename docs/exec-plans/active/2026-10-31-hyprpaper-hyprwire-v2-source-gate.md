@@ -39,7 +39,7 @@ Repo AGENTS.md, docs/agents/{workflow,testing}.md, existing [source-selection re
 
 - [x] Fixed release v0.8.4 code review recorded in `docs/architecture/hyprpaper-hyprwire-v2-source-gate-127.md`, anchored to source IPC.cpp/XML/UI.cpp/WallpaperMatcher.cpp. Full CI pending.
 - [x] **CONDITIONAL / NOT READY**: independently created status object may give fresh path snapshot; long-lived subscription is insufficiently evidenced for IPC-triggered updates; ABI/handshake and ordering remain UNASSESSED. Historical assessment cross-linked.
-- [ ] Only independent docs/plan paths changed, with Issue/Plan metadata, eight exact-head CI checks PASS, no production/default/diagram change.
+- [ ] Only independent docs/plan paths changed, Issue/Plan metadata, eight exact-head CI checks PASS, no production/default/diagram change. (Docs scope verified; CI pending latest head.)
 - [ ] Source PR exact-head squash merged, then separate completed-plan archive PR with own eight-check CI; close #127 only when archive verified, parent #83 stays OPEN.
 
 ## Implementation slices
@@ -53,7 +53,7 @@ Repo AGENTS.md, docs/agents/{workflow,testing}.md, existing [source-selection re
 | Scope | Evidence | Status |
 |---|---|---|
 | Fixed released IPC + state | upstream v0.8.4 pinned source | CODE REVIEWED |
-| Hyprwire concrete client handshake | upstream client library and binary wire | UNASSESSED |
+| Hyprwire concrete client handshake | released v0.3.1 `IClientSocket`, client test, Hello/handshake/bind/roundtrip | CODE REVIEWED C++ API; hyprpaper package ABI pairing UNASSESSED |
 | Native Hyprland output/IPC/real pixels | independent future opt-in E2E | UNASSESSED |
 | CI | source PR latest HEAD eight required jobs | NOT RUN |
 | Archive | independent completed-plan PR latest HEAD eight required jobs | NOT RUN |
@@ -63,6 +63,8 @@ Repo AGENTS.md, docs/agents/{workflow,testing}.md, existing [source-selection re
 No user decision required for source research. Production Hyprpaper enabling, new external library or actual user desktop intervention are separate decisions and not authorized by this research alone.
 
 ## Evidence log
+
+- 2026-10-31: independently pinned released [Hyprwire v0.3.1](https://github.com/hyprwm/hyprwire/tree/3e6865ce5fd9237b58f5b2ce5de18814df3baff5) C++ client source. `IClientSocket` emits binary Hello and supports `waitForHandshake`, `getSpec`, `bindProtocol`, `roundtrip`; inspected upstream `tests/Client.cpp`. Updated report: an actual maintained C++ client exists, but exact packaged Hyprwire compatibility and a Rust/CLI binding are still UNASSESSED. This report introduces no dependencies and is not native integration evidence.
 
 - 2026-10-31: authored released Hyprpaper v0.8.4 source report with explicit conditional gate and future client-native test sequence, added historical report cross-link. Only documentation changes; CI pending. Important finding: status snapshot is sent on object creation, but manual IPC apply does not visibly send `onWallpaperChanged` along inspected call graph. Nothing actually executed on user desktop.
 - 2026-10-31: GitHub source at release commit `20fc0fa6...`: `IPC.cpp`, protocol XML, `WallpaperMatcher.cpp`, `UI.cpp` reviewed. Most significant surprise: get_status_object sends immediate current target snapshot, but onWallpaperChanged call found on timer path only, not targetChanged. Must test refresh-style readback rather than assume subscription updates.
