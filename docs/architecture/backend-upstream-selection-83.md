@@ -34,6 +34,8 @@
 4. **不引入 more-wallpapers 或 UDA 以图直接获得跨桌面轮换**：前者 Sway 调用的是与直接 IPC 同层的 `swaymsg`，后者 Linux `get_wallpaper` 是 `NotSupported` 且伪造 `HDMI-N`。引入后反而可能掩盖输出标识/回退边界。
 5. **Waypaper 不应被作为生命周期治理参考照搬**：源码明确有结束现有 daemon 的策略，而本仓要求 renderer 只能由用户显式控制、自动选型不得触发竞态切换。
 
+**后续固定发布版复核（2026-10-31）：**[Hyprpaper v0.8.4 / Hyprwire v2 源码与状态读回时序分析](hyprpaper-hyprwire-v2-source-gate-127.md) 对已发布 commit `20fc0fa6c2056c388a4cd69cb394a9f989dd27c0` 重新检查：`apply.success` 仅表示配置入队；创建新的 status object 会发送当前 `m_lastPath` 快照，而持续的 `onWallpaperChanged` 在检查到的调用链中来自内部轮换 timer，不应假设长连接能收到每次 IPC 手动切换事件。Hyprwire 客户端 ABI、快照时序和真实 Hyprland 像素仍未验证。此条是后续补充，不修改本报告原先的历史结论。
+
 ## 3. 修订后选型顺序（只有具备源码证据才能提升状态）
 
 | 顺序 | 具体工作包 | 准入的已知源码证据 | 下阶段必须补齐的独立证据 |
