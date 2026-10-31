@@ -78,7 +78,7 @@ The following changes run both the offline Noctalia safety tests and the full No
 - Any production Rust source under `src/`, or dependency manifests `Cargo.toml` / `Cargo.lock`.
 - Sway/Noctalia integration harnesses under `tests/e2e/sway/`.
 - `tests/test_noctalia_live_verification.py`, `tests/test_noctalia_sway_helpers.py`, `tests/test_niri_noctalia_helpers.py`, and `scripts/verify_noctalia_live.py`.
-- A change to the `noctalia-sway-visual-e2e` job definition itself in `.github/workflows/ci.yml`.
+- A change to shared workflow configuration (triggers, permissions, concurrency or global environment) or the `noctalia-sway-visual-e2e` job definition in `.github/workflows/ci.yml`.
 
 Changes limited to documentation, OpenWiki output, execution plans, or unrelated workflows/jobs skip the Noctalia-specific tests. For `.github/workflows/ci.yml`, the selector compares the Noctalia job definition and ignores only the two lines that connect it to the selector, so adding or changing unrelated CI jobs does not trigger the expensive Noctalia build.
 
