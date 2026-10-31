@@ -77,6 +77,7 @@ impl WallpaperBackend for NoctaliaBackend {
 /// Output identifiers must be a single IPC token, not arbitrary command fragments.
 pub(crate) fn validate_connector(connector: &str) -> Result<()> {
     if connector.is_empty()
+        || connector.len() > 128
         || !connector
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
@@ -196,8 +197,17 @@ mod tests {
             });
             assert!(result.is_err(), "connector should fail: {}", output);
         }
+        let overlong = "A".repeat(129);
+        assert!(NoctaliaBackend
+            .apply_one_shot_with(path, Some(&overlong), |_, _| {
+                invoked = true;
+                Ok(())
+            })
+            .is_err());
         assert!(!invoked);
         assert!(validate_connector("").is_err());
+        assert!(validate_connector(&"A".repeat(128)).is_ok());
+        assert!(validate_connector(&"A".repeat(129)).is_err());
     }
 
     #[test]
