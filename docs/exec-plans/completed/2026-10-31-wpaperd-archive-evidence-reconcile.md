@@ -43,6 +43,7 @@ No runtime, tests, workflow, CLI, daemon or desktop changes. No claim of physica
 Risk: confusing a historical pending checkpoint with current status, or overstating virtual compositor evidence. Validate final plan text and PR diff; require all original eight CI checks. No local CI has been run.
 
 ## Evidence log
+- 2026-10-31: archive PR #120 initial exact-head CI #41175415287 failed Agent plan integrity raw job #124461836547: `Archived plan missing actual Remaining unassessed items evidence`. Fixed the completion field name to match validator; original checks remain unchanged. Revalidate at new HEAD.
 - 2026-10-31: PR #119 exact HEAD `56753523e75d877867a9b780555572054ef51c38`, workflow #41171805053 completed/success with eight of eight jobs success. Diff limited to two plan Markdown files, no executable or workflow changes; mergeable=true, expected-head squash merged `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3`. Independently read master and verified corrected #111 plan, #118 and #83 both open before archive.
 - 2026-10-31: exact-head run #41171094579 Agent plan integrity raw job #124449018928 failed `Plan missing section: Completion`; seven other jobs completed success or still in progress at inspection. Added required Completion section; no checks weakened.
 - 2026-10-31: PR #119 CI #41167975980 failed solely in Agent plan integrity: raw job #124439565150 states `PLAN INTEGRITY FAILED: Plan missing section: Verification matrix`. All other seven jobs passed. Added required Verification matrix to plan; require fresh complete eight-job CI on new HEAD.
@@ -54,7 +55,7 @@ Risk: confusing a historical pending checkpoint with current status, or overstat
 Final commit: `b71a5995b60df9c14eb9a57dc3a33cde5a737bc3` (PR #119 expected-head squash; tested HEAD `56753523e75d877867a9b780555572054ef51c38`).
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/41171805053 (exact-head completed/success, all eight jobs completed/success).
 Archive: separate docs-only completion PR prepared; its own exact-head eight-job CI must pass before merge and Issue #118 closure.
-Remaining unassessed: physical display, real GPU/4K, hotplug and released niri.
+Remaining unassessed items: physical display, real GPU/4K, hotplug and released niri.
 
 ## Resume from here
 Verify this separate docs-only completion archive PR latest exact HEAD has workflow completed/success and eight jobs completed/success; review diff and mergeable=true, then squash merge with expected head SHA. Independently verify master has this plan in completed/ with Status: COMPLETED, active/ path returns 404, close Issue #118, and keep parent Issue #83 OPEN.
