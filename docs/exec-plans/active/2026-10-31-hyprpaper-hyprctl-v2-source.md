@@ -32,15 +32,15 @@ No `src/backend`/registry/CLI/core code, `Cargo.toml`, screenshots, startup/syst
 
 ## Acceptance criteria
 
-- [ ] Correct report's Hyprpaper row/retraction/selection order and add an immutable released-client→server→status call-chain note. Do not erase the historical Oct 28 caveat without explaining why it changed.
-- [ ] Correct corresponding `docs/architecture.md` historical claim. Clearly label available `hyprctl` client v2 as **CODE-VERIFIED for releases**, native runtime physical pixels and cross-version compatibility **UNASSESSED**.
-- [ ] Document fail-closed future integration constraints: exact single monitor, nonempty path canonicalization, comma ambiguity, command/handshake timeout, duplicate/missing readback, self scheduler, no render ownership change; do not modify production Rust or Cargo.
+- [x] Corrected Hyprpaper row, previously overbroad rejection and selection priority, with exact Hyprland v0.57.0 hyprctl client → hyprpaper v0.8.4 server → separate status roundtrip; explained that Oct 28 checked only server source. Source PR CI pending.
+- [x] Corrected architecture.md's historical hyprctl claim with released-client proof; scoped CODE vs UNASSESSED, no implementation or support claim. Source PR CI pending.
+- [x] Source report appendix traces the independent client/server/readback and failure constraints (empty wildcard, comma, stale/missing/duplicate output, subprocess timeout, timer collisions, no daemon ownership), with no production/Cargo changes.
 - [ ] One source PR with exact Issue and active Plan; all eight required latest-head CI SUCCESS, normal expected-HEAD squash merge; independent plan archive PR with its own exact-head CI, close #128 only afterward and keep #83 OPEN.
 
 ## Implementation slices
 
 - [x] Read current master/Issue/prs and upstream fixed *release* commits: hyprctl client, Hyprpaper server, XML and UI. Create Issue #128 and active plan before edits.
-- [ ] Correct two documentation files and record evidence/limitations.
+- [x] Edited source evidence report and docs/architecture.md with immutable release-code anchors; no registry/CLI/Cargo/diagram changes.
 - [ ] Open source PR and verify latest exact-head 8 required CI, merge only when green.
 - [ ] Independently archive completed plan with its own eight checks.
 
@@ -59,6 +59,7 @@ Research correction does not change user-facing behavior; no decision required. 
 
 ## Evidence log
 
+- 2026-10-31: source-corrected two docs: Hyprland v0.57.0 `hyprctl` actual v2 generated client (not obsolete command), hyprpaper v0.8.4 matching server, separated status snapshot, edge cases and version/timeout limits. No runtime/Cargo change or desktop operation; exact-head CI pending.
 - 2026-10-31: GitHub source confirmed Hyprland v0.57.0 client file byte-identical to `4b9ac40...` current source (blob `1d2589ba...`), Hyprpaper v0.8.4 server/protocol byte-identical to `83395d4...` reviewed snapshot (IPC blob `052b1b5...`, XML blob `3d26a1...`). This is source version matching, not executed interoperability. Existing documented negative claim about hyprctl needs explicit correction.
 
 ## Deviations and discoveries
@@ -67,7 +68,7 @@ Research correction does not change user-facing behavior; no decision required. 
 
 ## Resume from here
 
-Update `docs/architecture/backend-upstream-selection-83.md` and `docs/architecture.md` only, explicitly correcting prior assertion using released client source and actual server call chain, with narrow conditions and no CLI support claim. Open one PR linked to this Issue/Plan, validate all 8 exact-head CI jobs, expected-HEAD squash merge only when green. Independently archive plan after source merge, preserve #83 OPEN.
+Open one source docs-only PR from `agent/hyprpaper-v2-client-code-audit-128` linked to Issue #128 and this active Plan; inspect the exact diff (only the selection report, docs/architecture.md and plan). Require latest exact-head 8 mandatory CI jobs completed/success, workflow completed/success and mergeable=true before normal expected-head squash merge. Native wpaperd E2E can legitimately be SKIPPED on docs-only while real Sway tests still PASS. Create independent completed-plan archive PR with its own eight mandatory CI checks; close #128 only after archive, keep parent #83 OPEN.
 
 ## Completion
 
