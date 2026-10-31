@@ -1,7 +1,7 @@
 # 2026-10-31-wpaperd-native-evidence-sync — document virtual pixels precisely
 
 Issue: #123
-Status: IMPLEMENTING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-31
 Last checkpoint: 2026-10-31
@@ -36,15 +36,15 @@ AGENTS.md; docs/agents/{workflow,testing}.md; README wpaperd section; docs/archi
 
 - [x] README now cites fixed wpaperd 1.3.0/Sway 1.9 native CI #41134580160, source PR #113 and artifact #13017260091; preserves no daemon management/default change and physical support UNASSESSED. Source submitted, CI pending.
 - [x] docs/architecture.md updated historical selection prose, implemented ASCII backend tree and independent actual native virtual pixel evidence; canonical SVG/ADR unchanged (already accurately represents wpaperd).
-- [ ] After #122 merge, docs-only PR's CI classifier prints `wpaperd=skip`/false; pinned native build, native dual-pixel test, native artifact upload SKIPPED while real Sway/swaybg visual E2E runs SUCCESS. Eight required jobs green. Record NOT SELECTED, not native PASS.
-- [ ] Expected-head normal PR merge and independent docs-only archive PR with its own 8/8 success; Issue #123 then closed, #83 stays open.
+- [x] Source docs-only [PR #125](https://github.com/pkking/ezwallpaper/pull/125) HEAD `3b364f5cfa3cfcac06d4308bb93fc81329fe162b` [CI #41193073772](https://github.com/pkking/ezwallpaper/actions/runs/41193073772): 8 required SUCCESS, path classifier printed `Native wpaperd E2E selection: skip`; native build, IPC/pixel and upload all SKIPPED; ordinary Sway/swaybg single/dual visual and offline native helpers SUCCESS. NOT SELECTED, not native PASS.
+- [x] Source PR #125 expected-head squash merged to master `925a59dad0b6bcd2a1cbf0ed9801f07d3bc2d125` after 8 required SUCCESS. This separate archive PR has its OWN exact-head 8/8 CI requirement before merging/closing #123; parent #83 OPEN.
 
 ## Implementation slices
 
 - [x] Read real backend, E2E script, PR #113 and #117 exact CI, README/architecture and current native filter PR #122. Create Issue #123 and active Plan before editing.
 - [x] Updated README + architecture text; historical selection clearly labeled; no production/diagram changes.
 - [x] Source PR opened after #122 merged to master at `9f71c9def2193fa8a9d63f5d570c35cd76e48ca9`; native skip vs regular Sway job verification pending on new exact-head CI.
-- [ ] Archive Plan separately after source merge, with independent CI.
+- [x] Source #125 merged; separate docs-only completion PR created to move this plan to completed. Its independent exact-head CI remains a mandatory premerge gate.
 
 ## Verification matrix
 
@@ -52,14 +52,16 @@ AGENTS.md; docs/agents/{workflow,testing}.md; README wpaperd section; docs/archi
 |---|---|---|
 | Source/evidence | #113 exact CI and #111 completed plan | Verified prior release, not re-run |
 | Documentation | README, architecture text, canonical SVG unchanged | Pending |
-| Docs-only selector | #122 merged; native steps SKIPPED, Sway visual remains SUCCESS | NOT RUN |
-| Complete CI | 8 exact-head required jobs SUCCESS for source then archive | NOT RUN |
+| Docs-only selector | #122 merged; native steps SKIPPED, Sway visual remains SUCCESS | PASS source CI #41193073772; 3 native skips, original Sway real visual SUCCESS |
+| Complete CI | 8 exact-head required jobs SUCCESS for source then archive | Source PASS #41193073772 (8 required), archive PR new CI pending premerge |
 
 ## Decision gates
 
 None. Documentation reflects already executed and merged evidence, no new platform promise, default change or user desktop operation.
 
 ## Evidence log
+
+- 2026-10-31: README + architecture documentation source [PR #125](https://github.com/pkking/ezwallpaper/pull/125) exact HEAD `3b364f5cfa3cfcac06d4308bb93fc81329fe162b`, [CI #41193073772](https://github.com/pkking/ezwallpaper/actions/runs/41193073772) completed/success, eight mandatory jobs SUCCESS, Noctalia conditional E2Es SKIPPED. `Native wpaperd E2E selection: skip`: native build, pixel E2E, artifact all SKIPPED; original Sway/swaybg framebuffer and native helper tests SUCCESS. Expected-head squash merged at `925a59dad0b6bcd2a1cbf0ed9801f07d3bc2d125`. Source proof is still #113 CI #41134580160 / artifact #13017260091; skipped native check is not a new pixel verification.
 
 - 2026-10-31: authored bounded source/CI artifact references in README and docs/architecture.md, no source or workflow/diagram changes. CI selector from #122 now on master. Source PR has not yet obtained exact-head CI result; no PASS claim.
 - 2026-10-31: verified native screenshot source test and CI #41134580160 8/8 plus archive #41144950839 8/8. User-approved Decision A remains intact. No claims of hardware/4K/GPU.
@@ -71,10 +73,10 @@ None. Documentation reflects already executed and merged evidence, no new platfo
 
 ## Resume from here
 
-Open source docs-only PR from `agent/wpaperd-virtual-pixels-evidence-123` against master and inspect diff (only README, docs/architecture.md, active plan). Its classifier MUST print wpaperd=skip/false, native build/IPC pixel/artifact steps SKIPPED but original Sway/swaybg real E2E SUCCESS, all eight mandatory jobs SUCCESS. Review docs evidence links and scope, merge only expected latest HEAD and mergeable=true. Then independent archived plan PR with its own CI; close #123 and keep #83 OPEN.
+Verify independent completed-plan archive PR's latest exact HEAD and eight required CI job conclusions, mergeable and safe docs-only diff. Its classifier must choose native wpaperd SKIPPED while original Sway single/dual actual pixel tests PASS. Do not merge before workflow completed/success and every required job SUCCESS; normal expected-head squash merge only then. Confirm master completed plan Status COMPLETED and active path absent; close child #123, parent #83 OPEN.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: `925a59dad0b6bcd2a1cbf0ed9801f07d3bc2d125` (source #125 merged, tested HEAD `3b364f5cfa3cfcac06d4308bb93fc81329fe162b`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41193073772 (8 required SUCCESS; native test SKIPPED, regular Sway visual SUCCESS)
 Remaining unassessed items: real physical monitor/GPU/4K/hotplug/session restart
