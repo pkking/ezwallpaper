@@ -129,6 +129,15 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(result["outputs"][1]["visual_result"], "FAILED")
         self.assertEqual(fake.wallpapers, self.originals)
 
+    def test_zero_exit_without_fresh_frame_rejects_stale_capture(self):
+        filename = self.root / "stale.ppm"
+        filename.write_bytes(ppm(verifier.COLORS[0]))
+        def no_frame(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        with self.assertRaisesRegex(verifier.VerificationError, "cannot_read_grim_capture"):
+            verifier.capture(no_frame, "DP-1", filename, verifier.COLORS[0])
+        self.assertFalse(filename.exists())
+
     def test_truncated_screenshot_rejected_and_restored(self):
         fake = FakeDesktop(self.originals, truncated=True)
         result, status = self.verify(fake)
