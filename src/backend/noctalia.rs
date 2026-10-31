@@ -21,7 +21,7 @@ impl NoctaliaBackend {
         let wayland = match session.as_str() {
             "wayland" => true,
             "x11" => false,
-            _ => env::var_os("WAYLAND_DISPLAY").is_some(),
+            _ => env::var_os("WAYLAND_DISPLAY").is_some_and(|value| !value.is_empty()),
         };
         wayland && super::command_available("noctalia")
     }
