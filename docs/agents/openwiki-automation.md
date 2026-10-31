@@ -19,7 +19,7 @@ Configure these via GitHub repository **Settings > Secrets and variables > Actio
 
 | Secret | Purpose |
 |---|---|
-| `ARK_API_KEY` | 火山引擎方舟（Volcengine Ark）通用模型 API Key，需已开通对应模型。OpenWiki 通过 OpenAI-compatible 接口使用 `doubao-seed-2-1-pro-260915`，调用可能产生费用。 |
+| `ARK_API_KEY` | 火山引擎方舟（Volcengine Ark）通用模型 API Key，需已开通对应模型。OpenWiki 通过 OpenAI-compatible 接口使用 `glm-5.3-flash`，调用可能产生费用。 |
 | `ARK_BASE_URL` | 你的方舟自定义 OpenAI-compatible API Base URL。工作流不再写死官方公开地址。 |
 | `OPENWIKI_PR_TOKEN` | Fine-grained PAT or GitHub App token scoped to `pkking/ezwallpaper` with **Contents: read/write** and **Pull requests: read/write**. Required to open a PR that triggers required GitHub CI. |
 
@@ -35,7 +35,7 @@ The workflow selects the OpenWiki `openai-compatible` provider (not the native `
 OPENWIKI_PROVIDER: openai-compatible
 OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.ARK_BASE_URL }}
 OPENAI_COMPATIBLE_API_KEY: ${{ secrets.ARK_API_KEY }}
-OPENWIKI_MODEL_ID: doubao-seed-2-1-pro-260915
+OPENWIKI_MODEL_ID: glm-5.3-flash
 OPENWIKI_PAGE_CONCURRENCY: "1"
 ```
 
