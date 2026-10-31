@@ -1,7 +1,7 @@
 # 2026-10-30-wpaperd-native-dual-e2e — pinned 1.3.0 virtual Sway framebuffer validation
 
 Issue: #111
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-10-30
 Last checkpoint: 2026-10-30
@@ -24,10 +24,10 @@ No installation, process management, daemon launch or fallback in production cod
 ## Current facts
 
 - Gate cleared: source PR #109 tested HEAD `52e52bdf735069acf3308e36124466272437f35c`, exact CI #41084832566 completed/success with all 8 jobs success, then expected-head squash merged to master commit `1ee33c82b70cada7a83984ccd78c74db914243d9`.
-- Wire fixture PR #105 separately merged at `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`; archive PR #110 independently merged as `dcd77057bbd9e6a321558f1a38e08fe206b67efb`. The #108 plan archive PR #112 merged at `6bb89f82004eaa8969982dd71b90149b72437952`; #108 is closed. Separate #114 socket fix PR #115 merged at `407f355b8c36424ace15dd1676adc3fb7c380fa9`; its docs-only archive #116 is independently gated. Neither is native pixel proof.
+- Wire fixture PR #105 separately merged at `2ca70ee0fd8b2e4fc457c69d1a6c314f1ae7ca72`; archive PR #110 independently merged as `dcd77057bbd9e6a321558f1a38e08fe206b67efb`. The #108 plan archive PR #112 merged at `6bb89f82004eaa8969982dd71b90149b72437952`; #108 is closed. Separate #114 socket fix PR #115 merged at `407f355b8c36424ace15dd1676adc3fb7c380fa9`; its docs-only archive #116 merged at `9923b2ba1ff3adffbbe8277aa2322110f2510b48`. Neither is native pixel proof.
 - Merged PR #115 corrects `src/backend/wpaperd.rs` to connect only to an already-running XDG_RUNTIME_DIR/wpaperd.sock, inventories AllWallpapers, sends a single named SetWallpaper and waits for separate exact CurrentWallpaper path. Its mock UnixListener tests do NOT prove native pixels.
-- Existing Sway virtual dual-output screenshot harness uses swaybg, not wpaperd. The pinned upstream daemon uses EGL/Wayland, so software-headless EGL compatibility and native compile time remain UNASSESSED. Do not turn unsupported startup into a passing skip.
-- Parent Issue #83 remains OPEN. CI currently has eight jobs; add native E2E within an existing appropriate Linux visual job, preserving every original job and check.
+- Existing Sway virtual dual-output screenshot harness uses swaybg, not wpaperd. The pinned upstream daemon uses EGL/Wayland; actual software-headless startup and native build were subsequently verified in CI #41134580160. Never treat unsupported startup as a passing skip.
+- Parent Issue #83 remains OPEN. CI has eight original jobs, and native E2E runs within the existing Sway visual job without weakening any check.
 
 ## Constraints and invariants
 
@@ -40,35 +40,37 @@ No installation, process management, daemon launch or fallback in production cod
 
 ## Acceptance criteria
 
-- [x] Exact upstream source pin verified in CI with SHA and `cargo build --locked --release -p wpaperd` succeeded in CI #41104263669 and #41116832430; daemon IPC/pixels still pending.
-- [ ] Real test-owned native daemon starts in isolated Sway two-output session; native AllWallpapers enumerates exactly two expected named outputs.
-- [ ] Two distinct simultaneous per-output screenshot colors meet existing strict sampled pixel threshold; one-output CLI rotation changes only its own screenshot, and both native CurrentWallpaper paths independently agree.
-- [ ] Failure cases reject unknown output, absent daemon and false acknowledgement without state commit; no broadcast, fallback or host mutation.
-- [ ] Full eight original CI jobs pass at exact source PR HEAD, workflow completed/success, reviewed mergeable source PR squash merged with expected SHA; separate completed-plan archive PR independently passes its own eight-job CI before Issue #111 closes.
+- [x] Exact upstream wpaperd 1.3.0 SHA `9e71fdd10e1f2d94532edaf0f54402aac3c0b01c`, `cargo build --locked --release -p wpaperd`, version, source and build logs verified in exact-head CI #41134580160 and artifact #13017260091.
+- [x] Real test-owned wpaperd starts in private-XDG Sway 1.9 headless session; AllWallpapers enumerates HEADLESS-1 and HEADLESS-2, independent CurrentWallpaper returns correct initial paths (artifact #13017260091).
+- [x] Actual grim PPM framebuffer evidence: initial HEADLESS-1 red (232,36,42) and HEADLESS-2 blue (35,78,216), after rotation HEADLESS-1 green (26,182,91) and HEADLESS-2 unchanged blue; all four sampled pixel ratios 1.0, both 76,800 pixels, and independent CurrentWallpaper readbacks match (artifact #13017260091). Virtual compositor pixels only, NOT physical monitors.
+- [x] Unknown output and missing daemon rejected (exit 1, no state creation) in native artifact; strict CLI outcome parsing, named-output readback and state isolation verified; mock wire contract separately covers stale/false acknowledgements. No broadcast/fallback/host mutation; test-owned process groups cleaned up.
+- [x] Source PR #113 HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab` exact CI #41134580160 completed/success with all eight original jobs completed/success; mergeable=true, diff/security reviewed; expected-head squash merged as `b48310d3f475a580a1c0cfbda85a95cf97f0e956` and independently verified on master. Independent docs-only archive PR prepared with its **own pending** 8/8 gate; #111 remains OPEN until that archive merges.
 
 ## Implementation slices
 
 - [x] Re-read pinned upstream daemon/IPC/opts/config and existing Sway dual-output helpers; confirm #109 merged on master and create plan before implementation.
 - [x] Added isolated native Sway/wpaperd Python harness with source pin, IPC/output/pixel checks, teardown, failure artifacts and offline helper tests; native execution pending.
 - [x] Integrated pinned native build and test into existing Sway visual job, preserving all original checks and adding source SHA, build logs, screenshot artifacts and explicit failure; CI pending.
-- [ ] Review full source patch, diagnose all exact-head CI jobs and actual logs; merge only after 8/8 completed/success and mergeable=true.
-- [ ] Archive plan through independent docs-only PR and its own 8/8 gate, close only #111, keep parent #83 OPEN.
+- [x] Reviewed four changed files, exact-head CI #41134580160 eight successful jobs, native job raw log and artifact; source PR #113 merged via expected-head squash at `b48310d3f475a580a1c0cfbda85a95cf97f0e956`.
+- [x] Prepared independent docs-only archive PR to move this plan to completed, requiring its own exact-head 8/8 gate **before merge**; #111 stays OPEN pending archive validation and master verification, parent #83 OPEN.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Upstream source | git checkout exact tag `1.3.0` commit and cargo --locked build | SHA, version and full build log | PASS (CI #41104263669 and #41116832430) |
-| Native IPC | isolated wpaperd 1.3.0 AllWallpapers/CurrentWallpaper | exact output names and paths | UNASSESSED |
-| Visual | actual Sway HEADLESS-1/2 grim PPM/PNG and pixel_fraction | >=0.97 on both screens, before and after one-screen rotation | UNASSESSED |
-| Negative and cleanup | fake/no daemon, unknown monitor, state and process isolation | failures and no state commit | UNASSESSED |
-| Original quality | cargo fmt, strict clippy, cargo tests, platform and agent checks | exact-head eight jobs completed/success | UNASSESSED |
+| Upstream source | git checkout exact tag `1.3.0` commit and cargo --locked build | SHA, version and full build log | PASS (CI #41134580160, artifact #13017260091) |
+| Native IPC | isolated wpaperd 1.3.0 AllWallpapers/CurrentWallpaper | exact output names and paths | PASS (artifact initial-inventory and after-readback JSON) |
+| Visual | actual Sway HEADLESS-1/2 grim PPM/PNG and pixel_fraction | >=0.97 on both screens, before and after one-screen rotation | PASS (six PPM screenshots, 1.0 ratio each; virtual only) |
+| Negative and cleanup | fake/no daemon, unknown monitor, state and process isolation | failures and no state commit | PASS (native negative JSON and deterministic wire tests; no real host session) |
+| Original quality | cargo fmt, strict clippy, cargo tests, platform and agent checks | exact-head eight jobs completed/success | PASS (CI #41134580160, source HEAD `c98b9b1a`) |
 
 ## Decision gates
 
 User already approved Decision A for the product runtime. Starting and stopping only test-owned wpaperd within disposable CI is an isolated verification fixture, not a product policy change. No new human decision is needed. Any proposed real-user desktop test, auto-daemon management, default change or new runtime dependency requires a separate explicit decision.
 
 ## Evidence log
+
+- 2026-10-30 final source evidence: PR #113 HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab`, CI #41134580160 workflow completed/success and all eight jobs completed/success. Native Sway job raw log verdict `PASS`, source SHA pinned, version wpaperd 1.3.0, Sway 1.9. Downloaded artifact #13017260091; independent PPM byte inspection confirms initial red/blue and rotated green/unchanged-blue, each 76,800/76,800 exact pixels. Native CurrentWallpaper post-rotation paths match green/blue, unknown-monitor and missing-daemon return exit 1. Expected-head squash merged source PR #113 to master `b48310d3f475a580a1c0cfbda85a95cf97f0e956`. Virtual framebuffer evidence only, no physical display claims.
 
 - 2026-10-30: source branch now contains `tests/e2e/sway/wpaperd_native.py`, offline negative helper tests and `.github/workflows/ci.yml` native build/EGL/pixel steps. Original eight jobs retained; no local tests or real native compositor were run, so PASS remains UNASSESSED pending GitHub CI.
 
@@ -89,11 +91,12 @@ User already approved Decision A for the product runtime. Starting and stopping 
 
 ## Resume from here
 
-PR #113 is open. Source socket fix #115 is merged into master as `407f355b8c36424ace15dd1676adc3fb7c380fa9`; native harness now uses the upstream runtime-root socket. Inspect the latest exact-head CI after correcting the native harness to parse the actual schema-v1 CLI JSON envelope; first run the offline Python helper contracts, then require native post-rotation CurrentWallpaper and green/unchanged-blue grim framebuffer screenshots. If another check fails, inspect its raw job log and artifact before making the next focused branch fix. Never count the earlier 7/8 CI as green or virtual framebuffer pixels as physical monitors. Only merge after all eight jobs and workflow completed/success, PR mergeable=true and diff/security reviewed. Then separate docs-only completion archive PR with its own eight-job CI; keep parent #83 OPEN.
+Verify this independent docs-only archive PR latest exact HEAD has eight completed/success jobs and workflow completed/success; confirm mergeable=true and only this plan moved from active/ to completed/. Squash merge with expected HEAD, independently fetch master completed plan (`Status: COMPLETED`) and verify active plan HTTP 404, then close only Issue #111. Keep parent #83 OPEN. Physical monitors, GPU/4K, hotplug and released niri remain unassessed.
 
 ## Completion
 
-Final source SHA: pending
-CI run: pending
-Native screenshot artifact: pending
-Remaining unassessed items: physical monitors, hotplug, GPU/4K and released niri.
+Final commit: `b48310d3f475a580a1c0cfbda85a95cf97f0e956` (source PR #113 expected-head squash, tested HEAD `c98b9b1a4a13a902cebc62681a4e1ce92af3e3ab`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/41134580160 (source exact HEAD completed/success, all 8/8 jobs)
+Native screenshot artifact: https://github.com/pkking/ezwallpaper/actions/runs/41134580160/artifacts/13017260091 (real Sway virtual framebuffer PPMs, native IPC, verdict PASS)
+Archive CI: separate docs-only PR exact-head eight-job gate required; pending, not counted as passed.
+Remaining unassessed items: physical monitors, hotplug, real GPU/4K, released niri and other real desktop configurations.
