@@ -9,6 +9,10 @@ use std::time::{Duration, Instant};
 
 pub struct NoctaliaBackend;
 
+fn wayland_display_present(display: Option<&std::ffi::OsStr>) -> bool {
+    display.is_some_and(|value| !value.is_empty())
+}
+
 impl NoctaliaBackend {
     /// Match legacy explicit Noctalia detection, including XDG_SESSION_TYPE priority.
     pub(crate) fn available() -> bool {
@@ -21,7 +25,7 @@ impl NoctaliaBackend {
         let wayland = match session.as_str() {
             "wayland" => true,
             "x11" => false,
-            _ => env::var_os("WAYLAND_DISPLAY").is_some_and(|value| !value.is_empty()),
+            _ => wayland_display_present(env::var_os("WAYLAND_DISPLAY").as_deref()),
         };
         wayland && super::command_available("noctalia")
     }
@@ -151,6 +155,14 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
 mod tests {
     use super::*;
     use anyhow::anyhow;
+
+    #[test]
+    fn wayland_display_fallback_requires_nonempty_socket_name() {
+        use std::ffi::OsStr;
+        assert!(!wayland_display_present(None));
+        assert!(!wayland_display_present(Some(OsStr::new(""))));
+        assert!(wayland_display_present(Some(OsStr::new("wayland-0"))));
+    }
 
     #[test]
     fn legacy_global_one_shot_preserves_missing_connector() {
