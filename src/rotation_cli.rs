@@ -762,6 +762,7 @@ mod tests {
             RotationPort {
                 backend: None,
                 state_scope: Some("wpaperd"),
+                events_dir: None,
             },
         )
         .expect("wpaperd offline preview");
