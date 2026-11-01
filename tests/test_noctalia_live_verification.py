@@ -118,7 +118,7 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(result["error"], "ezwallpaper_apply_failed")
         self.assertEqual(fake.wallpapers, self.originals)
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PATH_OBSERVED"))
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
         self.assertGreaterEqual(len(fake.writes), 4)
 
     def test_restoration_failure_keeps_private_recovery_manifest(self):
