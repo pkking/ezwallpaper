@@ -315,15 +315,28 @@ impl RotationClock {
 
 /// A dry-run never creates the state/lock directory. Real apply holds a lock
 /// across planning, Noctalia readback and atomic per-output acknowledgement.
-pub fn run_rotation(
-    profile_path: &Path,
-    state_override: Option<&Path>,
-    epoch_override: Option<i64>,
-    force: bool,
-    apply: bool,
-    interval_minutes: u64,
-    choice: registry::RotationBackend,
-) -> Result<Vec<RotationOutcome>> {
+pub struct RotationInvocation<'a> {
+    pub profile_path: &'a Path,
+    pub state_override: Option<&'a Path>,
+    pub epoch_override: Option<i64>,
+    pub force: bool,
+    pub apply: bool,
+    pub interval_minutes: u64,
+    pub choice: registry::RotationBackend,
+    pub events_dir: Option<&'a Path>,
+}
+
+pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutcome>> {
+    let RotationInvocation {
+        profile_path,
+        state_override,
+        epoch_override,
+        force,
+        apply,
+        interval_minutes,
+        choice,
+        events_dir,
+    } = request;
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
@@ -347,6 +360,7 @@ pub fn run_rotation(
                     registry::RotationBackend::Noctalia => None,
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
+                events_dir,
             },
         )
     } else {
@@ -363,6 +377,7 @@ pub fn run_rotation(
                     registry::RotationBackend::Noctalia => None,
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
+                events_dir,
             },
         )
     }
@@ -460,6 +475,7 @@ fn run_with_backend_interval(
         RotationPort {
             backend,
             state_scope: None,
+            events_dir: None,
         },
     )
 }
@@ -469,6 +485,7 @@ fn run_with_backend_interval(
 struct RotationPort<'a> {
     backend: Option<&'a mut dyn WallpaperBackend>,
     state_scope: Option<&'static str>,
+    events_dir: Option<&'a Path>,
 }
 
 fn run_with_backend_interval_scoped(
@@ -483,6 +500,7 @@ fn run_with_backend_interval_scoped(
     let RotationPort {
         mut backend,
         state_scope,
+        events_dir,
     } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -491,6 +509,18 @@ fn run_with_backend_interval_scoped(
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
     let mut profile = load_profile(profile_path)?;
+    let events_root = if apply {
+        events_dir
+            .map(|directory| {
+                crate::rotation_event::prepare_directory(
+                    directory,
+                    profile.outputs.iter().map(|o| o.name.as_str()),
+                )
+            })
+            .transpose()?
+    } else {
+        None
+    };
     if apply {
         let selected = backend
             .as_deref_mut()
@@ -587,6 +617,15 @@ fn run_with_backend_interval_scoped(
                 .ok_or_else(|| anyhow!("planner selected without proposed state"))?;
             saved.outputs.insert(output.name.clone(), new_state);
             atomic_save(&state_path, &saved)?;
+            if let Some(directory) = events_root.as_deref() {
+                let change = crate::rotation_event::WallpaperChange::acknowledged(
+                    output.name.clone(),
+                    epoch,
+                    proposed.content_id.clone().ok_or_else(|| anyhow!("missing selected ID"))?,
+                    path.clone(),
+                );
+                crate::rotation_event::publish(directory, &change)?;
+            }
         }
 
         let reason = match proposed.decision {
@@ -688,6 +727,7 @@ mod tests {
             RotationPort {
                 backend: Some(&mut backend),
                 state_scope: Some("wpaperd"),
+                events_dir: None,
             },
         )
         .expect("offline scoped apply");
@@ -706,6 +746,7 @@ mod tests {
                 RotationPort {
                     backend: None,
                     state_scope: None,
+                    events_dir: None,
                 },
             )
             .is_err(),
