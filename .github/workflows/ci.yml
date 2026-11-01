@@ -225,6 +225,8 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_lockscreen_event_sync.py' -v 2>&1 | tee artifacts/ci/lockscreen-sync.log
           # No real lockscreen: fake runner verifies fixed argv and opened file descriptors.
           python3 -m unittest discover -s tests -p 'test_swaylock_consumer.py' -v 2>&1 | tee artifacts/ci/swaylock-consumer.log
+          # Only fake runner and operator prompts; never lock CI runner.
+          python3 -m unittest discover -s tests -p 'test_swaylock_live_evidence.py' -v 2>&1 | tee artifacts/ci/swaylock-live-evidence.log
           # Dual-output niri/Noctalia mock-only checks: no real compositor or desktop changes.
           target/debug/ezwallpaper --help > artifacts/ci/help.txt
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
