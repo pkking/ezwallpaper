@@ -52,3 +52,21 @@ All CI tests use temporary local fixtures; they never write `/etc`,
 For an independent, unprivileged **private sandbox** snapshot, fixed-path replacement, backup and rollback prototype (never a system import), see [greeter sandbox import](greeter-sandbox-import.md).
 
 For a **separate root-owned fixed destination policy preflight** (still no installer), see [root greeter import policy](root-greeter-import-policy.md).
+
+## Strict PNG integrity validation (added)
+
+SDDM/Plymouth candidate and root-owned inbox preflights now validate the
+**whole PNG container**, not only its header. The shared, dependency-free
+`scripts/png_integrity.py` checker verifies all chunk CRCs and boundaries,
+IHDR, contiguous IDAT, valid IEND with no trailing bytes, the completed zlib
+stream, exact inflated scanline length, and row filter bytes. It accepts only
+noninterlaced 8-bit RGB/RGBA images up to 8192 pixels per edge, 16 million
+pixels overall, and a compressed source of at most 64 MiB. Malformed or
+oversized candidate data is refused without any filesystem writes.
+
+**Security limit:** Scanline structure and inflation checks are not a
+full PNG pixel reconstruction, color-management implementation, safe image
+sanitizer, or renderer test. Do not run an untrusted image decoder with
+elevated privileges on the strength of this preflight. Any real privileged
+importer needs independent decoding/isolation, policy review and trusted
+source/target FD revalidation.
