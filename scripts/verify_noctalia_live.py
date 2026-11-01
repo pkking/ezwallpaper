@@ -73,6 +73,54 @@ def parse_ppm(data: bytes) -> tuple[int, int, memoryview]:
     return width, height, pixels
 
 
+def frame_similarity(baseline: bytes, actual: bytes) -> float:
+    """Proportion of spread-out RGB samples matching original output pixels."""
+    width, height, before = parse_ppm(baseline)
+    other_width, other_height, after = parse_ppm(actual)
+    if (width, height) != (other_width, other_height):
+        return 0.0
+    step = max(1, min(width, height) // 100)
+    hits = count = 0
+    for y in range(0, height, step):
+        for x in range(0, width, step):
+            i = (y * width + x) * 3
+            if all(abs(before[i + k] - after[i + k]) <= 9 for k in range(3)):
+                hits += 1
+            count += 1
+    return hits / count
+
+
+def capture_frame(runner, output: str, filename: Path) -> bytes:
+    """Capture a fresh original/restored frame and reject oversize/truncation."""
+    try:
+        filename.unlink(missing_ok=True)
+    except OSError as exc:
+        raise VerificationError("cannot_clear_previous_capture") from exc
+    call(runner, ["grim", "-o", output, "-t", "ppm", str(filename)], "grim_capture_failed")
+    try:
+        if filename.stat().st_size > MAX_PPM_BYTES:
+            raise VerificationError("oversize_ppm_capture")
+        data = filename.read_bytes()
+        parse_ppm(data)
+    except OSError as exc:
+        raise VerificationError("cannot_read_grim_capture") from exc
+    return data
+
+
+def verify_restored_frame(
+    runner, output: str, baseline: bytes, filename: Path,
+) -> float:
+    """Conservatively prove restored pixels; moving overlays may cause failure."""
+    ratio = 0.0
+    for attempt in range(5):
+        ratio = frame_similarity(baseline, capture_frame(runner, output, filename))
+        if ratio >= MATCH_THRESHOLD:
+            break
+        if attempt < 4:
+            time.sleep(0.4)
+    return ratio
+
+
 def pixel_coverage(data: bytes, rgb: tuple[int, int, int]) -> float:
     width, height, pixels = parse_ppm(data)
     # Sample a spread across the *whole* output, not a single colored widget.
@@ -196,6 +244,18 @@ def verify_dual(
         handle.flush()
         os.fsync(handle.fileno())
 
+    # Capture both original rendered frames before the first desktop mutation.
+    # A missing/corrupt frame aborts without changing the wallpaper.
+    baselines = {}
+    try:
+        for output in outputs:
+            baselines[output] = capture_frame(
+                runner, output, artifact_dir / f"{output}-baseline.ppm"
+            )
+    except VerificationError:
+        recovery.unlink()
+        raise
+
     record = {
         "schema_version": 1, "desktop": "niri + Noctalia v5",
         "status": "FAILED", "pixel_threshold": MATCH_THRESHOLD,
@@ -231,14 +291,21 @@ def verify_dual(
             for output in outputs:
                 try:
                     apply(runner, binary, output, Path(originals[output]))
+                    ratio = verify_restored_frame(
+                        runner, output, baselines[output],
+                        artifact_dir / f"{output}-restored.ppm",
+                    )
                 except VerificationError:
                     record["restoration"][output] = "FAILED"
                 else:
-                    record["restoration"][output] = "PATH_OBSERVED"
-            if all(v == "PATH_OBSERVED" for v in record["restoration"].values()):
+                    record["restoration"][output] = (
+                        "PIXEL_VERIFIED" if ratio >= MATCH_THRESHOLD else "FAILED"
+                    )
+                    record.setdefault("restoration_pixel_ratios", {})[output] = round(ratio, 4)
+            if all(v == "PIXEL_VERIFIED" for v in record["restoration"].values()):
                 recovery.unlink()
 
-    if not all(v == "PATH_OBSERVED" for v in record["restoration"].values()):
+    if not all(v == "PIXEL_VERIFIED" for v in record["restoration"].values()):
         record["status"] = "FAILED"
         record["error"] = record["error"] or "restoration_failed"
     (artifact_dir / "result.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
@@ -269,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True))
-    if any(v != "PATH_OBSERVED" for v in result["restoration"].values()):
+    if any(v != "PIXEL_VERIFIED" for v in result["restoration"].values()):
         print("WARNING: restoration failed; consult private recovery.json and restore each output manually.", file=sys.stderr)
     return status
 
