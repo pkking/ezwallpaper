@@ -621,7 +621,10 @@ fn run_with_backend_interval_scoped(
                 let change = crate::rotation_event::WallpaperChange::acknowledged(
                     output.name.clone(),
                     epoch,
-                    proposed.content_id.clone().ok_or_else(|| anyhow!("missing selected ID"))?,
+                    proposed
+                        .content_id
+                        .clone()
+                        .ok_or_else(|| anyhow!("missing selected ID"))?,
                     path.clone(),
                 );
                 crate::rotation_event::publish(directory, &change)?;
@@ -834,10 +837,19 @@ mod tests {
 
         // A preview must not publish anything, even with the optional port.
         run_with_backend_interval_scoped(
-            &profile, &state, None, false, false,
+            &profile,
+            &state,
+            None,
+            false,
+            false,
             RotationClock::simulated(60, 3600),
-            RotationPort { backend: None, state_scope: None, events_dir: Some(&events) },
-        ).expect("preview");
+            RotationPort {
+                backend: None,
+                state_scope: None,
+                events_dir: Some(&events),
+            },
+        )
+        .expect("preview");
         assert!(!events.join("DP-1.json").exists());
 
         let mut calls = 0;
@@ -851,9 +863,17 @@ mod tests {
             },
         };
         let result = run_with_backend_interval_scoped(
-            &profile, &state, None, false, true,
+            &profile,
+            &state,
+            None,
+            false,
+            true,
             RotationClock::simulated(60, 3600),
-            RotationPort { backend: Some(&mut backend), state_scope: None, events_dir: Some(&events) },
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: None,
+                events_dir: Some(&events),
+            },
         );
         assert!(result.is_err());
         assert_eq!(calls, 2);
@@ -865,8 +885,8 @@ mod tests {
         assert!(change.applied_path_observed);
         assert!(!change.visually_verified);
         assert!(!events.join("HDMI-A-1.json").exists());
-        let saved: SavedState = serde_json::from_slice(&fs::read(&state).expect("state"))
-            .expect("state JSON");
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("state")).expect("state JSON");
         assert!(saved.outputs.contains_key("DP-1"));
         assert!(!saved.outputs.contains_key("HDMI-A-1"));
 
@@ -878,12 +898,27 @@ mod tests {
             },
         };
         run_with_backend_interval_scoped(
-            &profile, &state, None, false, true,
+            &profile,
+            &state,
+            None,
+            false,
+            true,
             RotationClock::simulated(60, 3600),
-            RotationPort { backend: Some(&mut recovery), state_scope: None, events_dir: Some(&events) },
-        ).expect("retry second output");
-        assert_eq!(retried, 1, "already committed first output must not repeat IPC");
-        assert_eq!(fs::read(events.join("DP-1.json")).expect("first unchanged"), first);
+            RotationPort {
+                backend: Some(&mut recovery),
+                state_scope: None,
+                events_dir: Some(&events),
+            },
+        )
+        .expect("retry second output");
+        assert_eq!(
+            retried, 1,
+            "already committed first output must not repeat IPC"
+        );
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("first unchanged"),
+            first
+        );
         assert!(events.join("HDMI-A-1.json").exists());
     }
 
@@ -903,10 +938,19 @@ mod tests {
             },
         };
         assert!(run_with_backend_interval_scoped(
-            &profile, &state, None, false, true,
+            &profile,
+            &state,
+            None,
+            false,
+            true,
             RotationClock::simulated(60, 3600),
-            RotationPort { backend: Some(&mut backend), state_scope: None, events_dir: Some(&events) },
-        ).is_err());
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: None,
+                events_dir: Some(&events)
+            },
+        )
+        .is_err());
         assert!(!state.exists());
         assert_eq!(fs::read(outside).expect("protected"), b"protected");
     }
