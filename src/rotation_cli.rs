@@ -715,7 +715,10 @@ mod tests {
                 require_niri_outputs: true,
             });
             assert!(outcome.is_err());
-            assert!(!state.exists(), "no state creation on invalid niri preflight mode");
+            assert!(
+                !state.exists(),
+                "no state creation on invalid niri preflight mode"
+            );
         }
     }
 
