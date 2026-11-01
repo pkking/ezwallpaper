@@ -164,6 +164,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Offline validator positive and negative cases
         run: python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v
+      - name: Read-only multi-output wallpaper event consumer contract
+        run: python3 -m unittest discover -s tests -p 'test_wallpaper_events_consumer.py' -v
 
   rust-quality:
     name: Rust quality

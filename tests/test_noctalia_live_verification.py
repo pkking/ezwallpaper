@@ -19,7 +19,7 @@ def ppm(rgb, width=64, height=40):
 
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
-                 pixel_failure=False, truncated=False):
+                 pixel_failure=False, truncated=False, restore_pixel_failure=None):
         self.originals = originals
         self.wallpapers = originals.copy()
         self.calls = []
@@ -27,6 +27,8 @@ class FakeDesktop:
         self.restore_failure = restore_failure
         self.pixel_failure = pixel_failure
         self.truncated = truncated
+        self.restore_pixel_failure = restore_pixel_failure
+        self.restored_outputs = set()
 
     def __call__(self, argv, **kwargs):
         self.calls.append(list(argv))
@@ -47,6 +49,8 @@ class FakeDesktop:
                 status = 6
             else:
                 self.wallpapers[out] = path
+                if not is_fixture:
+                    self.restored_outputs.add(out)
         elif argv[:3] == ["grim", "-o", argv[2]]:
             out = argv[2]
             assert argv[3] == "-t" and argv[4] == "ppm"
@@ -54,6 +58,8 @@ class FakeDesktop:
             rgb = verifier.COLORS[0 if "fixture-0" in image else 1]
             if self.pixel_failure and out == "HDMI-A-1":
                 rgb = (0, 0, 0)
+            if self.restore_pixel_failure == out and out in self.restored_outputs:
+                rgb = (9, 9, 9)
             Path(argv[5]).write_bytes(ppm(rgb)[:-1] if self.truncated else ppm(rgb))
         else:
             raise AssertionError("Unexpected host command: " + repr(argv))
@@ -94,9 +100,14 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual({e["output"] for e in result["outputs"]}, set(self.outputs))
         self.assertTrue(all(e["path_observed"] for e in result["outputs"]))
         self.assertTrue(all(e["pixel_match_ratio"] >= .90 for e in result["outputs"]))
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PATH_OBSERVED"))
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
         self.assertEqual(fake.wallpapers, self.originals)
         self.assertFalse((self.root / "proof/recovery.json").exists())
+        self.assertTrue(all(
+            result["restoration_pixel_ratios"][output] >= .90 for output in self.outputs
+        ))
+        self.assertTrue((self.root / "proof/DP-1-baseline.ppm").exists())
+        self.assertTrue((self.root / "proof/DP-1-restored.ppm").exists())
         self.assertTrue((self.root / "proof/result.json").exists())
         self.assertTrue((self.root / "proof/DP-1-fixture.ppm").exists())
         self.assertNotIn(str(self.root), str(result))
@@ -107,18 +118,36 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(result["error"], "ezwallpaper_apply_failed")
         self.assertEqual(fake.wallpapers, self.originals)
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PATH_OBSERVED"))
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
         self.assertGreaterEqual(len(fake.writes), 4)
 
     def test_restoration_failure_keeps_private_recovery_manifest(self):
         fake = FakeDesktop(self.originals, restore_failure="HDMI-A-1")
         result, status = self.verify(fake)
         self.assertEqual(status, 1)
-        self.assertEqual(result["restoration"]["DP-1"], "PATH_OBSERVED")
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
         self.assertEqual(result["restoration"]["HDMI-A-1"], "FAILED")
         self.assertTrue((self.root / "proof/recovery.json").exists())
         self.assertEqual((self.root / "proof/recovery.json").stat().st_mode & 0o777, 0o600)
         self.assertEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+
+    def test_restored_path_without_original_pixels_keeps_recovery_file(self):
+        fake = FakeDesktop(self.originals, restore_pixel_failure="HDMI-A-1")
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "FAILED")
+        self.assertLess(result["restoration_pixel_ratios"]["HDMI-A-1"], .90)
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+        self.assertTrue((self.root / "proof/HDMI-A-1-baseline.ppm").exists())
+        self.assertTrue((self.root / "proof/HDMI-A-1-restored.ppm").exists())
+
+    def test_frame_similarity_rejects_changed_geometry_and_pixels(self):
+        original = ppm((10, 20, 30))
+        self.assertEqual(verifier.frame_similarity(original, original), 1.0)
+        self.assertEqual(verifier.frame_similarity(original, ppm((1, 2, 3))), 0.0)
+        self.assertEqual(verifier.frame_similarity(original, ppm((10, 20, 30), 32, 32)), 0.0)
 
     def test_pixel_mismatch_fails_without_claiming_visual_success(self):
         fake = FakeDesktop(self.originals, pixel_failure=True)
@@ -138,12 +167,13 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             verifier.capture(no_frame, "DP-1", filename, verifier.COLORS[0])
         self.assertFalse(filename.exists())
 
-    def test_truncated_screenshot_rejected_and_restored(self):
+    def test_truncated_original_frame_blocks_mutation_before_apply(self):
         fake = FakeDesktop(self.originals, truncated=True)
-        result, status = self.verify(fake)
-        self.assertEqual(status, 1)
-        self.assertEqual(result["error"], "invalid_ppm_payload_length")
+        with self.assertRaisesRegex(verifier.VerificationError, "invalid_ppm_payload_length"):
+            self.verify(fake)
+        self.assertEqual(fake.writes, [])
         self.assertEqual(fake.wallpapers, self.originals)
+        self.assertFalse((self.root / "proof/recovery.json").exists())
 
     def test_declining_or_lacking_restore_baseline_never_changes_desktop(self):
         fake = FakeDesktop(self.originals)

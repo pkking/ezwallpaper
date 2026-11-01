@@ -98,6 +98,30 @@ importer, SDDM or Plymouth configuration is modified. Privileged consumers
 must **not trust these user-writable paths** without an independent
 root-owned validation and copy policy.
 
+## Read a coherent dual-output snapshot (unprivileged)
+
+After explicit event publication, a consumer can require both outputs to have
+acknowledged **the same requested UTC rotation bucket** before using either:
+
+```sh
+python3 scripts/read_wallpaper_events.py \
+  --events-dir ~/.local/state/ezwallpaper/events \
+  --epoch 498123 --output DP-1 --output HDMI-A-1
+```
+
+The epoch is an example; supply the intended UTC bucket from the rotation
+schedule (for hourly rotation: integer Unix timestamp divided by 3600).
+On success this prints **one** JSON document with `complete: true`.
+Missing, malformed, symlinked, oversized, unacknowledged or mismatched-epoch
+events cause nonzero exit and **empty stdout**. The reader does not open source
+wallpaper files, invoke a desktop command or install a hook.
+
+The emitted records remain **user-writable and untrusted**. Matching epochs do
+not prove the two files were produced in an atomic multi-output transaction,
+the wallpaper files are still unchanged, or pixels are present. Never pass
+their `image_path` directly into a root-run copy/importer; a privileged
+consumer must have an independent root-owned allowlist and snapshot policy.
+
 ## Strict niri + Noctalia output preflight (optional)
 
 If a configured monitor has been unplugged or disabled, an unrecognized
