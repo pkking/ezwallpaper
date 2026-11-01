@@ -165,5 +165,51 @@ class SwaylockConsumerTests(unittest.TestCase):
         self.assertIn("invalid_interval", stderr.getvalue())
 
 
+    def test_explicit_ready_mode_requires_compositor_ack_without_running_shell(self):
+        seen = []
+        def fake_ready(argv, fds):
+            seen.append((list(argv), tuple(fds)))
+            self.assertEqual(len(fds), 2)
+            for fd in fds:
+                self.assertGreater(os.fstat(fd).st_size, 0)
+            return True, 0
+        with patch.object(adapter, "is_root_user", return_value=False), \
+             patch.object(adapter.shutil, "which", return_value="/usr/bin/swaylock"), \
+             patch.object(adapter.subprocess, "run") as legacy:
+            result = adapter.lock_snapshot(
+                self.events, self.outputs, self.staged,
+                now_seconds=36001, lock=True, require_ready=True,
+                ready_runner=fake_ready,
+                environment={"XDG_SESSION_TYPE": "wayland", "WAYLAND_DISPLAY": "wayland-99"},
+            )
+            legacy.assert_not_called()
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(result["status"], "LOCKER_EXITED_READY_ACKNOWLEDGED")
+        self.assertTrue(result["compositor_lock_acknowledged"])
+        self.assertFalse(result["screen_locked_verified"])
+
+    def test_ready_unconfirmed_refuses_and_preserves_locker_process(self):
+        with patch.object(adapter, "is_root_user", return_value=False), \
+             patch.object(adapter.shutil, "which", return_value="/usr/bin/swaylock"):
+            with self.assertRaisesRegex(adapter.LockError, "may_still_be_running"):
+                adapter.lock_snapshot(
+                    self.events, self.outputs, self.staged,
+                    now_seconds=36001, lock=True, require_ready=True,
+                    ready_runner=lambda argv, fds: (False, None),
+                    environment={"XDG_SESSION_TYPE": "wayland", "WAYLAND_DISPLAY": "wayland-99"},
+                )
+
+    def test_cli_require_ready_cannot_run_without_explicit_lock(self):
+        err, out = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
+            code = adapter.main([
+                "--events-dir", str(self.events), "--user-dir", str(self.staged),
+                "--output", "DP-1", "--require-ready",
+            ])
+        self.assertEqual(code, 2)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("readiness_requires_explicit_lock", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
