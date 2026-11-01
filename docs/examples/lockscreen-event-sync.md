@@ -142,3 +142,34 @@ If swaylock fails to start or exit cleanly, no visual success is emitted.
 Never run this command through a timer, SSH background process or unattended
 CI worker. A separate compositor-specific protocol test remains necessary
 to establish ext-session-lock correctness.
+
+## Optional compositor lock acknowledgment (swaylock --ready-fd)
+
+For **manual** invocation, the explicit `--lock --require-ready` combination
+requires swaylock to send a newline on its `--ready-fd` pipe after the
+Wayland compositor acknowledges the session lock. This uses the upstream
+`ext_session_lock_v1_handle_locked` callback (swaywm/swaylock `main.c`).
+A process exit alone is not equivalent to a lock acknowledgment:
+
+```sh
+python3 scripts/launch_swaylock_snapshot.py \
+  --events-dir ~/.local/state/ezwallpaper/events \
+  --user-dir ~/.local/state/ezwallpaper/lockscreen \
+  --output DP-1 --output HDMI-A-1 --lock --require-ready
+```
+
+**This command will lock your real session.** The parent waits for
+swaylock to exit after you authenticate. If the readiness pipe closes,
+contains unexpected bytes or times out after 20 seconds, the command
+fails closed **without killing a potentially active lockscreen**.
+A locker may still be running: unlock/check your session safely before
+retrying. A verified compositor lock does **not** verify wallpaper pixels.
+
+The manual `verify_swaylock_live.py --confirm-lock-session` path now
+requires this compositor acknowledgment before accepting operator-reported
+per-display visual observations. Results explicitly distinguish readiness
+from `automatic_framebuffer_verification: false`.
+
+The original `--lock` behavior without `--require-ready` remains
+unchanged for compatibility; use the readiness form for new validation.
+No timer, watcher or system unit invokes either locking mode.
