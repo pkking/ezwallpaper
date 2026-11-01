@@ -166,6 +166,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v
       - name: Read-only multi-output wallpaper event consumer contract
         run: python3 -m unittest discover -s tests -p 'test_wallpaper_events_consumer.py' -v
+      - name: SDDM/Plymouth candidate preview contracts (no system writes)
+        run: python3 -m unittest discover -s tests -p 'test_greeter_candidate.py' -v
 
   rust-quality:
     name: Rust quality
