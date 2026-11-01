@@ -66,6 +66,7 @@ No new privileged integration: output is a user-owned, explicitly requested, unt
 ## Evidence log
 
 - 2026-11-01: source inspected at master 213ad42038452ccc1b32d8d1254307611700dffe; no event publisher exists.
+- 2026-11-01: PR #144 commit accc1cf7 passed Rust quality, Rust/CLI tests, Windows, macOS, live-safety and Sway; Agent plan integrity failed because PR text used `Architecture diagram: updated - ...` rather than an exact standalone `Architecture diagram: updated` line (CI run 41276902129). PR body corrected; this plan checkpoint creates a new PR synchronize event for GitHub's event snapshot. Native Noctalia job was still running; new exact-head checks are required.
 
 ## Deviations and discoveries
 
