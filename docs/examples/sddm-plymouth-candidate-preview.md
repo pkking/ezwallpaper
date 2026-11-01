@@ -48,3 +48,5 @@ is accepted from the event.
 
 All CI tests use temporary local fixtures; they never write `/etc`,
 `/usr`, the splash theme, or initramfs.
+
+For an independent, unprivileged **private sandbox** snapshot, fixed-path replacement, backup and rollback prototype (never a system import), see [greeter sandbox import](greeter-sandbox-import.md).
