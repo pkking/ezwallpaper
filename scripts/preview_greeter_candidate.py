@@ -17,6 +17,7 @@ import sys
 import zlib
 
 from read_wallpaper_events import SnapshotError, snapshot
+from png_integrity import PngIntegrityError, inspect_png_integrity
 
 MAX_IMAGE_BYTES = 64 * 1024 * 1024
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -43,10 +44,13 @@ def inspect_png(blob: bytes) -> tuple[int, int]:
             or depth != 8 or color not in (2, 6)
             or compression != 0 or filtering != 0 or interlace != 0):
         raise CandidateError("unsupported_png_header")
-    # This is a *candidate preview*, not successful decode or a trusted root import.
-    if b"IEND" not in blob[-32:]:
-        raise CandidateError("png_end_missing")
-    return width, height
+    # Validate *all* chunk CRCs and the bounded IDAT scanlines. This is still
+    # not a complete pixel renderer, nor trusted privileged import approval.
+    try:
+        checked = inspect_png_integrity(blob)
+    except PngIntegrityError as exc:
+        raise CandidateError("invalid_png_payload") from exc
+    return checked
 
 
 def candidate(events_dir: Path, output: str, epoch: int, allowed_source_root: Path, kind: str) -> dict:
