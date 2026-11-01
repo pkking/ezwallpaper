@@ -70,3 +70,36 @@ sanitizer, or renderer test. Do not run an untrusted image decoder with
 elevated privileges on the strength of this preflight. Any real privileged
 importer needs independent decoding/isolation, policy review and trusted
 source/target FD revalidation.
+
+## Installed theme entrypoint preflight (read-only)
+
+A root-controlled target file is not sufficient to establish that the
+active greeter or boot splash uses that image. For the operator-claimed
+SDDM/Plymouth theme, verify its entrypoint exists **without** writing:
+
+```sh
+python3 scripts/preview_greeter_theme_files.py \
+  --policy /etc/ezwallpaper/greeter-import.json \
+  --consumer sddm --theme-name CHOOSE-THEME
+```
+
+For Plymouth, use `--consumer plymouth`. The checker compares the
+operator-provided theme name to the policy-approved target's theme
+directory, validates the full root-owned no-follow directory chain and
+requires a single-linked, immutable-by-unprivileged-users regular entrypoint:
+`Main.qml` for SDDM or `THEME.plymouth` with a valid
+`[Plymouth Theme] ModuleName` for Plymouth.
+
+This verifies **file presence and metadata only**. The CLI reports
+`effective_theme_selection_verified: false`,
+`image_reference_in_theme_verified: false`,
+`greeter_rendered_pixels_verified: false` and
+`initramfs_contains_asset_verified: false`. It does not resolve all SDDM
+configuration precedence, interpret QML, confirm a QML reference to the
+candidate filename, verify live greeter reload, or inspect next boot.
+Those require separate platform-specific evidence and operator action.
+
+Upstream references: [SDDM configuration Theme.Current](https://github.com/sddm/sddm/blob/develop/data/man/sddm.conf.rst.in),
+[SDDM theme entrypoint/configuration](https://github.com/sddm/sddm/wiki/Theming),
+and [Plymouth initrd update behavior](https://manpages.debian.org/unstable/plymouth/plymouth-set-default-theme.1.en.html).
+No automatic initramfs rebuild is attempted.
