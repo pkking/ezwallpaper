@@ -475,6 +475,12 @@ jobs:
             2>&1 | tee artifacts/noctalia-sway-e2e/test.log
       - name: Validate experimental niri/Noctalia pure helpers
         run: python3 -m unittest discover -s tests -p 'test_niri_noctalia_helpers.py' -v
+      - name: Install stable Rust for pinned experimental niri
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Avoid nightly async-drop query regression (E0391 in zbus 5.19.0).
+          # Keep ezwallpaper's separate nightly quality/test gates unchanged.
+          toolchain: 1.99.1
       - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
         shell: bash
         run: |
@@ -489,9 +495,10 @@ jobs:
           git -C /tmp/niri-virtual-3800 rev-parse HEAD | tee artifacts/niri-noctalia-e2e/upstream-commit.txt
           grep -Fx '7fd585dd44ed67644977dd9561bb6e8b3837f8f7' \
             artifacts/niri-noctalia-e2e/upstream-commit.txt
+          rustc +1.99.1 --version | tee artifacts/niri-noctalia-e2e/build-toolchain.txt
           (cd /tmp/niri-virtual-3800 && \
             NIRI_BUILD_COMMIT=7fd585dd44ed67644977dd9561bb6e8b3837f8f7 \
-              cargo build --locked --release --no-default-features --features dbus) \
+              cargo +1.99.1 build --locked --release --no-default-features --features dbus) \
             2>&1 | tee artifacts/niri-noctalia-e2e/upstream-build.log
           /tmp/niri-virtual-3800/target/release/niri --version \
             | tee artifacts/niri-noctalia-e2e/upstream-version.txt
