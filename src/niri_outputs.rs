@@ -25,9 +25,9 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
     let inventory: BTreeMap<String, Value> =
         serde_json::from_slice(bytes).context("invalid niri outputs JSON")?;
     for requested_name in requested {
-        let value = inventory.get(requested_name).ok_or_else(|| {
-            anyhow!("niri output {requested_name} is not connected")
-        })?;
+        let value = inventory
+            .get(requested_name)
+            .ok_or_else(|| anyhow!("niri output {requested_name} is not connected"))?;
         let output = value
             .as_object()
             .ok_or_else(|| anyhow!("invalid niri output descriptor: {requested_name}"))?;
@@ -127,9 +127,10 @@ mod tests {
             .expect("utf8")
             .replace("\"current_mode\":0", "\"current_mode\":null");
         assert!(validate_outputs(disabled.as_bytes(), &dual()).is_err());
-        let unmapped = String::from_utf8(raw)
-            .expect("utf8")
-            .replace("\"logical\":{\"width\":2560,\"height\":1440,\"scale\":1.5}", "\"logical\":null");
+        let unmapped = String::from_utf8(raw).expect("utf8").replace(
+            "\"logical\":{\"width\":2560,\"height\":1440,\"scale\":1.5}",
+            "\"logical\":null",
+        );
         assert!(validate_outputs(unmapped.as_bytes(), &dual()).is_err());
     }
 
