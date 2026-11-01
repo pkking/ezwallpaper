@@ -17,7 +17,12 @@ pub struct WallpaperChange {
 }
 
 impl WallpaperChange {
-    pub fn acknowledged(output: String, epoch: i64, content_id: String, image_path: PathBuf) -> Self {
+    pub fn acknowledged(
+        output: String,
+        epoch: i64,
+        content_id: String,
+        image_path: PathBuf,
+    ) -> Self {
         Self {
             schema_version: 1,
             producer: "ezwallpaper".to_owned(),
@@ -58,7 +63,10 @@ mod tests {
     #[test]
     fn unknown_fields_are_rejected() {
         let change = WallpaperChange::acknowledged(
-            "HDMI-A-1".to_owned(), 9, "id".to_owned(), PathBuf::from("/tmp/a.png"),
+            "HDMI-A-1".to_owned(),
+            9,
+            "id".to_owned(),
+            PathBuf::from("/tmp/a.png"),
         );
         let mut raw = serde_json::to_value(change).expect("serialize");
         raw["privileged_hook"] = serde_json::json!("never execute");
