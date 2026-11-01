@@ -83,6 +83,13 @@ class EventConsumerTests(unittest.TestCase):
                 self.assertEqual(stdout, "")
                 self.assertIn("refused:", stderr)
 
+    def test_duplicate_json_fields_cannot_spoof_an_epoch(self):
+        event = json.loads((self.root / "DP-1.json").read_text())
+        raw = json.dumps(event).replace('"epoch": 101', '"epoch": 100, "epoch": 101')
+        (self.root / "DP-1.json").write_text(raw)
+        code, stdout, _ = self.run_cli()
+        self.assertEqual((code, stdout), (2, ""))
+
     def test_invalid_requests_and_oversized_event_fail(self):
         for outputs in (["DP-1", "DP-1"], ["../escape"], ["."], [".."], [], ["A" * 129]):
             with self.subTest(outputs=outputs):
