@@ -1,7 +1,7 @@
 # greeter - Issue #56
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -35,16 +35,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; scripts/read_wallpap
 
 ## Acceptance criteria
 
-- [ ] Specified functionality and negative/boundary fixture tests.
-- [ ] CI executes added tests; no existing gates disabled.
-- [ ] Documentation gives exact explicit opt-in invocation and limitations.
+- [x] Specified functionality and negative/boundary fixture tests authored, execution pending CI.
+- [x] Required CI workflow configured to execute added fixture tests; evidence pending.
+- [x] Documentation gives exact explicit opt-in invocation and limitations.
 - [ ] All exact HEAD required CI checks pass.
 
 ## Implementation slices
 
-- [ ] Implement minimal standalone command reusing snapshot reader.
-- [ ] Add deterministic mocks and required CI coverage.
-- [ ] Update guide and evidence; submit separate PR.
+- [x] Implement minimal standalone command reusing snapshot reader.
+- [x] Add deterministic fixtures and required CI coverage.
+- [x] Document guidance and evidence limits; PR submission next.
 
 ## Verification matrix
 
@@ -65,7 +65,7 @@ Existing user-level opt-in consumer event boundary applies. Actual SDDM/Plymouth
 
 ## Deviations and discoveries
 
-None.
+Implemented a read-only SDDM/Plymouth candidate preview with source-root allowlist, SHA-256 matching and minimum PNG header checks. Fixture test wired to Agent contract job; no real system import or local execution claimed.
 
 ## Resume from here
 
