@@ -826,6 +826,91 @@ mod tests {
     }
 
     #[test]
+    fn event_publication_preserves_partial_success_and_idempotency() {
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("event dir");
+
+        // A preview must not publish anything, even with the optional port.
+        run_with_backend_interval_scoped(
+            &profile, &state, None, false, false,
+            RotationClock::simulated(60, 3600),
+            RotationPort { backend: None, state_scope: None, events_dir: Some(&events) },
+        ).expect("preview");
+        assert!(!events.join("DP-1.json").exists());
+
+        let mut calls = 0;
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                calls += 1;
+                if calls == 2 {
+                    bail!("second output not acknowledged");
+                }
+                Ok(ApplyStatus::PathObserved)
+            },
+        };
+        let result = run_with_backend_interval_scoped(
+            &profile, &state, None, false, true,
+            RotationClock::simulated(60, 3600),
+            RotationPort { backend: Some(&mut backend), state_scope: None, events_dir: Some(&events) },
+        );
+        assert!(result.is_err());
+        assert_eq!(calls, 2);
+        let first = fs::read(events.join("DP-1.json")).expect("committed first event");
+        let change: crate::rotation_event::WallpaperChange =
+            serde_json::from_slice(&first).expect("event schema");
+        assert_eq!(change.output, "DP-1");
+        assert_eq!(change.epoch, 1);
+        assert!(change.applied_path_observed);
+        assert!(!change.visually_verified);
+        assert!(!events.join("HDMI-A-1.json").exists());
+        let saved: SavedState = serde_json::from_slice(&fs::read(&state).expect("state"))
+            .expect("state JSON");
+        assert!(saved.outputs.contains_key("DP-1"));
+        assert!(!saved.outputs.contains_key("HDMI-A-1"));
+
+        let mut retried = 0;
+        let mut recovery = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                retried += 1;
+                Ok(ApplyStatus::PathObserved)
+            },
+        };
+        run_with_backend_interval_scoped(
+            &profile, &state, None, false, true,
+            RotationClock::simulated(60, 3600),
+            RotationPort { backend: Some(&mut recovery), state_scope: None, events_dir: Some(&events) },
+        ).expect("retry second output");
+        assert_eq!(retried, 1, "already committed first output must not repeat IPC");
+        assert_eq!(fs::read(events.join("DP-1.json")).expect("first unchanged"), first);
+        assert!(events.join("HDMI-A-1.json").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn invalid_event_target_fails_before_any_ipc() {
+        use std::os::unix::fs::symlink;
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("events");
+        let outside = root.path().join("outside");
+        fs::write(&outside, b"protected").expect("outside");
+        symlink(&outside, events.join("DP-1.json")).expect("symlink");
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                panic!("invalid publish target must reject before IPC");
+            },
+        };
+        assert!(run_with_backend_interval_scoped(
+            &profile, &state, None, false, true,
+            RotationClock::simulated(60, 3600),
+            RotationPort { backend: Some(&mut backend), state_scope: None, events_dir: Some(&events) },
+        ).is_err());
+        assert!(!state.exists());
+        assert_eq!(fs::read(outside).expect("protected"), b"protected");
+    }
+
+    #[test]
     fn simultaneous_hourly_invocations_acknowledge_each_output_once() {
         use std::sync::{Arc, Barrier};
         use std::thread;
