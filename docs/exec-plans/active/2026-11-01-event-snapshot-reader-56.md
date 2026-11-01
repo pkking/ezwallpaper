@@ -1,7 +1,7 @@
 # Read-only coherent dual-output event snapshot
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -33,15 +33,15 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, src/rotation_event.r
 
 ## Acceptance criteria
 
-- [ ] Implement goal with fail-closed boundary checks and regression tests.
-- [ ] No desktop mutation in unit/CI tests.
-- [ ] Document evidence and trust limits.
+- [x] Implement goal with fail-closed boundary checks and regression tests (authored, CI pending).
+- [x] Mock-only offline tests; no real desktop API exercised.
+- [x] Document evidence and trust limits.
 - [ ] CI final exact HEAD passes all required checks.
 
 ## Implementation slices
 
-- [ ] Implement independent functionality and deterministic tests.
-- [ ] Document usage, threat and evidence boundaries.
+- [x] Implement independent functionality and deterministic tests (execution pending).
+- [x] Document usage, threat and evidence boundaries.
 - [ ] Verify exact HEAD checks; squash merge only after success.
 
 ## Verification matrix
@@ -63,7 +63,7 @@ No security-policy change or privileged integration; this is read-only consumpti
 
 ## Deviations and discoveries
 
-None.
+The read-only Python snapshot consumer and offline tests are implemented; code not yet validated by CI.
 
 ## Resume from here
 
