@@ -94,7 +94,7 @@ class JournalRecoveryTests(unittest.TestCase):
                 raise OSError("simulated interrupted journal cleanup")
             return original_unlink(path, *a, **kw)
         with patch.object(importer.os, "unlink", side_effect=fail_marker):
-            with self.assertRaisesRegex(OSError, "simulated"):
+            with self.assertRaisesRegex(importer.ImportError, "sandbox_transaction_refused"):
                 self.import_it()
         self.assertEqual(self.target.read_bytes(), self.new)
         self.assertEqual(self.backup.read_bytes(), self.old)
