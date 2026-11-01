@@ -121,3 +121,29 @@ not prove the two files were produced in an atomic multi-output transaction,
 the wallpaper files are still unchanged, or pixels are present. Never pass
 their `image_path` directly into a root-run copy/importer; a privileged
 consumer must have an independent root-owned allowlist and snapshot policy.
+
+## Strict niri + Noctalia output preflight (optional)
+
+If a configured monitor has been unplugged or disabled, an unrecognized
+connector should **not** receive a wallpaper change. For niri 26.04 and
+Noctalia v5, opt in to a fresh, read-only compositor inventory query before
+hourly apply:
+
+```sh
+ezwallpaper rotate next --profile ~/.config/ezwallpaper/rotation.json \
+  --apply --require-niri-outputs --json
+```
+
+The CLI calls `niri msg --json outputs` once (5-second timeout, 1 MiB
+response limit), and requires **every** profile connector to be present,
+enabled and mapped to a logical output. Unknown/disabled outputs, missing
+niri IPC, malformed replies and timeouts fail before rotation state/lock
+creation or Noctalia wallpaper mutation. This option is **Noctalia-only**,
+requires `--apply`, and is disabled by default. It never starts niri or
+Noctalia, changes output configuration, launches swaybg or discovers
+alternative displays automatically. A hotplug *after* the snapshot is
+not prevented: per-output Noctalia path readback remains necessary; it
+does not prove real pixels.
+
+JSON schema source: [niri v26.04 Output](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs)
+and [niri msg output serialization](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
