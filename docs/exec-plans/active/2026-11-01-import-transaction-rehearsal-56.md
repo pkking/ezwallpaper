@@ -1,7 +1,7 @@
 # issue-56-import-transaction-rehearsal
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0011-wallpa
 
 ## Acceptance
 
-- [ ] Deterministic positive/negative, tamper and failure tests.
-- [ ] Required CI runs new tests without weakening other checks.
-- [ ] Docs state which conclusions are CODE, TESTED and UNASSESSED.
+- [x] Authored deterministic success, fault, tamper and refusal tests; CI execution pending.
+- [x] Added new fixture test to required CI; all original checks retained.
+- [x] Added user-facing evidence limits and commands.
 - [ ] All applicable CI checks successful on exact PR HEAD.
 
 ## Slices
 
-- [ ] Implement standalone logic.
-- [ ] Add offline tests + required CI gate.
-- [ ] Documentation and PR.
+- [x] Implemented standalone logic.
+- [x] Added tests and required CI gate.
+- [x] Documentation updated; PR submission next.
 
 ## Verification matrix
 
@@ -65,7 +65,7 @@ Any real privileged integration is architecture-affecting and requires ADR plus 
 
 ## Deviations and discoveries
 
-None.
+Implemented memory-only backup-first transaction simulation, three interruption points, digest checks, explicit simulated recovery, and bounded CLI source reads. Added offline fixtures to required Rust/CLI gate; no OS write API in rehearsal.
 
 ## Resume from here
 
