@@ -1,7 +1,7 @@
 # 2026-11-01-swaylock-live-evidence-59.md: Add explicit TTY-gated real-session manual swaylock verification with per-output operator evidence after unlock, and strict offline no-lock fixture coverage. Never lock automatically.
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, scripts/launch_swayl
 
 ## Acceptance criteria
 
-- [ ] Positive, negative, safety and boundary tests.
-- [ ] No background/automatic live lock, root mutation or system changes.
-- [ ] User docs explain opt-in, known limitations, and exact commands.
+- [x] Positive, negative, safety and boundary tests authored; awaiting CI.
+- [x] Scripts require explicit invocation and CI tests fake privileged/desktop interactions.
+- [x] User docs explain opt-in, known limitations, and exact commands.
 - [ ] All required checks succeed on final HEAD.
 
 ## Implementation slices
 
-- [ ] Add standalone utility.
-- [ ] Fixture tests and CI job wiring.
-- [ ] Documentation, PR submission, check final CI.
+- [x] Add standalone utility.
+- [x] Fixture tests and required CI job wiring.
+- [x] Documentation completed; PR creation next; final CI pending.
 
 ## Verification matrix
 
@@ -64,7 +64,7 @@ No OS policy or privilege change. Any real privileged importer still needs an ex
 
 ## Deviations and discoveries
 
-None.
+Typed TTY gate, preflight and repeated actual lock-time checks, and per-output operator-reported result are authored. Offline tests mock all lock invocations; real session remains UNASSESSED.
 
 ## Resume from here
 
