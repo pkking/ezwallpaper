@@ -147,3 +147,34 @@ does not prove real pixels.
 
 JSON schema source: [niri v26.04 Output](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs)
 and [niri msg output serialization](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
+
+## Optional private lock-screen asset staging
+
+The event reader alone does not verify that a source image still has the
+acknowledged SHA-256 content ID. To prepare a **user-owned**, local PNG copy
+for a separate lock-screen application, run the opt-in command:
+
+```sh
+mkdir -p ~/.local/state/ezwallpaper/lockscreen
+chmod 700 ~/.local/state/ezwallpaper/lockscreen
+python3 scripts/stage_lockscreen_wallpaper.py \
+  --events-dir ~/.local/state/ezwallpaper/events \
+  --output DP-1 --epoch 498123 \
+  --source-root ~/Pictures/wallpapers \
+  --user-dir ~/.local/state/ezwallpaper/lockscreen
+```
+
+The default command only previews the exact source content. Repeat the same
+command with `--apply` to atomically stage an image at
+`lockscreen-DP-1.png` in the already-existing private user directory.
+The source must be an actual non-symlink PNG within the explicit source root,
+its exact bytes must match the event SHA-256, and the file must not exceed
+64 MiB. A symlink or non-regular destination refuses replacement; failure
+preserves the previous copy. Running as root is refused.
+
+**No lock screen is started or configured**, and no assertion about actual
+lockscreen pixels is made. Any lock-screen app must be independently configured
+by the user to read the fixed staged file; per-app reload/cache and screen-lock
+behaviors need opt-in real-session verification. Do not use this staging
+directory as a privileged SDDM/Plymouth source without a separate trusted
+system import policy. PNG header checks are not a full image decoder audit.

@@ -215,6 +215,8 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_desktop_adapter_contract.py' -v 2>&1 | tee artifacts/ci/desktop-adapter-contract.log
           # State-machine safety tests only; no real desktop commands or effects.
           python3 -m unittest discover -s tests -p 'test_gnome_live_verification.py' -v 2>&1 | tee artifacts/ci/gnome-live-safety.log
+          # User-only, offline lockscreen copy staging; never touches GUI or system directories.
+          python3 -m unittest discover -s tests -p 'test_lockscreen_staging.py' -v 2>&1 | tee artifacts/ci/lockscreen-staging.log
           # Dual-output niri/Noctalia mock-only checks: no real compositor or desktop changes.
           target/debug/ezwallpaper --help > artifacts/ci/help.txt
           target/debug/ezwallpaper --version > artifacts/ci/version.txt
