@@ -324,6 +324,7 @@ pub struct RotationInvocation<'a> {
     pub interval_minutes: u64,
     pub choice: registry::RotationBackend,
     pub events_dir: Option<&'a Path>,
+    pub require_niri_outputs: bool,
 }
 
 pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutcome>> {
@@ -336,7 +337,22 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         interval_minutes,
         choice,
         events_dir,
+        require_niri_outputs,
     } = request;
+    if require_niri_outputs {
+        if !apply || choice != registry::RotationBackend::Noctalia {
+            bail!("--require-niri-outputs requires --apply with the Noctalia backend");
+        }
+        // This read-only preflight precedes state/lock creation and wallpaper
+        // IPC. A hotplug after the snapshot still requires backend readback.
+        let profile = load_profile(profile_path)?;
+        let outputs = profile
+            .outputs
+            .iter()
+            .map(|output| output.name.clone())
+            .collect::<Vec<_>>();
+        crate::niri_outputs::verify_running_outputs(&outputs)?;
+    }
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
