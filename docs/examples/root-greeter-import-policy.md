@@ -125,3 +125,35 @@ fully decoded**, and no privileged image replacement has occurred.
 A future importer would have to pin and revalidate source and target FDs
 within a single reviewed transaction and provide a trusted decoder and
 rollback. A successful prior preflight is not a reusable authorization.
+
+## Read-only import diff and backup planning
+
+When the root-owned policy and the matching SHA-addressed source already
+exist, you can compare the candidate to the current fixed target without
+changing any system file:
+
+```sh
+python3 scripts/plan_greeter_import.py \
+  --policy /etc/ezwallpaper/greeter-import.json \
+  --consumer sddm \
+  --content-id sha256:REPLACE_WITH_64_LOWERCASE_HEX
+```
+
+The command composes the existing read-only policy, root-inbox and
+target-directory checks, then opens and hashes the current target using
+pinned no-follow directory descriptors. Its JSON decision is one of:
+
+- `TARGET_ABSENT_REVIEW_CREATE`: the approved theme directory exists but
+  the fixed image file does not.
+- `ALREADY_IDENTICAL_NO_ACTION`: current target bytes match the candidate.
+- `TARGET_DIFFERS_BACKUP_AND_ROLLBACK_REQUIRED`: the target exists and differs;
+  `previous_content_id` records its *observed* SHA-256 digest for review.
+
+All results include `writes_performed: false`,
+`previous_backup_created: false`, `plan_is_authorization: false`, and
+`privileged_import_implemented: false`. This is **not** an installer,
+transaction, backup operation, or permission token. Existing theme reload
+behavior and Plymouth initramfs contents remain unverified. Any future root
+worker must re-open and revalidate the source and target in the same
+authorized transaction, retain a root-owned backup, and have a reviewed
+rollback protocol.
