@@ -1,7 +1,7 @@
 # 2026-11-01-root-inbox-verify-56
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0011-wallpa
 
 ## Acceptance criteria
 
-- [ ] Fixture tests for success, errors, malformed input, symlinks and timeout/early exit as relevant.
-- [ ] No system or desktop side effects from default/CI paths.
-- [ ] Explicit opt-in docs and safety/evidence distinctions.
+- [x] Authored fixture tests for success and relevant error/boundary paths; execution pending CI.
+- [x] Default remains read-only; CI fixtures do not invoke real compositor/root operations.
+- [x] Added opt-in docs and evidence limitations.
 - [ ] All final-head mandatory CI checks successful.
 
 ## Implementation slices
 
-- [ ] Implement narrowly scoped verified checker.
-- [ ] Add deterministic offline negative tests and CI gate.
-- [ ] Update docs, PR and evidence.
+- [x] Implement narrowly scoped verified checker.
+- [x] Authored deterministic offline tests and added required CI gate.
+- [x] Documentation updated; PR creation next, CI pending.
 
 ## Verification matrix
 
@@ -63,7 +63,7 @@ Root-owned importer remains a separate audited authorization/installation decisi
 
 ## Deviations and discoveries
 
-None.
+Added read-only content-addressed UID0 inbox/target preflight, SHA-256/PNG header checks, symlink/hardlink/oversize/mutable ancestor refusal and offline fixtures. Root system source population/import remains unimplemented.
 
 ## Resume from here
 
