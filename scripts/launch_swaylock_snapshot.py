@@ -20,6 +20,7 @@ import time
 
 from read_wallpaper_events import SnapshotError, snapshot
 from stage_lockscreen_wallpaper import MAX_BYTES, StageError, prepare_root
+from swaylock_ready import wait_for_ready
 
 MAX_INTERVAL = 1440
 
@@ -63,7 +64,8 @@ def inspect_staged(root: Path, output: str, expected: str, stack: ExitStack) -> 
 def lock_snapshot(events_dir: Path, outputs: list[str], directory: Path,
                   interval_minutes: int = 60, *, lock: bool = False,
                   now_seconds: int | None = None, runner=None,
-                  environment: dict[str, str] | None = None) -> dict:
+                  environment: dict[str, str] | None = None,
+                  require_ready: bool = False, ready_runner=None) -> dict:
     if os.name != "posix" or not Path("/proc/self/fd").is_dir():
         raise LockError("linux_proc_required")
     if is_root_user():
@@ -98,15 +100,27 @@ def lock_snapshot(events_dir: Path, outputs: list[str], directory: Path,
         argv = [binary]
         for record, fd in zip(records, fds):
             argv.extend(["--image", f'{record["output"]}:/proc/self/fd/{fd}'])
-        invoke = subprocess.run if runner is None else runner
         try:
-            completed = invoke(argv, pass_fds=tuple(fds), check=False)
+            if require_ready:
+                # --ready-fd acknowledges the compositor's session-lock event,
+                # not image pixels. Never terminate an ambiguous live locker.
+                observe = wait_for_ready if ready_runner is None else ready_runner
+                acknowledged, exit_status = observe(argv, tuple(fds))
+                if not acknowledged:
+                    raise LockError("readiness_unconfirmed_locker_may_still_be_running")
+                if exit_status != 0:
+                    raise LockError("swaylock_exited_with_error")
+                result["status"] = "LOCKER_EXITED_READY_ACKNOWLEDGED"
+                result["compositor_lock_acknowledged"] = True
+            else:
+                invoke = subprocess.run if runner is None else runner
+                completed = invoke(argv, pass_fds=tuple(fds), check=False)
+                if completed.returncode != 0:
+                    raise LockError("swaylock_exited_with_error")
+                result["status"] = "LOCKER_EXITED"
         except OSError as exc:
             raise LockError("cannot_launch_swaylock") from exc
-        if completed.returncode != 0:
-            raise LockError("swaylock_exited_with_error")
-        # Even a zero exit is not independently verified lockscreen pixels.
-        result["status"] = "LOCKER_EXITED"
+        # Neither a readiness signal nor a zero exit verifies rendered pixels.
         return result
 
 
@@ -118,10 +132,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval-minutes", type=int, default=60)
     parser.add_argument("--lock", action="store_true",
                         help="Explicitly launch swaylock; default is a no-side-effect preview")
+    parser.add_argument("--require-ready", action="store_true",
+                        help="With --lock, require the compositor --ready-fd acknowledgment")
     args = parser.parse_args(argv)
     try:
+        if args.require_ready and not args.lock:
+            raise LockError("readiness_requires_explicit_lock")
         result = lock_snapshot(args.events_dir, args.output, args.user_dir,
-                               args.interval_minutes, lock=args.lock)
+                               args.interval_minutes, lock=args.lock,
+                               require_ready=args.require_ready)
     except LockError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
