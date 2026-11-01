@@ -1,7 +1,7 @@
 # 2026-11-01-event-publication-56: opt-in per-output atomic event publication
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -20,7 +20,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; src/rotation_cli.rs;
 
 ## Current facts
 
-- Master SHA: 213ad42038452ccc1b32d8d1254307611700dffe. No open PRs at inspection.
+- Master SHA: 213ad42038452ccc1b32d8d1254307611700dffe. No open PRs at initial inspection; implementation PR pending.
 - Rotation state already commits independently under exclusive file lock for each output after exact-path readback.
 - Event JSON v1 exists only as test-only prototype at master and does not publish.
 - Actual compositor pixels and privileged consumers are not certified by event files.
@@ -37,16 +37,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; src/rotation_cli.rs;
 
 ## Acceptance criteria
 
-- [ ] New opt-in flag and user-owned per-output v1 JSON files after successful acknowledgement only.
-- [ ] No event files on preview or failed first output; first acknowledged file retained on second failure.
-- [ ] Same-period retry preserves event contents, symlink/invalid destination fails before IPC.
-- [ ] Clear user guidance, ADR and matching architecture diagram.
+- [x] New opt-in flag and user-owned per-output v1 JSON files after successful acknowledgement only.
+- [x] Authored offline fixtures: preview leaves no event; first acknowledged file survives later failure. Execution pending CI.
+- [x] Authored offline tests: same-period retry preserves first event, symlink/invalid destination fails before IPC. Execution pending CI.
+- [x] Documented opt-in usage, trust boundary and crash gap in ADR 0011, architecture text/SVG and user example.
 - [ ] CI exact-head required checks all pass.
 
 ## Implementation slices
 
-- [ ] Wire source, CLI and pure event publisher plus offline unit tests.
-- [ ] Document opt-in consumer trust boundary, crash gap and architecture.
+- [x] Wire source, CLI and pure event publisher plus offline unit tests; execution pending.
+- [x] Document opt-in consumer trust boundary, crash gap and architecture.
 - [ ] Review exact-head CI and merge when green; archive separately.
 
 ## Verification matrix
@@ -69,7 +69,7 @@ No new privileged integration: output is a user-owned, explicitly requested, unt
 
 ## Deviations and discoveries
 
-None.
+Partial state-then-event commit is intentionally not a transactional two-file commit. In a crash gap, the event may lag the authoritative rotation state. Consumers must handle staleness and cannot treat event paths as privileged trust.
 
 ## Resume from here
 
