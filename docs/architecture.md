@@ -129,3 +129,20 @@ The CLI `rotate next --profile FILE [--apply] [--json]` consumes separate output
 ## Opt-in wallpaper change records (ADR 0011, Issue #56)
 
 The CLI optionally accepts `rotate next --profile FILE --apply --events-dir EXISTING_DIR`. The directory must already exist; no event files are created by a preview. After exact-path IPC readback, each output's authoritative rotation state is persisted, then a versioned `<output>.json` change file is atomically replaced under the same rotation lock. Earlier outputs remain published after later failures; repeated same-epoch applies neither reapply nor publish again. A crash between state and event writes can leave an event missing or stale. Event paths are local user-writable data, **not** a privileged import contract or pixel evidence. SDDM/Plymouth, lockscreen consumers, cross-output atomic snapshots and secure system-owned import remain unimplemented.
+
+## Optional niri output inventory preflight (Issue #55)
+
+When `rotate next --apply --require-niri-outputs` is explicitly selected
+with the default Noctalia rotation backend, the CLI queries the running
+compositor using `niri msg --json outputs` before creating state/lock
+directories or issuing wallpaper-set commands. Only connectors present,
+enabled (`current_mode`), and mapped (`logical`) in niri's returned
+connector-to-output JSON inventory may proceed. Missing/stale/malformed
+output data, IPC failure and timeout fail closed; the query is read-only.
+This is an opt-in guard for niri + Noctalia, not implicit hotplug handling,
+compositor ownership, or pixel verification. A display disconnected after
+the snapshot can still make an apply fail; existing Noctalia readback is
+the final acknowledgement boundary.
+
+Schema/CLI evidence: [niri v26.04 Output struct](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs),
+[niri v26.04 JSON output rendering](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
