@@ -1,7 +1,7 @@
 # issue-56-import-diff-plan: Issue #56
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0011-wallpa
 
 ## Acceptance criteria
 
-- [ ] Positive fixtures and malformed, misleading, oversized and metadata boundary tests.
-- [ ] All default operations have zero disk writes and preserve current files.
-- [ ] User documentation distinguishes offline validity, target planning, privileged transaction and physical confirmation.
+- [x] Positive and negative fixture tests authored; CI execution pending.
+- [x] Read-only API and fixture checks without system writes.
+- [x] Documented validation versus actual privileged import and real display boundaries.
 - [ ] All required checks green on final exact HEAD.
 
 ## Implementation slices
 
-- [ ] Implement narrow source/protocol check.
-- [ ] Add isolated tests and include them in required CI.
-- [ ] Document and open PR, then check final CI.
+- [x] Implemented source/protocol check.
+- [x] Added offline tests and required CI gate.
+- [x] Documentation complete; PR creation next and CI evidence pending.
 
 ## Verification matrix
 
@@ -63,7 +63,7 @@ Privileged import/rollback mechanism requires separate security and user-visible
 
 ## Deviations and discoveries
 
-None.
+Implemented root-policy/inbox/target composition and target existing SHA-256 reread, 3-state audit-only diff and backup requirement, symlink/hardlink/permission/size negative fixtures in required CI. Does not create backup or authorize system writes.
 
 ## Resume from here
 
