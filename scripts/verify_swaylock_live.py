@@ -27,6 +27,7 @@ def verify(
     tty: bool = False,
     ask=input,
     lock_fn=lock_snapshot,
+    ready_required: bool = False,
 ) -> tuple[dict, int]:
     if not confirmed or not tty:
         raise VerificationError("operator_tty_and_explicit_flag_required")
@@ -39,10 +40,17 @@ def verify(
     ).strip() != "LOCK":
         raise VerificationError("operator_declined_lock")
     # Re-verify image paths/hashes on the actual lock invocation.
-    actual = lock_fn(events_dir, outputs, staged_dir, interval_minutes,
-                     lock=True)
-    if actual.get("status") != "LOCKER_EXITED":
-        raise VerificationError("locker_not_exited_normally")
+    if ready_required:
+        actual = lock_fn(events_dir, outputs, staged_dir, interval_minutes,
+                         lock=True, require_ready=True)
+        if (actual.get("status") != "LOCKER_EXITED_READY_ACKNOWLEDGED"
+                or actual.get("compositor_lock_acknowledged") is not True):
+            raise VerificationError("compositor_lock_not_acknowledged")
+    else:
+        actual = lock_fn(events_dir, outputs, staged_dir, interval_minutes,
+                         lock=True)
+        if actual.get("status") != "LOCKER_EXITED":
+            raise VerificationError("locker_not_exited_normally")
     observed = {}
     for output in preview["outputs"]:
         reply = ask(
@@ -60,6 +68,7 @@ def verify(
         "outputs": list(preview["outputs"]), "observations": observed,
         "status": ("OPERATOR_REPORTED_VISUAL_MATCH" if passed
                    else "OPERATOR_COULD_NOT_CONFIRM"),
+        "compositor_lock_acknowledged": bool(ready_required),
         "automatic_framebuffer_verification": False,
         "real_sddm_or_plymouth_tested": False,
     }
@@ -80,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
             args.events_dir, args.output, args.user_dir,
             interval_minutes=args.interval_minutes,
             confirmed=args.confirm_lock_session, tty=sys.stdin.isatty(),
+            ready_required=True,
         )
     except (LockError, VerificationError, EOFError, KeyboardInterrupt) as exc:
         if isinstance(exc, KeyboardInterrupt):
