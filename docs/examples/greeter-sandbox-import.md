@@ -69,3 +69,34 @@ the current user's ownership, not a root-managed destination.
 
 CI runs only temporary-fixture unit tests. No actual SDDM, Plymouth, login
 screen or system paths are accessed.
+
+## Recovering an interrupted private sandbox transaction
+
+The explicitly enabled `--apply` path now writes a small
+`<candidate>.pending.json` **before** replacing a prior private image.
+The image and backup remain ordinary private files. On interrupted
+backup/target writes, the journal remains, and subsequent preview, apply,
+and rollback refuse to proceed. To restore a pending operation after
+inspecting the private sandbox:
+
+```sh
+python3 scripts/import_greeter_sandbox.py \
+  --sandbox-dir ~/.local/state/ezwallpaper/greeter-sandbox \
+  --consumer sddm --recover
+```
+
+Recovery verifies the previous and/or new SHA-256 digest from the
+private journal before touching the target. If the old image was present,
+it restores it from the previous copy when necessary; if no image
+existed, it removes only the exact new image introduced during the
+interrupted operation. A tampered journal, unexpected target or absent
+backup causes a refusal **without deleting unknown user files**.
+Recover must be requested explicitly; it does not run automatically.
+Mutating operations serialize through an advisory lock on the private
+directory inode.
+
+This improves ordinary crash recovery but is **not** a guaranteed
+power-loss transaction across all filesystems, not a multi-process
+security boundary against the owner of that private directory, and not
+a privileged SDDM/Plymouth installer. No `sudo` or theme directory
+is involved.

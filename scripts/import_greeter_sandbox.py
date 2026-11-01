@@ -17,6 +17,8 @@ import tempfile
 
 from read_wallpaper_events import SnapshotError, snapshot
 from preview_greeter_candidate import MAX_IMAGE_BYTES, CandidateError, inspect_png
+from greeter_sandbox_journal import (JournalError, apply_transaction,
+                                   pending, recover_transaction, transaction_lock)
 
 TARGETS = {"sddm": "sddm-candidate.png", "plymouth": "plymouth-candidate.png"}
 FLAGS = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
@@ -142,17 +144,22 @@ def import_candidate(events_dir: Path, output: str, epoch: int, source_root: Pat
     private = private_directory(sandbox)
     target = private / TARGETS[kind]
     backup = private / (TARGETS[kind] + ".previous")
-    old = regular_file_bytes(target)
-    regular_file_bytes(backup)  # Reject pre-existing unsafe backup.
-    if old == raw:
-        status = "UNCHANGED"
-    elif apply:
-        if old is not None:
-            durable_replace(private, backup.name, old)
-        durable_replace(private, target.name, raw)
-        status = "STAGED_IN_SANDBOX"
-    else:
-        status = "PREVIEW_ONLY"
+    try:
+        with transaction_lock(private):
+            if pending(private, target.name, regular_file_bytes):
+                raise ImportError("recovery_required")
+            old = regular_file_bytes(target)
+            regular_file_bytes(backup)  # Reject pre-existing unsafe backup.
+            if old == raw:
+                status = "UNCHANGED"
+            elif apply:
+                apply_transaction(private, target.name, raw, old,
+                                  regular_file_bytes, durable_replace)
+                status = "STAGED_IN_SANDBOX"
+            else:
+                status = "PREVIEW_ONLY"
+    except (JournalError, OSError) as exc:
+        raise ImportError("sandbox_transaction_refused") from exc
     return {"schema_version": 1, "consumer": kind, "output": output,
             "epoch": epoch, "content_id": digest, "width": width, "height": height,
             "size_bytes": len(raw), "status": status,
@@ -168,18 +175,38 @@ def rollback(sandbox: Path, kind: str) -> dict:
     private = private_directory(sandbox)
     target = private / TARGETS[kind]
     backup = private / (TARGETS[kind] + ".previous")
-    old = regular_file_bytes(backup)
-    regular_file_bytes(target)
-    if old is None:
-        raise ImportError("no_previous_candidate")
-    os.replace(backup, target)
-    if hasattr(os, "O_DIRECTORY"):
-        fd = os.open(private, FLAGS | os.O_DIRECTORY | NOFOLLOW)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+    with transaction_lock(private):
+        if pending(private, target.name, regular_file_bytes):
+            raise ImportError("recovery_required")
+        old = regular_file_bytes(backup)
+        regular_file_bytes(target)
+        if old is None:
+            raise ImportError("no_previous_candidate")
+        os.replace(backup, target)
+        if hasattr(os, "O_DIRECTORY"):
+            fd = os.open(private, FLAGS | os.O_DIRECTORY | NOFOLLOW)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
     return {"consumer": kind, "status": "ROLLED_BACK_IN_SANDBOX",
+            "system_import_verified": False}
+
+
+def recover(sandbox: Path, kind: str) -> dict:
+    """Explicitly restore a pending sandbox transaction, never auto-repair."""
+    if os.geteuid() == 0:
+        raise ImportError("root_execution_forbidden")
+    if kind not in TARGETS:
+        raise ImportError("unknown_consumer")
+    private = private_directory(sandbox)
+    try:
+        with transaction_lock(private):
+            result = recover_transaction(private, TARGETS[kind],
+                                         regular_file_bytes, durable_replace)
+    except (JournalError, OSError) as exc:
+        raise ImportError("recovery_refused") from exc
+    return {"consumer": kind, "status": result,
             "system_import_verified": False}
 
 
@@ -196,10 +223,14 @@ def main(argv: list[str] | None = None) -> int:
                            help="Explicitly stage within a private user sandbox")
     operation.add_argument("--rollback", action="store_true",
                            help="Restore the previous private sandbox candidate")
+    operation.add_argument("--recover", action="store_true",
+                           help="Explicitly recover a pending sandbox transaction")
     args = parser.parse_args(argv)
     try:
         if args.rollback:
             result = rollback(args.sandbox_dir, args.consumer)
+        elif args.recover:
+            result = recover(args.sandbox_dir, args.consumer)
         else:
             if (args.events_dir is None or args.source_root is None
                     or args.output is None or args.epoch is None):
