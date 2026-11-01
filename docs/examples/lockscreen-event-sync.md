@@ -79,3 +79,36 @@ The staged image and original wallpapers are retained, not deleted. Manual
 lockscreen-app configuration and real rendered-pixel checks remain separate
 opt-in work. Never point a privileged SDDM/Plymouth importer at these
 user-controlled event paths.
+
+## Explicit swaylock launch with coherent dual-output staged images
+
+The `swaylock` adapter is a **manual session-lock action**, not a background
+watcher. First make sure both `DP-1` and `HDMI-A-1` have acknowledged the
+same current UTC bucket and are staged into the private user directory using
+`sync_lockscreen_event.py --apply` for each connector. Then:
+
+```sh
+python3 scripts/launch_swaylock_snapshot.py \
+  --events-dir ~/.local/state/ezwallpaper/events \
+  --user-dir ~/.local/state/ezwallpaper/lockscreen \
+  --output DP-1 --output HDMI-A-1
+```
+
+The default operation is read-only. It checks exact current-bucket events,
+both staged file digests, private directory and regular-file ownership.
+On a verified Wayland session with `swaylock` available, adding
+`--lock` **immediately locks your session until you authenticate**.
+Do not include `--lock` in `ezwallpaper-lockscreen-sync.service`, hourly
+timers or unattended jobs.
+
+The adapter uses a fixed subprocess argument vector containing
+`swaylock --image OUTPUT:/proc/self/fd/N` for each validated output.
+On Linux it passes already-opened SHA-256-verified file descriptors to
+the child, rather than interpolating untrusted event paths or invoking a
+shell. Refer to [swaylock's authoritative CLI implementation](https://github.com/swaywm/swaylock/blob/master/main.c)
+and [manpage](https://github.com/swaywm/swaylock/blob/master/swaylock.1.scd):
+the `--image` option accepts an optional output prefix. Only an
+`ext-session-lock-v1`-compatible Wayland compositor can support swaylock;
+real niri+Noctalia screen-lock image rendering and authentication remain
+**UNASSESSED**. A process exit does not prove what pixels were displayed.
+A compositor with no compatible session-lock protocol may refuse the lock.

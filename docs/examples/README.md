@@ -180,3 +180,5 @@ directory as a privileged SDDM/Plymouth source without a separate trusted
 system import policy. PNG header checks are not a full image decoder audit.
 
 For optional, current-UTC-bucket, **user-level** event-driven private staging, see [the lockscreen sync path/service example](lockscreen-event-sync.md). It does not lock, start, or reconfigure any screen.
+
+For an **explicit**, real swaylock launch from already verified user-private copies (never enabled by the hourly timer), see [lockscreen event sync and swaylock](lockscreen-event-sync.md#explicit-swaylock-launch-with-coherent-dual-output-staged-images).
