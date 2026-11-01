@@ -180,6 +180,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_root_inbox_verification.py' -v
       - name: Read-only fixed target import diff and backup requirement contract
         run: python3 -m unittest discover -s tests -p 'test_greeter_import_diff.py' -v
+      - name: Read-only fixed root-owned rollback backup preflight
+        run: python3 -m unittest discover -s tests -p 'test_greeter_backup_preflight.py' -v
 
   rust-quality:
     name: Rust quality

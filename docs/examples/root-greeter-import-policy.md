@@ -157,3 +157,34 @@ behavior and Plymouth initramfs contents remain unverified. Any future root
 worker must re-open and revalidate the source and target in the same
 authorized transaction, retain a root-owned backup, and have a reviewed
 rollback protocol.
+
+## Root-owned rollback backup verification (read-only)
+
+A future privileged transaction must preserve a verified prior
+image, not merely *plan* to make a backup. For an already installed,
+root-owned fixed backup using the suffix `.ezw.previous`, check it
+independently against the prior content ID recorded in a reviewed
+import-diff report:
+
+```sh
+python3 scripts/preview_greeter_backup.py \
+  --policy /etc/ezwallpaper/greeter-import.json \
+  --consumer sddm \
+  --previous-content-id sha256:REPLACE_WITH_64_LOWERCASE_HEX
+```
+
+This checks the current root-owned policy and target parents, then
+opens the exact `<approved-target>.ezw.previous` path using pinned
+no-follow directory descriptors and hashes the existing regular file.
+The backup must be root-owned, non-group/world-writable, single-linked,
+at most 64 MiB and **identical** to the supplied SHA-256. A missing,
+symlinked, hardlinked, changed or unsafe backup is an error. Plymouth
+uses the same fixed suffix under its own approved theme root.
+
+The report is `READ_ONLY_BACKUP_VERIFIED`, with
+`backup_created_by_this_command: false`,
+`backup_restore_performed: false`, and
+`privileged_import_implemented: false`. This check does **not** create
+or restore backups, and cannot replace target-transaction revalidation
+or isolated image decoding. It does not determine whether a greeter
+has reloaded or whether a Plymouth asset was embedded in initramfs.
