@@ -36,7 +36,6 @@ impl WallpaperChange {
     }
 }
 
-
 use anyhow::{bail, Context, Result};
 use std::fs;
 #[cfg(unix)]
@@ -89,7 +88,9 @@ pub fn publish(directory: &Path, change: &WallpaperChange) -> Result<()> {
     staged.flush()?;
     staged.as_file().sync_all()?;
     check_target(&target)?;
-    staged.persist(&target).context("cannot atomically publish wallpaper event")?;
+    staged
+        .persist(&target)
+        .context("cannot atomically publish wallpaper event")?;
     #[cfg(unix)]
     File::open(directory)?.sync_all()?;
     Ok(())
@@ -134,7 +135,8 @@ mod tests {
         assert_eq!(
             serde_json::from_slice::<WallpaperChange>(
                 &fs::read(root.join("DP-1.json")).expect("read output")
-            ).expect("decode"),
+            )
+            .expect("decode"),
             first
         );
         publish(&root, &first).expect("idempotent publish");
