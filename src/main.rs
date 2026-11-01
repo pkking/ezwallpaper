@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 mod backend;
-mod rotation_cli;
 mod niri_outputs;
+mod rotation_cli;
 mod rotation_event;
 mod setter;
 
