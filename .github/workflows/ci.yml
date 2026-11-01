@@ -172,6 +172,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_greeter_sandbox_import.py' -v
       - name: Root-owned SDDM/Plymouth import policy preflight (no system writes)
         run: python3 -m unittest discover -s tests -p 'test_root_greeter_policy.py' -v
+      - name: Inspect fixed greeter target parents without filesystem mutation
+        run: python3 -m unittest discover -s tests -p 'test_greeter_target_preflight.py' -v
 
   rust-quality:
     name: Rust quality
