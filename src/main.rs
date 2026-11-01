@@ -11,6 +11,7 @@ use std::str::FromStr;
 
 mod backend;
 mod rotation_cli;
+mod niri_outputs;
 mod rotation_event;
 mod setter;
 
@@ -201,6 +202,10 @@ enum RotateOperation {
         /// in an existing user-owned directory (never installs privileged hooks).
         #[arg(long, requires = "apply")]
         events_dir: Option<PathBuf>,
+        /// Apply only: fail before any wallpaper IPC unless all named outputs
+        /// are enabled in this niri compositor (Noctalia backend only).
+        #[arg(long, requires = "apply")]
+        require_niri_outputs: bool,
     },
 }
 
@@ -376,6 +381,7 @@ fn main() -> Result<()> {
                     json,
                     rotation_backend,
                     events_dir,
+                    require_niri_outputs,
                 },
         }) => {
             let results = rotation_cli::run_rotation(rotation_cli::RotationInvocation {
@@ -387,6 +393,7 @@ fn main() -> Result<()> {
                 interval_minutes: *interval_minutes,
                 choice: *rotation_backend,
                 events_dir: events_dir.as_deref(),
+                require_niri_outputs: *require_niri_outputs,
             })?;
             if *json {
                 println!(
@@ -730,6 +737,41 @@ mod rotate_cli_tests {
                 assert_eq!(events_dir, Some(PathBuf::from("events")));
             }
             _ => panic!("expected opt-in events directory"),
+        }
+        // Inventory reads are explicit, mutation-gated and do not affect
+        // default offline preview or the existing backend selector.
+        assert!(Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--require-niri-outputs",
+        ])
+        .is_err());
+        let niri = Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--apply",
+            "--require-niri-outputs",
+        ])
+        .expect("explicit niri output preflight parses");
+        match niri.command {
+            Some(CliCommand::Rotate {
+                operation:
+                    RotateOperation::Next {
+                        apply,
+                        require_niri_outputs,
+                        ..
+                    },
+            }) => {
+                assert!(apply);
+                assert!(require_niri_outputs);
+            }
+            _ => panic!("expected niri preflight option"),
         }
         assert!(Args::try_parse_from(["ezwallpaper", "rotate", "next"]).is_err());
         assert!(Args::try_parse_from([
