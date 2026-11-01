@@ -67,7 +67,9 @@ No privileged integration is authorized; publisher only writes user-owned state.
 
 ## Deviations and discoveries
 
-None.
+- 2026-11-01: PR #143 first CI run failed only Rustfmt; fixed in ca1ccca0.
+- 2026-11-01: rerun of Noctalia/Niri E2E reproduced `E0391` in upstream `zbus`/`zvariant_utils` under nightly Rust 1.101.0 (2026-10-29). This is independent of the event-contract change. Pin the pinned upstream niri build to stable 1.99.1 and retain the existing nightly CI gates for ezwallpaper.
+- CI fix is included in this PR to unblock its required, complete native-render verification. No checks have been waived or suppressed.
 
 ## Resume from here
 
