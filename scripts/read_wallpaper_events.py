@@ -32,6 +32,15 @@ def valid_connector(name: str) -> bool:
     return bool(CONNECTOR.fullmatch(name)) and name not in (".", "..")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    record = {}
+    for key, value in pairs:
+        if key in record:
+            raise SnapshotError("duplicate_event_field")
+        record[key] = value
+    return record
+
+
 def read_event(root: Path, output: str, epoch: int) -> dict:
     path = root / f"{output}.json"
     try:
@@ -48,7 +57,7 @@ def read_event(root: Path, output: str, epoch: int) -> dict:
             payload = handle.read(MAX_EVENT_BYTES + 1)
         if len(payload) > MAX_EVENT_BYTES:
             raise SnapshotError("oversize_event_file")
-        event = json.loads(payload)
+        event = json.loads(payload, object_pairs_hook=reject_duplicate_keys)
     except (OSError, UnicodeError, ValueError) as exc:
         raise SnapshotError("cannot_read_event") from exc
     if not isinstance(event, dict) or set(event) != FIELDS:
