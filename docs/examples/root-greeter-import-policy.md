@@ -188,3 +188,32 @@ The report is `READ_ONLY_BACKUP_VERIFIED`, with
 or restore backups, and cannot replace target-transaction revalidation
 or isolated image decoding. It does not determine whether a greeter
 has reloaded or whether a Plymouth asset was embedded in initramfs.
+
+## Offline import-transaction rehearsal (memory only)
+
+Run an explicitly chosen PNG through the unprivileged import-state
+rehearsal before considering real privileged operation:
+
+```sh
+python3 scripts/rehearse_greeter_transaction.py \
+  --candidate-file /path/to/reviewed-candidate.png \
+  --candidate-content-id sha256:REPLACE_WITH_SHA256
+```
+
+Optionally supply both `--current-file /path/to/old.png` and its
+`--previous-content-id sha256:...` to model replacement rather than first
+creation. Add `--fault-after after_journal`, `after_backup` or
+`after_publish` to inject a simulated interruption. The model checks
+expected hashes and bounded PNG structure, simulates a pending journal,
+backup-first publication and explicit hash-verified recovery. The report
+distinguishes `SIMULATED_COMMIT`, `SIMULATED_NOOP` and
+`RECOVERED_PREVIOUS_TARGET`.
+
+**No files are written.** The model lives entirely in Python memory,
+refuses root execution, and never invokes system tools. This is fixture
+evidence of the intended state machine only. It is **not** an OS
+transaction, transactional authorization, durable backup, real
+power-loss guarantee or permission to alter /usr. A real importer would
+still require a reviewed privileged execution boundary, descriptor-pinned
+atomic replacement, backup durability, audit trail, target revalidation
+and separate security approval.
