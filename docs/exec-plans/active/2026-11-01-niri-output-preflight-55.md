@@ -1,7 +1,7 @@
 # 2026-11-01-niri-output-preflight-55: fail-closed niri output preflight
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,17 +34,17 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; src/main.rs; src/rot
 
 ## Acceptance criteria
 
-- [ ] CLI flag available and requires `--apply`, Noctalia selected.
-- [ ] Fail before output IPC / persistent state on missing, disabled or malformed niri output inventory.
-- [ ] Accept named enabled dual outputs; bounded response and timeout; path names never inserted into shell.
-- [ ] Document opt-in command, verification semantics and niri source links.
+- [x] CLI flag added; requires `--apply`, and runtime fails on a non-Noctalia backend.
+- [x] Preflight added before state/lock and Noctalia IPC; fixture tests cover missing, disabled and malformed outputs (execution pending).
+- [x] Bounded 1 MiB response and 5-second argv-only subprocess; fixture acceptance tests added.
+- [x] Added usage and source links in docs/examples/README.md and docs/architecture.md.
 - [ ] Latest HEAD CI green; merge only with confirmed full checks.
 
 ## Implementation slices
 
-- [ ] Pure parser + read-only bounded process adapter with offline unit tests.
-- [ ] Wire CLI and rotation controller preflight without changing defaults.
-- [ ] Documentation, source evidence, final CI.
+- [x] Pure parser + read-only bounded process adapter with offline unit tests.
+- [x] Wire CLI and rotation controller preflight without changing defaults.
+- [ ] Documentation and upstream evidence completed; final exact-head CI pending.
 
 ## Verification matrix
 
@@ -63,6 +63,7 @@ No new default CLI behavior or privileged integration. This is a strictly opt-in
 ## Evidence log
 
 - 2026-11-01: Source inspected on master 3e8a7f0f7fe8155c655e2ad6d82ed569b3c95784; upstream pinned niri v26.04 has JSON output map and enabled/disabled fields.
+- 2026-11-01: Opt-in CLI preflight, bounded niri argv-only subprocess, two-output fixture tests and offline invalid-mode tests committed; CI not yet observed.
 
 ## Deviations and discoveries
 
