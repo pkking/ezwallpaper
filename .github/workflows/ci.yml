@@ -168,6 +168,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_wallpaper_events_consumer.py' -v
       - name: SDDM/Plymouth candidate preview contracts (no system writes)
         run: python3 -m unittest discover -s tests -p 'test_greeter_candidate.py' -v
+      - name: Private user sandbox import and rollback contracts
+        run: python3 -m unittest discover -s tests -p 'test_greeter_sandbox_import.py' -v
 
   rust-quality:
     name: Rust quality
