@@ -141,7 +141,7 @@ def read_bounded_user_file(path: Path) -> bytes:
             after = os.fstat(fd)
             if len(data) > MAX_BYTES or len(data) != info.st_size or (
                     after.st_size != info.st_size or
-                    after.st.mtime_ns != info.st_mtime_ns):
+                    after.st_mtime_ns != info.st_mtime_ns):
                 raise RehearsalError("input_file_changed")
             return data
         finally:
