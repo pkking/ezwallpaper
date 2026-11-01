@@ -24,15 +24,15 @@ class EventConsumerTests(unittest.TestCase):
         for output in OUTPUTS:
             self.write_event(output)
 
-    def write_event(self, output, **updates):
+    def write_event(self, connector, **updates):
         event = {
-            "schema_version": 1, "producer": "ezwallpaper", "output": output,
+            "schema_version": 1, "producer": "ezwallpaper", "output": connector,
             "epoch": 101, "content_id": DIGEST,
             "image_path": "/untrusted/user/wallpaper.png",
             "applied_path_observed": True, "visually_verified": False,
         }
         event.update(updates)
-        (self.root / f"{output}.json").write_text(json.dumps(event))
+        (self.root / f"{connector}.json").write_text(json.dumps(event))
 
     def run_cli(self, outputs=OUTPUTS, epoch=101):
         stderr, stdout = io.StringIO(), io.StringIO()
