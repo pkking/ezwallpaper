@@ -112,3 +112,33 @@ the `--image` option accepts an optional output prefix. Only an
 real niri+Noctalia screen-lock image rendering and authentication remain
 **UNASSESSED**. A process exit does not prove what pixels were displayed.
 A compositor with no compatible session-lock protocol may refuse the lock.
+
+## Optional real swaylock session verification (manual, interactive)
+
+Use the dedicated tool **only** at a real Wayland session terminal where you
+can authenticate to unlock. It never runs in default CI or in any user unit:
+
+```sh
+python3 scripts/verify_swaylock_live.py \
+  --events-dir ~/.local/state/ezwallpaper/events \
+  --user-dir ~/.local/state/ezwallpaper/lockscreen \
+  --output DP-1 --output HDMI-A-1 \
+  --confirm-lock-session
+```
+
+The real-session test requires a terminal (TTY) and then asks for the exact
+word `LOCK`. It first previews both current-bucket events and their staged
+file hashes; it rechecks before launching swaylock. The command **locks
+the current session**. You must be able to unlock using your configured
+authentication. After successful unlock, answer `YES` only if you personally
+observed the intended lockscreen image on each listed output; other answers
+produce a nonzero verdict.
+
+The JSON verdict distinguishes `OPERATOR_REPORTED_VISUAL_MATCH` from
+`automatic_framebuffer_verification: false`. It is *self-reported visual
+evidence*, not a framebuffer capture, automatic GPU verification, or proof
+of SDDM/Plymouth rendering. No passwords or screenshots are collected.
+If swaylock fails to start or exit cleanly, no visual success is emitted.
+Never run this command through a timer, SSH background process or unattended
+CI worker. A separate compositor-specific protocol test remains necessary
+to establish ext-session-lock correctness.
