@@ -1,7 +1,7 @@
 # 2026-11-01-greeter-target-fs-preflight-56.md: Verify actual existing SDDM/Plymouth target parents and target metadata from root-owned policy using no-follow directory FDs, without modifying system files. Cover symlink and writable-directory attack paths in offline fixtures.
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, scripts/launch_swayl
 
 ## Acceptance criteria
 
-- [ ] Positive, negative, safety and boundary tests.
-- [ ] No background/automatic live lock, root mutation or system changes.
-- [ ] User docs explain opt-in, known limitations, and exact commands.
+- [x] Positive, negative, safety and boundary tests authored; awaiting CI.
+- [x] Scripts require explicit invocation and CI tests fake privileged/desktop interactions.
+- [x] User docs explain opt-in, known limitations, and exact commands.
 - [ ] All required checks succeed on final HEAD.
 
 ## Implementation slices
 
-- [ ] Add standalone utility.
-- [ ] Fixture tests and CI job wiring.
-- [ ] Documentation, PR submission, check final CI.
+- [x] Add standalone utility.
+- [x] Fixture tests and required CI job wiring.
+- [x] Documentation completed; PR creation next; final CI pending.
 
 ## Verification matrix
 
@@ -64,7 +64,7 @@ No OS policy or privilege change. Any real privileged importer still needs an ex
 
 ## Deviations and discoveries
 
-None.
+Root-owned target-chain O_NOFOLLOW preflight, leaf regular-or-absent checks and attack-path fixture tests are authored. No privileged writes and no real theme validation.
 
 ## Resume from here
 
