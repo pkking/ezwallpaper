@@ -95,5 +95,34 @@ class SwaylockLiveEvidenceTests(unittest.TestCase):
         self.assertIn("operator_tty_and_explicit_flag_required", err.getvalue())
 
 
+    def test_ready_required_real_path_rejects_unacknowledged_locker(self):
+        self.answers = ["LOCK"]
+        def unacknowledged(events, outputs, directory, interval, *,
+                           lock, require_ready=False):
+            if not lock:
+                return {"epoch": 10, "outputs": outputs, "status": "VERIFIED_PREVIEW"}
+            self.assertTrue(require_ready)
+            return {"status": "LOCKER_EXITED"}
+        with self.assertRaisesRegex(live.VerificationError, "compositor_lock_not_acknowledged"):
+            live.verify(*self.args, confirmed=True, tty=True, ask=self.ask,
+                        lock_fn=unacknowledged, ready_required=True)
+
+    def test_ready_required_operator_result_distinguishes_lock_and_pixels(self):
+        self.answers = ["LOCK", "YES", "YES"]
+        def ready_lock(events, outputs, directory, interval, *,
+                       lock, require_ready=False):
+            if not lock:
+                return {"epoch": 10, "outputs": outputs, "status": "VERIFIED_PREVIEW"}
+            self.assertTrue(require_ready)
+            return {"status": "LOCKER_EXITED_READY_ACKNOWLEDGED",
+                    "compositor_lock_acknowledged": True}
+        result, code = live.verify(*self.args, confirmed=True, tty=True,
+                                   ask=self.ask, lock_fn=ready_lock,
+                                   ready_required=True)
+        self.assertEqual(code, 0)
+        self.assertTrue(result["compositor_lock_acknowledged"])
+        self.assertFalse(result["automatic_framebuffer_verification"])
+
+
 if __name__ == "__main__":
     unittest.main()
