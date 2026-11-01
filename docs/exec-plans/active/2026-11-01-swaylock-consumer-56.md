@@ -1,7 +1,7 @@
 # 2026-11-01-swaylock-consumer-56.md: Add an explicitly invoked Linux swaylock consumer for one or more output-specific already-staged wallpapers
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -35,16 +35,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0011-wallpa
 
 ## Acceptance criteria
 
-- [ ] Positive and negative fixture tests for requested behavior.
-- [ ] No unsafe side effects in default execution or tests.
-- [ ] Document supported source-level contract vs not-yet-verified desktop/system outcomes.
+- [x] Positive and negative fixture tests authored; CI execution pending.
+- [x] Default preview read-only; CI runs fake filesystem and/or fake subprocess.
+- [x] Documented upstream code contract and missing physical/system evidence.
 - [ ] Final exact HEAD required CI all successful.
 
 ## Implementation slices
 
-- [ ] Add standalone consumer/preflight and negative tests.
-- [ ] Wire tests into CI and user docs.
-- [ ] PR, check result, merge only if all required gates pass.
+- [x] Add standalone consumer/preflight and negative tests.
+- [x] Wire tests into CI and user docs.
+- [x] Implementation ready for PR; exact HEAD verification pending.
 
 ## Verification matrix
 
@@ -65,7 +65,7 @@ No new root-installed interface or permanent system file modifications. This PR 
 
 ## Deviations and discoveries
 
-None.
+Swaylock upstream main.c::load_image parses per-output argv image; manpage swaylock.1.scd specifies -i [output:]path. Fixed /proc/self/fd/N and inherited descriptors were selected to avoid passing mutable user-event image_path through a wordexp parser. Fixture-only fake runner authored; no real screen lock.
 
 ## Resume from here
 
