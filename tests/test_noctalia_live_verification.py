@@ -167,12 +167,13 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             verifier.capture(no_frame, "DP-1", filename, verifier.COLORS[0])
         self.assertFalse(filename.exists())
 
-    def test_truncated_screenshot_rejected_and_restored(self):
+    def test_truncated_original_frame_blocks_mutation_before_apply(self):
         fake = FakeDesktop(self.originals, truncated=True)
-        result, status = self.verify(fake)
-        self.assertEqual(status, 1)
-        self.assertEqual(result["error"], "invalid_ppm_payload_length")
+        with self.assertRaisesRegex(verifier.VerificationError, "invalid_ppm_payload_length"):
+            self.verify(fake)
+        self.assertEqual(fake.writes, [])
         self.assertEqual(fake.wallpapers, self.originals)
+        self.assertFalse((self.root / "proof/recovery.json").exists())
 
     def test_declining_or_lacking_restore_baseline_never_changes_desktop(self):
         fake = FakeDesktop(self.originals)
