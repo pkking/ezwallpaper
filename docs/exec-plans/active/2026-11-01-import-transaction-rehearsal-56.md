@@ -10,7 +10,7 @@ Last checkpoint: 2026-11-01
 
 Add an offline-only, in-memory greeter import transaction model using verified expected image digests, backup-first publication, failure injection, and fail-closed recovery. Model idempotence and rollback without any OS image writes or privileged code.
 
-## Scope and non-goals
+## Non-goals
 
 Current task implements an offline testing/verification slice of Issue #56 only. No root process, sudo policy, system installer, privileged file write, SDDM restart, Plymouth initramfs rebuild, unattended lock or real screen interaction.
 
@@ -32,14 +32,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0011-wallpa
 - Fail closed on mismatched SHA-256, unsafe target, path traversal, link, ownership, mutable parent, malformed descriptor or invalid state.
 - Test only in-memory or temporary user-owned fixtures; clearly separate simulated and real evidence.
 
-## Acceptance
+## Acceptance criteria
 
 - [x] Authored deterministic success, fault, tamper and refusal tests; CI execution pending.
 - [x] Added new fixture test to required CI; all original checks retained.
 - [x] Added user-facing evidence limits and commands.
 - [ ] All applicable CI checks successful on exact PR HEAD.
 
-## Slices
+## Implementation slices
 
 - [x] Implemented standalone logic.
 - [x] Added tests and required CI gate.
