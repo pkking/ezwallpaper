@@ -699,16 +699,32 @@ mod rotate_cli_tests {
         ])
         .is_err());
         assert!(Args::try_parse_from([
-            "ezwallpaper", "rotate", "next", "--profile", "config.json",
-            "--events-dir", "events",
-        ]).is_err());
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--events-dir",
+            "events",
+        ])
+        .is_err());
         let opted_event = Args::try_parse_from([
-            "ezwallpaper", "rotate", "next", "--profile", "config.json",
-            "--apply", "--events-dir", "events",
-        ]).expect("explicit event publish flag");
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--apply",
+            "--events-dir",
+            "events",
+        ])
+        .expect("explicit event publish flag");
         match opted_event.command {
             Some(CliCommand::Rotate {
-                operation: RotateOperation::Next { events_dir, apply, .. },
+                operation:
+                    RotateOperation::Next {
+                        events_dir, apply, ..
+                    },
             }) => {
                 assert!(apply);
                 assert_eq!(events_dir, Some(PathBuf::from("events")));
