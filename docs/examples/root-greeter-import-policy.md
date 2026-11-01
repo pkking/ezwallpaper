@@ -91,3 +91,37 @@ whether the SDDM theme will reload, whether a PNG decodes safely, or whether
 a Plymouth asset is embedded into the initramfs. Future real importer
 transactions must reopen and revalidate target directories; a prior
 read-only check cannot eliminate subsequent filesystem races.
+
+## Root-owned content-addressed inbox preflight (read-only)
+
+An additional checker can inspect a **previously operator-staged, root-owned
+snapshot** under the *fixed* `/var/lib/ezwallpaper/greeter-inbox` source
+root, using a content ID such as `sha256:<64-lowercase-hex>`. The exact
+expected filename is `<64-lowercase-hex>.png`, not any path from a
+user-writable wallpaper event.
+
+```sh
+python3 scripts/verify_root_greeter_inbox.py \
+  --policy /etc/ezwallpaper/greeter-import.json \
+  --consumer sddm \
+  --content-id sha256:REPLACE_WITH_64_LOWERCASE_HEX
+```
+
+Prerequisites: a separately reviewed root-owned policy and a correctly
+staged immutable-by-unprivileged-users PNG. This repository does **not**
+create the inbox, populate its files, provide sudo installation commands
+or authorize a root worker.
+
+The command combines root-owned policy validation, target-parent
+read-only preflight and trusted inbox verification. Every source parent
+must be UID 0, not group/world-writable and not symlinked; the input must
+be a single-linked regular UID-0-owned file at most 64 MiB, and its actual
+opened bytes must match the supplied SHA-256 and a minimal PNG header.
+It refuses missing, symlinked, hardlinked, oversized, modified or
+untrusted inputs. It reports `READ_ONLY_INBOX_VERIFIED`, never
+`IMPORTED`. This is only a metadata-and-hash check; the image is **not
+fully decoded**, and no privileged image replacement has occurred.
+
+A future importer would have to pin and revalidate source and target FDs
+within a single reviewed transaction and provide a trusted decoder and
+rollback. A successful prior preflight is not a reusable authorization.
