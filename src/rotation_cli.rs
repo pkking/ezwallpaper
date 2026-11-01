@@ -697,6 +697,29 @@ mod tests {
     }
 
     #[test]
+    fn niri_preflight_rejects_wrong_backend_before_state_or_ipc() {
+        let (_dir, profile, state) = fixture();
+        for (apply, choice) in [
+            (false, registry::RotationBackend::Noctalia),
+            (true, registry::RotationBackend::Wpaperd),
+        ] {
+            let outcome = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply,
+                interval_minutes: 60,
+                choice,
+                events_dir: None,
+                require_niri_outputs: true,
+            });
+            assert!(outcome.is_err());
+            assert!(!state.exists(), "no state creation on invalid niri preflight mode");
+        }
+    }
+
+    #[test]
     fn reserved_dot_only_output_names_are_invalid() {
         assert!(!valid_connector("."));
         assert!(!valid_connector(".."));
