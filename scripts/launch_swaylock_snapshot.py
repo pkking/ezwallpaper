@@ -28,6 +28,10 @@ class LockError(Exception):
     """Fail-closed lockscreen validation or subprocess launch."""
 
 
+def is_root_user() -> bool:
+    return hasattr(os, "geteuid") and os.geteuid() == 0
+
+
 def inspect_staged(root: Path, output: str, expected: str, stack: ExitStack) -> int:
     filename = root / f"lockscreen-{output}.png"
     try:
@@ -62,7 +66,7 @@ def lock_snapshot(events_dir: Path, outputs: list[str], directory: Path,
                   environment: dict[str, str] | None = None) -> dict:
     if os.name != "posix" or not Path("/proc/self/fd").is_dir():
         raise LockError("linux_proc_required")
-    if hasattr(os, "geteuid") and os.geteuid() == 0:
+    if is_root_user():
         raise LockError("root_execution_forbidden")
     if type(interval_minutes) is not int or not 1 <= interval_minutes <= MAX_INTERVAL:
         raise LockError("invalid_interval")
