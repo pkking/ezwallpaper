@@ -235,6 +235,8 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_lockscreen_staging.py' -v 2>&1 | tee artifacts/ci/lockscreen-staging.log
           # Exact-UTC-bucket event trigger: offline mock, no real user sessions.
           python3 -m unittest discover -s tests -p 'test_lockscreen_event_sync.py' -v 2>&1 | tee artifacts/ci/lockscreen-sync.log
+          # In-memory only: greeter backup / publish / explicit recovery rehearsal.
+          python3 -m unittest discover -s tests -p 'test_greeter_transaction_rehearsal.py' -v 2>&1 | tee artifacts/ci/greeter-transaction-rehearsal.log
           # No real lockscreen: fake runner verifies fixed argv and opened file descriptors.
           python3 -m unittest discover -s tests -p 'test_swaylock_consumer.py' -v 2>&1 | tee artifacts/ci/swaylock-consumer.log
           # Mock-only compositor --ready-fd acknowledgment; never locks a CI session.
