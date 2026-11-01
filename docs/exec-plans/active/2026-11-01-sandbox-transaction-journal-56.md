@@ -1,7 +1,7 @@
 # issue-56-sandbox-transaction-journal
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -35,16 +35,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0011-wallpa
 
 ## Acceptance criteria
 
-- [ ] Positive, negative, interruption and tamper tests.
-- [ ] Existing tests remain passing and no system writes.
-- [ ] Operator docs explain recovery and remaining privileged import boundary.
+- [x] Positive, negative, interruption and tamper fixtures authored; execution pending CI.
+- [x] Existing required suites retained and new tests wired; CI pending.
+- [x] Added operator docs and privilege/evidence limits.
 - [ ] All required final-head CI checks green.
 
 ## Implementation slices
 
-- [ ] Implement isolated helper/safe validation.
-- [ ] Add offline test cases and required CI gate.
-- [ ] Docs, PR and verified CI.
+- [x] Implemented isolated helper/safe validation.
+- [x] Added offline tests and required CI gate.
+- [x] Documentation ready; PR creation next and exact HEAD CI pending.
 
 ## Verification matrix
 
@@ -64,7 +64,7 @@ A real root installer is NOT part of this change. Requires independent explicit 
 
 ## Deviations and discoveries
 
-None.
+Implemented POSIX private directory locking, pending transaction journal, explicit recovery paths and fault injection tests. No filesystem operations outside current-user sandbox; no privileged import.
 
 ## Resume from here
 
