@@ -1,7 +1,7 @@
 # 2026-11-01-lockscreen-event-sync-56: Issue #56
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-01
 Last checkpoint: 2026-11-01
@@ -34,16 +34,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0011-wallpa
 
 ## Acceptance criteria
 
-- [ ] New functionality has deterministic tests for success and negative paths.
-- [ ] CI executes the tests and preserves all preexisting gates.
-- [ ] Docs explain opt-in, rollback, limits and evidence classification.
+- [x] Implemented functionality and authored deterministic success/negative tests; execution pending CI.
+- [x] Added fixture suite to a required CI job; validation pending.
+- [x] Added opt-in, rollback, limitations and evidence guidance.
 - [ ] Exact final HEAD required CI success before merge.
 
 ## Implementation slices
 
-- [ ] Add script/logic.
-- [ ] Add targeted offline tests and CI inclusion.
-- [ ] Update docs, PR, evidence and CI.
+- [x] Add script/logic.
+- [x] Add offline fixture tests and CI inclusion.
+- [x] Documentation updated; PR submission next; CI pending.
 
 ## Verification matrix
 
@@ -64,7 +64,7 @@ The user-level prototype follows accepted #56 opt-in boundary. Privileged system
 
 ## Deviations and discoveries
 
-None.
+New test coverage is asserted but not claimed as executed. Physical desktop, real systemd path trigger and privileged import remain UNASSESSED.
 
 ## Resume from here
 
