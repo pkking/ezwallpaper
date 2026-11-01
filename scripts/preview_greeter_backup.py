@@ -13,11 +13,12 @@ import re
 import sys
 
 from preview_root_greeter_policy import PolicyError, read_trusted_policy
-from inspect_greeter_target import TargetError, inspect_target
+from inspect_greeter_target import MAX_EXISTING_IMAGE_BYTES, TargetError, inspect_target
 from plan_greeter_import import PlanError, existing_target_digest
 
 SHA_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 BACKUP_SUFFIX = ".ezw.previous"
+MAX_BACKUP_BYTES = MAX_EXISTING_IMAGE_BYTES
 
 
 class BackupError(Exception):
