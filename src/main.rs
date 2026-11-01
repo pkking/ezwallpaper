@@ -11,7 +11,6 @@ use std::str::FromStr;
 
 mod backend;
 mod rotation_cli;
-#[cfg(test)]
 mod rotation_event;
 mod setter;
 
@@ -198,6 +197,10 @@ enum RotateOperation {
         /// Print machine-readable output, separately versioned from wallpaper manifest.
         #[arg(long)]
         json: bool,
+        /// Apply only: atomically publish one acknowledged JSON event per output
+        /// in an existing user-owned directory (never installs privileged hooks).
+        #[arg(long, requires = "apply")]
+        events_dir: Option<PathBuf>,
     },
 }
 
@@ -372,17 +375,19 @@ fn main() -> Result<()> {
                     interval_minutes,
                     json,
                     rotation_backend,
+                    events_dir,
                 },
         }) => {
-            let results = rotation_cli::run_rotation(
-                profile,
-                state.as_deref(),
-                *epoch,
-                *force,
-                *apply,
-                *interval_minutes,
-                *rotation_backend,
-            )?;
+            let results = rotation_cli::run_rotation(rotation_cli::RotationInvocation {
+                profile_path: profile,
+                state_override: state.as_deref(),
+                epoch_override: *epoch,
+                force: *force,
+                apply: *apply,
+                interval_minutes: *interval_minutes,
+                choice: *rotation_backend,
+                events_dir: events_dir.as_deref(),
+            })?;
             if *json {
                 println!(
                     "{}",
@@ -693,6 +698,39 @@ mod rotate_cli_tests {
             "garbage",
         ])
         .is_err());
+        assert!(Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--events-dir",
+            "events",
+        ])
+        .is_err());
+        let opted_event = Args::try_parse_from([
+            "ezwallpaper",
+            "rotate",
+            "next",
+            "--profile",
+            "config.json",
+            "--apply",
+            "--events-dir",
+            "events",
+        ])
+        .expect("explicit event publish flag");
+        match opted_event.command {
+            Some(CliCommand::Rotate {
+                operation:
+                    RotateOperation::Next {
+                        events_dir, apply, ..
+                    },
+            }) => {
+                assert!(apply);
+                assert_eq!(events_dir, Some(PathBuf::from("events")));
+            }
+            _ => panic!("expected opt-in events directory"),
+        }
         assert!(Args::try_parse_from(["ezwallpaper", "rotate", "next"]).is_err());
         assert!(Args::try_parse_from([
             "ezwallpaper",

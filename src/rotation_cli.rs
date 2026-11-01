@@ -315,15 +315,28 @@ impl RotationClock {
 
 /// A dry-run never creates the state/lock directory. Real apply holds a lock
 /// across planning, Noctalia readback and atomic per-output acknowledgement.
-pub fn run_rotation(
-    profile_path: &Path,
-    state_override: Option<&Path>,
-    epoch_override: Option<i64>,
-    force: bool,
-    apply: bool,
-    interval_minutes: u64,
-    choice: registry::RotationBackend,
-) -> Result<Vec<RotationOutcome>> {
+pub struct RotationInvocation<'a> {
+    pub profile_path: &'a Path,
+    pub state_override: Option<&'a Path>,
+    pub epoch_override: Option<i64>,
+    pub force: bool,
+    pub apply: bool,
+    pub interval_minutes: u64,
+    pub choice: registry::RotationBackend,
+    pub events_dir: Option<&'a Path>,
+}
+
+pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutcome>> {
+    let RotationInvocation {
+        profile_path,
+        state_override,
+        epoch_override,
+        force,
+        apply,
+        interval_minutes,
+        choice,
+        events_dir,
+    } = request;
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
@@ -347,6 +360,7 @@ pub fn run_rotation(
                     registry::RotationBackend::Noctalia => None,
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
+                events_dir,
             },
         )
     } else {
@@ -363,6 +377,7 @@ pub fn run_rotation(
                     registry::RotationBackend::Noctalia => None,
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
+                events_dir,
             },
         )
     }
@@ -460,6 +475,7 @@ fn run_with_backend_interval(
         RotationPort {
             backend,
             state_scope: None,
+            events_dir: None,
         },
     )
 }
@@ -469,6 +485,7 @@ fn run_with_backend_interval(
 struct RotationPort<'a> {
     backend: Option<&'a mut dyn WallpaperBackend>,
     state_scope: Option<&'static str>,
+    events_dir: Option<&'a Path>,
 }
 
 fn run_with_backend_interval_scoped(
@@ -483,6 +500,7 @@ fn run_with_backend_interval_scoped(
     let RotationPort {
         mut backend,
         state_scope,
+        events_dir,
     } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -491,6 +509,18 @@ fn run_with_backend_interval_scoped(
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
     let mut profile = load_profile(profile_path)?;
+    let events_root = if apply {
+        events_dir
+            .map(|directory| {
+                crate::rotation_event::prepare_directory(
+                    directory,
+                    profile.outputs.iter().map(|o| o.name.as_str()),
+                )
+            })
+            .transpose()?
+    } else {
+        None
+    };
     if apply {
         let selected = backend
             .as_deref_mut()
@@ -587,6 +617,18 @@ fn run_with_backend_interval_scoped(
                 .ok_or_else(|| anyhow!("planner selected without proposed state"))?;
             saved.outputs.insert(output.name.clone(), new_state);
             atomic_save(&state_path, &saved)?;
+            if let Some(directory) = events_root.as_deref() {
+                let change = crate::rotation_event::WallpaperChange::acknowledged(
+                    output.name.clone(),
+                    epoch,
+                    proposed
+                        .content_id
+                        .clone()
+                        .ok_or_else(|| anyhow!("missing selected ID"))?,
+                    path.clone(),
+                );
+                crate::rotation_event::publish(directory, &change)?;
+            }
         }
 
         let reason = match proposed.decision {
@@ -688,6 +730,7 @@ mod tests {
             RotationPort {
                 backend: Some(&mut backend),
                 state_scope: Some("wpaperd"),
+                events_dir: None,
             },
         )
         .expect("offline scoped apply");
@@ -706,6 +749,7 @@ mod tests {
                 RotationPort {
                     backend: None,
                     state_scope: None,
+                    events_dir: None,
                 },
             )
             .is_err(),
@@ -721,6 +765,7 @@ mod tests {
             RotationPort {
                 backend: None,
                 state_scope: Some("wpaperd"),
+                events_dir: None,
             },
         )
         .expect("wpaperd offline preview");
@@ -782,6 +827,132 @@ mod tests {
         assert_eq!(saved.outputs.len(), 1);
         assert!(saved.outputs.contains_key("DP-1"));
         assert!(!saved.outputs.contains_key("HDMI-A-1"));
+    }
+
+    #[test]
+    fn event_publication_preserves_partial_success_and_idempotency() {
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("event dir");
+
+        // A preview must not publish anything, even with the optional port.
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            false,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: None,
+                state_scope: None,
+                events_dir: Some(&events),
+            },
+        )
+        .expect("preview");
+        assert!(!events.join("DP-1.json").exists());
+
+        let mut calls = 0;
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                calls += 1;
+                if calls == 2 {
+                    bail!("second output not acknowledged");
+                }
+                Ok(ApplyStatus::PathObserved)
+            },
+        };
+        let result = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: None,
+                events_dir: Some(&events),
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(calls, 2);
+        let first = fs::read(events.join("DP-1.json")).expect("committed first event");
+        let change: crate::rotation_event::WallpaperChange =
+            serde_json::from_slice(&first).expect("event schema");
+        assert_eq!(change.output, "DP-1");
+        assert_eq!(change.epoch, 1);
+        assert!(change.applied_path_observed);
+        assert!(!change.visually_verified);
+        assert!(!events.join("HDMI-A-1.json").exists());
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("state")).expect("state JSON");
+        assert!(saved.outputs.contains_key("DP-1"));
+        assert!(!saved.outputs.contains_key("HDMI-A-1"));
+
+        let mut retried = 0;
+        let mut recovery = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                retried += 1;
+                Ok(ApplyStatus::PathObserved)
+            },
+        };
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut recovery),
+                state_scope: None,
+                events_dir: Some(&events),
+            },
+        )
+        .expect("retry second output");
+        assert_eq!(
+            retried, 1,
+            "already committed first output must not repeat IPC"
+        );
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("first unchanged"),
+            first
+        );
+        assert!(events.join("HDMI-A-1.json").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn invalid_event_target_fails_before_any_ipc() {
+        use std::os::unix::fs::symlink;
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("events");
+        let outside = root.path().join("outside");
+        fs::write(&outside, b"protected").expect("outside");
+        symlink(&outside, events.join("DP-1.json")).expect("symlink");
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                panic!("invalid publish target must reject before IPC");
+            },
+        };
+        assert!(run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: None,
+                events_dir: Some(&events)
+            },
+        )
+        .is_err());
+        assert!(!state.exists());
+        assert_eq!(fs::read(outside).expect("protected"), b"protected");
     }
 
     #[test]

@@ -75,3 +75,25 @@ Native niri + Noctalia physical display, lockscreen, 4K portrait output,
 hotplug, SDDM and Plymouth remain separate integration verification under
 Issue #59 and Epic #60. The offline tests and Sway screenshot CI do not
 establish all of those outcomes.
+
+## Optional wallpaper change records
+
+To publish **user-owned, untrusted** JSON records after each acknowledged
+rotation, first create a private directory and explicitly opt in:
+
+```sh
+mkdir -p ~/.local/state/ezwallpaper/events
+chmod 700 ~/.local/state/ezwallpaper/events
+ezwallpaper rotate next --profile ~/.config/ezwallpaper/rotation.json --apply \
+  --events-dir ~/.local/state/ezwallpaper/events --json
+```
+
+Each validated output writes `<connector>.json` atomically. The document
+reports exact-path backend acknowledgement, **not** verified pixels or a
+lockscreen/greeter change. On partial success, files for completed outputs
+remain; files for failed/unattempted outputs do not change. Files might lag
+the authoritative rotation state after a crash. Repeated runs in the same
+UTC bucket do not republish existing records. No systemd timer, root
+importer, SDDM or Plymouth configuration is modified. Privileged consumers
+must **not trust these user-writable paths** without an independent
+root-owned validation and copy policy.
