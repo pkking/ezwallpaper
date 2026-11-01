@@ -66,3 +66,28 @@ The result has status `READ_ONLY_POLICY_PREFLIGHT` and
 
 See [the existing user-owned sandbox prototype](greeter-sandbox-import.md)
 for separately scoped, unprivileged rollback behavior.
+
+## Filesystem target preflight (additional read-only gate)
+
+After validating the operator-reviewed policy, inspect the **actual target
+directory chain** and any existing target file:
+
+```sh
+python3 scripts/inspect_greeter_target.py \
+  --policy /etc/ezwallpaper/greeter-import.json --consumer sddm
+```
+
+The same command accepts `--consumer plymouth`. It first validates the
+root-owned policy, then traverses each target parent from `/` using pinned
+directory descriptors and `O_NOFOLLOW`. Every directory must be root-owned,
+non-group/world-writable and non-symlinked; the target leaf must be absent or
+a root-owned regular file at most 64 MiB and not group/world-writable.
+Missing theme directories, symlinked theme components, devices, FIFOs,
+writable parents and unsafe existing targets fail closed. No files are
+created or renamed.
+
+The report distinguishes `target_exists`, but **does not establish**
+whether the SDDM theme will reload, whether a PNG decodes safely, or whether
+a Plymouth asset is embedded into the initramfs. Future real importer
+transactions must reopen and revalidate target directories; a prior
+read-only check cannot eliminate subsequent filesystem races.
