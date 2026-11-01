@@ -81,7 +81,7 @@ class ThemeReadinessTests(unittest.TestCase):
         self.entrypoint.unlink()
         self.entrypoint.write_text("import QtQuick 2.0")
         self.folder.chmod(0o777)
-        with self.assertRaisesRegex(theme.ThemeError, "untrusted_theme_parent"):
+        with self.assertRaisesRegex(theme.ThemeError, "untrusted_configured_target"):
             self.inspect()
         self.folder.chmod(0o755)
         self.assertEqual(external.read_text(), "import QtQuick 2.0")
