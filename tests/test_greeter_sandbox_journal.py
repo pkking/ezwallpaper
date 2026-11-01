@@ -111,7 +111,7 @@ class JournalRecoveryTests(unittest.TestCase):
                 raise OSError("simulated interruption")
             return original_unlink(path, *a, **kw)
         with patch.object(importer.os, "unlink", side_effect=fail_marker):
-            with self.assertRaisesRegex(OSError, "simulated"):
+            with self.assertRaisesRegex(importer.ImportError, "sandbox_transaction_refused"):
                 self.import_it()
         self.assertTrue(self.target.exists())
         report = importer.recover(self.box, "sddm")
