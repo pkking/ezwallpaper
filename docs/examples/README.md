@@ -178,3 +178,5 @@ by the user to read the fixed staged file; per-app reload/cache and screen-lock
 behaviors need opt-in real-session verification. Do not use this staging
 directory as a privileged SDDM/Plymouth source without a separate trusted
 system import policy. PNG header checks are not a full image decoder audit.
+
+For optional, current-UTC-bucket, **user-level** event-driven private staging, see [the lockscreen sync path/service example](lockscreen-event-sync.md). It does not lock, start, or reconfigure any screen.

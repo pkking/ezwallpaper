@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch explicitly published wallpaper events for private lockscreen staging
+Documentation=https://github.com/pkking/ezwallpaper
+
+[Path]
+# Watches user-owned event directory; never watches or changes system directories.
+PathChanged=%h/.local/state/ezwallpaper/events
+Unit=ezwallpaper-lockscreen-sync.service
+
+[Install]
+WantedBy=default.target

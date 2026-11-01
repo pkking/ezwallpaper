@@ -1,0 +1,10 @@
+[Unit]
+Description=Stage an acknowledged current-bucket wallpaper for a user-owned lockscreen
+Documentation=https://github.com/pkking/ezwallpaper
+# This service is an opt-in *user* unit; it never starts or configures a lock screen.
+
+[Service]
+Type=oneshot
+# Copy the three Python scripts as documented; edit DP-1, source pool and paths.
+ExecStart=/usr/bin/python3 %h/.local/lib/ezwallpaper/sync_lockscreen_event.py --events-dir %h/.local/state/ezwallpaper/events --output DP-1 --source-root %h/Pictures/wallpapers --user-dir %h/.local/state/ezwallpaper/lockscreen --apply
+NoNewPrivileges=true
