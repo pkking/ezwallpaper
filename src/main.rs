@@ -11,6 +11,8 @@ use std::str::FromStr;
 
 mod backend;
 mod rotation_cli;
+#[cfg(test)]
+mod rotation_event;
 mod setter;
 
 const DEFAULT_RESOLUTION: &str = "UHD";
