@@ -14,6 +14,7 @@ pub struct WallhavenProvider {
     orientation: Orientation,
     min_size: Option<(u32, u32)>,
     page: u32,
+    max_download_bytes: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +51,7 @@ impl WallhavenProvider {
             orientation: Orientation::Landscape,
             min_size: None,
             page: 1,
+            max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
         }
     }
 
@@ -84,6 +86,11 @@ impl WallhavenProvider {
             bail!("Wallhaven page must be in 1..20");
         }
         self.page = page;
+        Ok(self)
+    }
+
+    pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_download_bytes = super::checked_download_limit(bytes)?;
         Ok(self)
     }
 
@@ -146,7 +153,8 @@ impl GetImgUrl for WallhavenProvider {
                 let path = super::safe_download_path(&self.dir, file_name)?;
                 let mut response = request_with_retry(client.get(url))?;
                 debug!("downloading Wallhaven image to {:?}", path);
-                super::write_complete_download(&path, &mut response)?;
+                let transferred = super::write_complete_download_with_limit(&path, &mut response, self.max_download_bytes)?;
+                debug!("staged {} Wallhaven image bytes", transferred);
                 wallpapers.push(
                     WallPaper::new().with_type(WpType::FromLocal).with_path(
                         path.to_str()
