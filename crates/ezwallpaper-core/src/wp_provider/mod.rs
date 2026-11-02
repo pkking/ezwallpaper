@@ -235,8 +235,7 @@ fn write_complete_download_with_limit<R: Read>(
         let read_size = if remaining == 0 {
             1
         } else {
-            usize::try_from(remaining.min(buffer.len() as u64))
-                .context("invalid remaining byte count")?
+            remaining.min(buffer.len() as u64) as usize
         };
         let n = source.read(&mut buffer[..read_size])
             .context("wallpaper stream failed before completion")?;
