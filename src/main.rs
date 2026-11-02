@@ -77,6 +77,10 @@ struct Args {
     #[arg(long, conflicts_with = "token")]
     token_file: Option<PathBuf>,
 
+    /// Hard ceiling for each provider image response (default: 64 MiB); independent of CAS storage.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
+    max_download_bytes: Option<u64>,
+
     /// Fetch without modifying the desktop.
     #[arg(long, default_value_t = false)]
     download_only: bool,
@@ -295,6 +299,7 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
         .map(Orientation::from_str)
         .transpose()?;
     let min_size = cli.min_width.zip(cli.min_height);
+    let max_download_bytes = cli.max_download_bytes.unwrap_or(64 * 1024 * 1024);
     if cli.count == 0 {
         bail!("--count must be at least one");
     }
@@ -311,7 +316,8 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
                     .with_zone(&cli.locale)?
                     .with_resolution(&cli.resolution)?
                     .with_time_offset(cli.bing_offset)
-                    .with_dir(&cli.dir),
+                    .with_dir(&cli.dir)
+                    .with_max_download_bytes(max_download_bytes)?,
             ))
         }
         "pexel" => {
@@ -328,7 +334,8 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
                 .with_token(&read_pexels_token(cli)?)?
                 .with_zone(&cli.locale)?
                 .with_page(cli.page)?
-                .with_orientation(orientation.unwrap_or(Orientation::Landscape));
+                .with_orientation(orientation.unwrap_or(Orientation::Landscape))
+                .with_max_download_bytes(max_download_bytes)?;
             if let Some(query) = &cli.query {
                 provider = provider.with_query(query)?;
             } else if orientation == Some(Orientation::Portrait) {
@@ -349,7 +356,8 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
             let mut provider = WallhavenProvider::new()
                 .with_dir(&cli.dir)
                 .with_page(cli.page)?
-                .with_orientation(orientation.unwrap_or(Orientation::Landscape));
+                .with_orientation(orientation.unwrap_or(Orientation::Landscape))
+                .with_max_download_bytes(max_download_bytes)?;
             if let Some(query) = &cli.query {
                 provider = provider.with_query(query)?;
             }
