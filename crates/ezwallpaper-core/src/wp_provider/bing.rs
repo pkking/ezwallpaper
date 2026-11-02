@@ -15,6 +15,7 @@ pub struct BingProvider {
     resolution: Resolution,
     time_offset: i32,
     dir: String,
+    max_download_bytes: u64,
 }
 
 impl BingProvider {
@@ -24,6 +25,7 @@ impl BingProvider {
             resolution: Resolution::R1920x1200,
             time_offset: 0,
             dir: ".".to_string(),
+            max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
         }
     }
 
@@ -45,6 +47,11 @@ impl BingProvider {
     pub fn with_dir(mut self, path: &str) -> Self {
         self.dir = path.to_owned();
         self
+    }
+
+    pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_download_bytes = super::checked_download_limit(bytes)?;
+        Ok(self)
     }
 
     fn archive_url(&self, count: u32) -> Result<Url> {
@@ -95,7 +102,7 @@ impl GetImgUrl for BingProvider {
         }
         urls.iter()
             .map(|url| {
-                let path = download_image(&client, url, &self.dir)?;
+                let path = download_image(&client, url, &self.dir, self.max_download_bytes)?;
                 Ok(WallPaper::new()
                     .with_type(WpType::FromLocal)
                     .with_path(path))
@@ -104,7 +111,12 @@ impl GetImgUrl for BingProvider {
     }
 }
 
-fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str) -> Result<String> {
+fn download_image(
+    client: &reqwest::blocking::Client,
+    url: &Url,
+    dir: &str,
+    max_bytes: u64,
+) -> Result<String> {
     let file_name = url
         .query_pairs()
         .find(|(key, _)| key == "id")
@@ -112,8 +124,11 @@ fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str) -> R
         .ok_or_else(|| anyhow!("Bing image URL has no id filename"))?;
     let file_path = super::safe_download_path(dir, &file_name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
+    super::reject_excess_content_length(response.content_length(), max_bytes)?;
     debug!("downloading Bing image to {:?}", file_path);
-    super::write_complete_download(&file_path, &mut response)?;
+    let transferred =
+        super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
+    debug!("staged {} Bing image bytes", transferred);
     Ok(file_path
         .to_str()
         .ok_or_else(|| anyhow!("download output path is not UTF-8"))?

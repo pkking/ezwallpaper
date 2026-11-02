@@ -10,11 +10,22 @@ use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::StatusCode;
 use std::fs;
 use std::io::ErrorKind;
-use std::io::{self, Read};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 use tempfile::NamedTempFile;
+
+/// Default per-response transfer cap; independent from persistent CAS retention.
+pub const DEFAULT_DOWNLOAD_LIMIT: u64 = 64 * 1024 * 1024;
+
+/// Shared checked limit for all provider builders and their reader fixtures.
+fn checked_download_limit(value: u64) -> Result<u64> {
+    if value == 0 {
+        bail!("max download bytes must be positive");
+    }
+    Ok(value)
+}
 
 /// Provider-side orientation preference; not pixel decoding (Issue #53).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -186,6 +197,16 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
     Ok(dest)
 }
 
+/// Reject a known over-limit Content-Length early, while the stream loop
+/// remains authoritative for missing or incorrect response length metadata.
+fn reject_excess_content_length(content_length: Option<u64>, max_bytes: u64) -> Result<()> {
+    checked_download_limit(max_bytes)?;
+    if content_length.is_some_and(|length| length > max_bytes) {
+        bail!("provider response Content-Length exceeds configured byte limit");
+    }
+    Ok(())
+}
+
 /// Publish only a complete stream; unsuccessful copies never expose partial
 /// data at the wallpaper path. The temporary file is securely created on the
 /// same filesystem and removed automatically on failure.
@@ -193,7 +214,17 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
 /// This replaces the pathname (and thus its inode/metadata/hardlink identity)
 /// on success rather than modifying the old file in place. This does not
 /// guarantee power-loss durability or stop concurrent changes to parent paths.
-fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result<()> {
+#[cfg(test)]
+fn write_complete_download<R: Read>(destination: &Path, source: R) -> Result<u64> {
+    write_complete_download_with_limit(destination, source, DEFAULT_DOWNLOAD_LIMIT)
+}
+
+fn write_complete_download_with_limit<R: Read>(
+    destination: &Path,
+    mut source: R,
+    max_bytes: u64,
+) -> Result<u64> {
+    checked_download_limit(max_bytes)?;
     let directory = destination
         .parent()
         .ok_or_else(|| anyhow::anyhow!("download destination has no parent"))?;
@@ -208,23 +239,48 @@ fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result
     safe_download_path(dir, name)?;
     let mut stage = NamedTempFile::new_in(directory)
         .with_context(|| format!("cannot stage wallpaper in {}", directory.display()))?;
-    let copied = io::copy(&mut source, stage.as_file_mut())
-        .context("wallpaper stream failed before the file was complete")?;
+    let mut copied: u64 = 0;
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        // The last allowed byte is staged; the next byte is inspected but
+        // never written. This applies even if Content-Length was absent/wrong.
+        let remaining = max_bytes - copied;
+        let read_size = if remaining == 0 {
+            1
+        } else {
+            remaining.min(buffer.len() as u64) as usize
+        };
+        let n = source
+            .read(&mut buffer[..read_size])
+            .context("wallpaper stream failed before completion")?;
+        if n == 0 {
+            break;
+        }
+        if remaining == 0 {
+            bail!("wallpaper download exceeds configured byte limit");
+        }
+        stage
+            .as_file_mut()
+            .write_all(&buffer[..n])
+            .context("cannot stage downloaded wallpaper bytes")?;
+        copied += n as u64;
+    }
     if copied == 0 {
         bail!("wallpaper download was empty");
     }
-    // Re-check in case the destination was altered during the stream. The
-    // subsequent rename still has a TOCTOU window, not a sandbox guarantee.
+    // Re-check after download; a parent-path race still needs an independent
+    // filesystem sandbox. No incomplete or oversized entry is published.
     safe_download_path(dir, name)?;
     stage
         .persist(destination)
         .with_context(|| format!("cannot publish wallpaper at {}", destination.display()))?;
-    Ok(())
+    Ok(copied)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
 
     #[test]
     fn retries_bounded_429_and_rejects_untrusted_image_origins() {
@@ -433,5 +489,92 @@ mod tests {
         assert!(safe_download_path(dir.to_str().expect("UTF-8 temp"), "linked.jpg").is_err());
         assert_eq!(fs::read(target).expect("original data"), b"do not truncate");
         fs::remove_dir_all(dir).expect("cleanup");
+    }
+    #[test]
+    fn stream_limit_stages_exact_bytes_and_reports_actual_transfer() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        let bytes = write_complete_download_with_limit(&dest, &b"12345"[..], 5)
+            .expect("exact limit is accepted");
+        assert_eq!(bytes, 5);
+        assert_eq!(fs::read(&dest).expect("published bytes"), b"12345");
+        assert_eq!(
+            fs::read_dir(dir.path())
+                .expect("no staging leftovers")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn stream_overflow_preserves_existing_destination_and_cleans_stage() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        fs::write(&dest, b"older").expect("existing wallpaper");
+        for limit in [1, 4] {
+            assert!(write_complete_download_with_limit(&dest, &b"12345"[..], limit).is_err());
+            assert_eq!(fs::read(&dest).expect("old bytes intact"), b"older");
+            assert_eq!(fs::read_dir(dir.path()).expect("no staged part").count(), 1);
+        }
+        assert!(write_complete_download_with_limit(&dest, &b"12345"[..], 0).is_err());
+        assert_eq!(fs::read(&dest).expect("still old"), b"older");
+    }
+
+    #[test]
+    fn stream_limit_is_checked_even_with_misleading_or_unknown_length() {
+        use std::io::Cursor;
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        // Reader provides no Content-Length: actual bytes, not metadata, govern.
+        let oversized = Cursor::new(vec![7u8; 128 * 1024]);
+        assert!(write_complete_download_with_limit(&dest, oversized, 64 * 1024).is_err());
+        assert!(!dest.exists());
+        assert_eq!(
+            fs::read_dir(dir.path()).expect("no staged files").count(),
+            0
+        );
+        let bytes =
+            write_complete_download_with_limit(&dest, &b"retry"[..], 5).expect("safe retry");
+        assert_eq!(bytes, 5);
+        assert_eq!(fs::read(&dest).expect("retry committed"), b"retry");
+    }
+
+    #[test]
+    fn interrupted_or_empty_stream_rejects_and_preserves_prior_bytes_under_limit() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        fs::write(&dest, b"good").expect("original");
+        assert!(
+            write_complete_download_with_limit(&dest, InterruptedStream { sent: false }, 10,)
+                .is_err()
+        );
+        assert!(write_complete_download_with_limit(&dest, &b""[..], 10).is_err());
+        assert_eq!(fs::read(&dest).expect("original remains"), b"good");
+        assert_eq!(fs::read_dir(dir.path()).expect("no leaked temp").count(), 1);
+    }
+
+    #[test]
+    fn response_content_length_is_hint_only_and_never_a_bypass() {
+        assert!(reject_excess_content_length(Some(6), 5).is_err());
+        assert!(reject_excess_content_length(Some(5), 5).is_ok());
+        assert!(reject_excess_content_length(Some(0), 5).is_ok());
+        assert!(reject_excess_content_length(None, 5).is_ok());
+        assert!(reject_excess_content_length(None, 0).is_err());
+    }
+
+    #[test]
+    fn provider_builders_reject_zero_and_accept_explicit_limit() {
+        assert!(super::bing::BingProvider::new()
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::pexel::PexelProvider::new()
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::wallhaven::WallhavenProvider::new()
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::bing::BingProvider::new()
+            .with_max_download_bytes(1024)
+            .is_ok());
     }
 }

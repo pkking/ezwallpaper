@@ -18,6 +18,7 @@ pub struct PexelProvider {
     query: String,
     page: u32,
     min_size: Option<(u32, u32)>,
+    max_download_bytes: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,6 +57,7 @@ impl PexelProvider {
             query: "landscape wallpaper".to_string(),
             page: 1,
             min_size: None,
+            max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
         }
     }
 
@@ -103,6 +105,11 @@ impl PexelProvider {
             bail!("minimum dimensions must each be in 1..16384");
         }
         self.min_size = Some((width, height));
+        Ok(self)
+    }
+
+    pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_download_bytes = super::checked_download_limit(bytes)?;
         Ok(self)
     }
 
@@ -163,7 +170,7 @@ impl GetImgUrl for PexelProvider {
                 break;
             }
             for url in urls.into_iter().take(nums as usize - wallpapers.len()) {
-                let path = download_image(&client, &url, &self.dir)?;
+                let path = download_image(&client, &url, &self.dir, self.max_download_bytes)?;
                 wallpapers.push(
                     WallPaper::new()
                         .with_type(WpType::FromLocal)
@@ -178,15 +185,22 @@ impl GetImgUrl for PexelProvider {
     }
 }
 
-fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str) -> Result<String> {
+fn download_image(
+    client: &reqwest::blocking::Client,
+    url: &Url,
+    dir: &str,
+    max_bytes: u64,
+) -> Result<String> {
     let name = url
         .path_segments()
         .and_then(|mut segments| segments.next_back())
         .ok_or_else(|| anyhow!("Pexels image URL has no path filename"))?;
     let path = super::safe_download_path(dir, name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
+    super::reject_excess_content_length(response.content_length(), max_bytes)?;
     debug!("downloading Pexels image to {:?}", path);
-    super::write_complete_download(&path, &mut response)?;
+    let transferred = super::write_complete_download_with_limit(&path, &mut response, max_bytes)?;
+    debug!("staged {} Pexels image bytes", transferred);
     Ok(path
         .to_str()
         .ok_or_else(|| anyhow!("non-UTF8 download path"))?
