@@ -262,7 +262,11 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
                 }
             }
         }
-        StoreOperation::GcPreview { max_bytes, pinned, json } => {
+        StoreOperation::GcPreview {
+            max_bytes,
+            pinned,
+            json,
+        } => {
             let preview = store.preview_gc(*max_bytes, pinned)?;
             if *json {
                 println!("{}", serde_json::to_string_pretty(&preview)?);
@@ -275,7 +279,10 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
                     preview.remaining_over_budget_bytes
                 );
                 for entry in &preview.suggested_candidates {
-                    println!("{}\t{} bytes\tSUGGESTION ONLY", entry.content_id, entry.size_bytes);
+                    println!(
+                        "{}\t{} bytes\tSUGGESTION ONLY",
+                        entry.content_id, entry.size_bytes
+                    );
                 }
             }
         }
