@@ -55,11 +55,12 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
         let active_mode = modes.get(current_mode as usize).and_then(Value::as_object);
         let logical = output.get("logical").and_then(Value::as_object);
         let positive = |value: Option<&Value>| value.and_then(Value::as_u64).is_some_and(|n| n > 0);
-        if active_mode.is_none_or(|mode| {
-            !positive(mode.get("width")) || !positive(mode.get("height"))
-        }) || logical.is_none_or(|geometry| {
-            !positive(geometry.get("width")) || !positive(geometry.get("height"))
-        }) {
+        if active_mode
+            .is_none_or(|mode| !positive(mode.get("width")) || !positive(mode.get("height")))
+            || logical.is_none_or(|geometry| {
+                !positive(geometry.get("width")) || !positive(geometry.get("height"))
+            })
+        {
             bail!("niri output is disabled or has invalid geometry: {requested_name}");
         }
     }
