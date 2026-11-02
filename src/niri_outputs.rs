@@ -2,7 +2,7 @@
 //! Never launch a compositor or claim that its framebuffer has changed.
 use anyhow::{anyhow, bail, Context, Result};
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -21,6 +21,16 @@ pub(crate) fn verify_running_outputs(requested: &[String]) -> Result<()> {
 fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
     if bytes.len() as u64 > MAX_OUTPUTS_JSON {
         bail!("niri output inventory exceeded 1 MiB");
+    }
+    if requested.is_empty() {
+        bail!("niri output preflight requires at least one connector");
+    }
+    let mut seen = BTreeSet::new();
+    for name in requested {
+        super::backend::noctalia::validate_connector(name)?;
+        if !seen.insert(name) {
+            bail!("duplicate niri output connector: {name}");
+        }
     }
     let inventory: BTreeMap<String, Value> =
         serde_json::from_slice(bytes).context("invalid niri outputs JSON")?;
@@ -110,6 +120,14 @@ mod tests {
 
     fn dual() -> Vec<String> {
         vec!["DP-1".to_owned(), "HDMI-A-1".to_owned()]
+    }
+
+    #[test]
+    fn empty_duplicate_and_unsafe_output_requests_fail_closed() {
+        assert!(validate_outputs(&fixture(), &[]).is_err());
+        assert!(validate_outputs(&fixture(), &["DP-1".to_owned(), "DP-1".to_owned()]).is_err());
+        assert!(validate_outputs(&fixture(), &["DP-1/escape".to_owned()]).is_err());
+        assert!(validate_outputs(&fixture(), &["".to_owned()]).is_err());
     }
 
     #[test]
