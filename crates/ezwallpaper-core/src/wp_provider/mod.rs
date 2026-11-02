@@ -210,7 +210,9 @@ fn write_complete_download<R: Read>(destination: &Path, source: R) -> Result<u64
 }
 
 fn write_complete_download_with_limit<R: Read>(
-    destination: &Path, mut source: R, max_bytes: u64,
+    destination: &Path,
+    mut source: R,
+    max_bytes: u64,
 ) -> Result<u64> {
     checked_download_limit(max_bytes)?;
     let directory = destination
@@ -238,7 +240,8 @@ fn write_complete_download_with_limit<R: Read>(
         } else {
             remaining.min(buffer.len() as u64) as usize
         };
-        let n = source.read(&mut buffer[..read_size])
+        let n = source
+            .read(&mut buffer[..read_size])
             .context("wallpaper stream failed before completion")?;
         if n == 0 {
             break;
@@ -246,7 +249,9 @@ fn write_complete_download_with_limit<R: Read>(
         if remaining == 0 {
             bail!("wallpaper download exceeds configured byte limit");
         }
-        stage.as_file_mut().write_all(&buffer[..n])
+        stage
+            .as_file_mut()
+            .write_all(&buffer[..n])
             .context("cannot stage downloaded wallpaper bytes")?;
         copied += n as u64;
     }
@@ -256,7 +261,8 @@ fn write_complete_download_with_limit<R: Read>(
     // Re-check after download; a parent-path race still needs an independent
     // filesystem sandbox. No incomplete or oversized entry is published.
     safe_download_path(dir, name)?;
-    stage.persist(destination)
+    stage
+        .persist(destination)
         .with_context(|| format!("cannot publish wallpaper at {}", destination.display()))?;
     Ok(copied)
 }
@@ -482,7 +488,12 @@ mod tests {
             .expect("exact limit is accepted");
         assert_eq!(bytes, 5);
         assert_eq!(fs::read(&dest).expect("published bytes"), b"12345");
-        assert_eq!(fs::read_dir(dir.path()).expect("no staging leftovers").count(), 1);
+        assert_eq!(
+            fs::read_dir(dir.path())
+                .expect("no staging leftovers")
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -508,9 +519,12 @@ mod tests {
         let oversized = Cursor::new(vec![7u8; 128 * 1024]);
         assert!(write_complete_download_with_limit(&dest, oversized, 64 * 1024).is_err());
         assert!(!dest.exists());
-        assert_eq!(fs::read_dir(dir.path()).expect("no staged files").count(), 0);
-        let bytes = write_complete_download_with_limit(&dest, &b"retry"[..], 5)
-            .expect("safe retry");
+        assert_eq!(
+            fs::read_dir(dir.path()).expect("no staged files").count(),
+            0
+        );
+        let bytes =
+            write_complete_download_with_limit(&dest, &b"retry"[..], 5).expect("safe retry");
         assert_eq!(bytes, 5);
         assert_eq!(fs::read(&dest).expect("retry committed"), b"retry");
     }
@@ -520,9 +534,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("isolated fixture");
         let dest = dir.path().join("wallpaper.jpg");
         fs::write(&dest, b"good").expect("original");
-        assert!(write_complete_download_with_limit(
-            &dest, InterruptedStream { sent: false }, 10,
-        ).is_err());
+        assert!(
+            write_complete_download_with_limit(&dest, InterruptedStream { sent: false }, 10,)
+                .is_err()
+        );
         assert!(write_complete_download_with_limit(&dest, &b""[..], 10).is_err());
         assert_eq!(fs::read(&dest).expect("original remains"), b"good");
         assert_eq!(fs::read_dir(dir.path()).expect("no leaked temp").count(), 1);
@@ -530,12 +545,17 @@ mod tests {
 
     #[test]
     fn provider_builders_reject_zero_and_accept_explicit_limit() {
-        assert!(super::bing::BingProvider::new().with_max_download_bytes(0).is_err());
-        assert!(super::pexel::PexelProvider::new().with_max_download_bytes(0).is_err());
-        assert!(super::wallhaven::WallhavenProvider::new()
-            .with_max_download_bytes(0).is_err());
         assert!(super::bing::BingProvider::new()
-            .with_max_download_bytes(1024).is_ok());
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::pexel::PexelProvider::new()
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::wallhaven::WallhavenProvider::new()
+            .with_max_download_bytes(0)
+            .is_err());
+        assert!(super::bing::BingProvider::new()
+            .with_max_download_bytes(1024)
+            .is_ok());
     }
-
 }
