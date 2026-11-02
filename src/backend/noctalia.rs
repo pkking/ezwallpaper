@@ -12,7 +12,7 @@ pub struct NoctaliaBackend;
 
 const MAX_IPC_OUTPUT_BYTES: u64 = 1024 * 1024;
 
-fn read_bounded_ipc_output(mut input: impl Read) -> Result<String> {
+fn read_bounded_ipc_output(input: impl Read) -> Result<String> {
     let mut output = Vec::new();
     input
         .take(MAX_IPC_OUTPUT_BYTES + 1)
@@ -177,10 +177,10 @@ mod tests {
 
     #[test]
     fn ipc_stdout_limit_rejects_overflow_without_truncating() {
-        assert_eq!(read_bounded_ipc_output(b"ok".as_slice()).unwrap(), "ok");
+        assert_eq!(read_bounded_ipc_output(b"ok".as_slice()).expect("small valid response"), "ok");
         let exact = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize];
         assert_eq!(
-            read_bounded_ipc_output(exact.as_slice()).unwrap().len(),
+            read_bounded_ipc_output(exact.as_slice()).expect("exact limit accepted").len(),
             exact.len()
         );
         let overflow = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize + 1];
