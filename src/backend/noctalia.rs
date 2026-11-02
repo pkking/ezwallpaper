@@ -2,12 +2,25 @@
 use super::{Acknowledgement, ApplyStatus, BackendCapabilities, OutputScope, WallpaperBackend};
 use anyhow::{anyhow, bail, Context, Result};
 use std::env;
+use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
 pub struct NoctaliaBackend;
+
+const MAX_IPC_OUTPUT_BYTES: u64 = 1024 * 1024;
+
+fn read_bounded_ipc_output(mut input: impl Read) -> Result<String> {
+    let mut output = Vec::new();
+    input.take(MAX_IPC_OUTPUT_BYTES + 1).read_to_end(&mut output)?;
+    if output.len() as u64 > MAX_IPC_OUTPUT_BYTES {
+        bail!("Noctalia IPC output exceeded 1 MiB");
+    }
+    String::from_utf8(output).context("Noctalia IPC returned non-UTF8 output")
+}
+
 
 fn wayland_display_present(display: Option<&std::ffi::OsStr>) -> bool {
     display.is_some_and(|value| !value.is_empty())
@@ -101,6 +114,8 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
         .stderr(Stdio::null())
         .spawn()
         .context("failed to launch Noctalia v5 IPC")?;
+    let stdout = child.stdout.take().context("Noctalia IPC stdout unavailable")?;
+    let reader = thread::spawn(move || read_bounded_ipc_output(stdout));
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
         if child
@@ -108,14 +123,12 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
             .context("failed to poll Noctalia IPC")?
             .is_some()
         {
-            let result = child
-                .wait_with_output()
-                .context("failed to read Noctalia IPC")?;
-            if !result.status.success() {
-                bail!("Noctalia IPC exited with status {}", result.status);
+            let status = child.wait().context("failed to wait for Noctalia IPC")?;
+            let output = reader.join().map_err(|_| anyhow!("Noctalia IPC reader panicked"))??;
+            if !status.success() {
+                bail!("Noctalia IPC exited with status {status}");
             }
-            return String::from_utf8(result.stdout)
-                .context("Noctalia IPC returned non-UTF8 output");
+            return Ok(output);
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
@@ -155,6 +168,16 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
 mod tests {
     use super::*;
     use anyhow::anyhow;
+
+    #[test]
+    fn ipc_stdout_limit_rejects_overflow_without_truncating() {
+        assert_eq!(read_bounded_ipc_output(b"ok".as_slice()).unwrap(), "ok");
+        let exact = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize];
+        assert_eq!(read_bounded_ipc_output(exact.as_slice()).unwrap().len(), exact.len());
+        let overflow = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize + 1];
+        assert!(read_bounded_ipc_output(overflow.as_slice()).is_err());
+        assert!(read_bounded_ipc_output([0xff].as_slice()).is_err());
+    }
 
     #[test]
     fn wayland_display_fallback_requires_nonempty_socket_name() {
