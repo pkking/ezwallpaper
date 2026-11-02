@@ -197,6 +197,16 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
     Ok(dest)
 }
 
+/// Reject a known over-limit Content-Length early, while the stream loop
+/// remains authoritative for missing or incorrect response length metadata.
+fn reject_excess_content_length(content_length: Option<u64>, max_bytes: u64) -> Result<()> {
+    checked_download_limit(max_bytes)?;
+    if content_length.is_some_and(|length| length > max_bytes) {
+        bail!("provider response Content-Length exceeds configured byte limit");
+    }
+    Ok(())
+}
+
 /// Publish only a complete stream; unsuccessful copies never expose partial
 /// data at the wallpaper path. The temporary file is securely created on the
 /// same filesystem and removed automatically on failure.
@@ -541,6 +551,15 @@ mod tests {
         assert!(write_complete_download_with_limit(&dest, &b""[..], 10).is_err());
         assert_eq!(fs::read(&dest).expect("original remains"), b"good");
         assert_eq!(fs::read_dir(dir.path()).expect("no leaked temp").count(), 1);
+    }
+
+    #[test]
+    fn response_content_length_is_hint_only_and_never_a_bypass() {
+        assert!(reject_excess_content_length(Some(6), 5).is_err());
+        assert!(reject_excess_content_length(Some(5), 5).is_ok());
+        assert!(reject_excess_content_length(Some(0), 5).is_ok());
+        assert!(reject_excess_content_length(None, 5).is_ok());
+        assert!(reject_excess_content_length(None, 0).is_err());
     }
 
     #[test]
