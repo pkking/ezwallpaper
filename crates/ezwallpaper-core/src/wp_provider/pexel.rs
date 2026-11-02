@@ -197,6 +197,7 @@ fn download_image(
         .ok_or_else(|| anyhow!("Pexels image URL has no path filename"))?;
     let path = super::safe_download_path(dir, name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
+    super::reject_excess_content_length(response.content_length(), max_bytes)?;
     debug!("downloading Pexels image to {:?}", path);
     let transferred = super::write_complete_download_with_limit(&path, &mut response, max_bytes)?;
     debug!("staged {} Pexels image bytes", transferred);
