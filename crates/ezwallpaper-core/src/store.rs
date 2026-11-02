@@ -195,6 +195,7 @@ impl WallpaperStore {
                     .context("pinned store content exceeds u64 accounting range")?;
             }
         }
+        let verified_entry_count = existing.len();
         let mut unprotected: Vec<_> = existing.into_values()
             .filter(|entry| !protected.contains(&entry.content_id)).collect();
         // Largest-first is a transparent deterministic estimate, NOT an
@@ -217,7 +218,7 @@ impl WallpaperStore {
             status: "READ_ONLY_UNSAFE_TO_DELETE_PREVIEW",
             max_bytes,
             verified_total_bytes: total,
-            verified_entry_count: self.list()?.len(),
+            verified_entry_count,
             supplied_pinned_ids: protected.into_iter().collect(),
             supplied_pinned_bytes: pinned_bytes,
             suggested_reclaim_bytes: total - remaining,
