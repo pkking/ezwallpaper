@@ -14,13 +14,14 @@ const MAX_IPC_OUTPUT_BYTES: u64 = 1024 * 1024;
 
 fn read_bounded_ipc_output(mut input: impl Read) -> Result<String> {
     let mut output = Vec::new();
-    input.take(MAX_IPC_OUTPUT_BYTES + 1).read_to_end(&mut output)?;
+    input
+        .take(MAX_IPC_OUTPUT_BYTES + 1)
+        .read_to_end(&mut output)?;
     if output.len() as u64 > MAX_IPC_OUTPUT_BYTES {
         bail!("Noctalia IPC output exceeded 1 MiB");
     }
     String::from_utf8(output).context("Noctalia IPC returned non-UTF8 output")
 }
-
 
 fn wayland_display_present(display: Option<&std::ffi::OsStr>) -> bool {
     display.is_some_and(|value| !value.is_empty())
@@ -114,7 +115,10 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
         .stderr(Stdio::null())
         .spawn()
         .context("failed to launch Noctalia v5 IPC")?;
-    let stdout = child.stdout.take().context("Noctalia IPC stdout unavailable")?;
+    let stdout = child
+        .stdout
+        .take()
+        .context("Noctalia IPC stdout unavailable")?;
     let reader = thread::spawn(move || read_bounded_ipc_output(stdout));
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
@@ -124,7 +128,9 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
             .is_some()
         {
             let status = child.wait().context("failed to wait for Noctalia IPC")?;
-            let output = reader.join().map_err(|_| anyhow!("Noctalia IPC reader panicked"))??;
+            let output = reader
+                .join()
+                .map_err(|_| anyhow!("Noctalia IPC reader panicked"))??;
             if !status.success() {
                 bail!("Noctalia IPC exited with status {status}");
             }
@@ -173,7 +179,10 @@ mod tests {
     fn ipc_stdout_limit_rejects_overflow_without_truncating() {
         assert_eq!(read_bounded_ipc_output(b"ok".as_slice()).unwrap(), "ok");
         let exact = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize];
-        assert_eq!(read_bounded_ipc_output(exact.as_slice()).unwrap().len(), exact.len());
+        assert_eq!(
+            read_bounded_ipc_output(exact.as_slice()).unwrap().len(),
+            exact.len()
+        );
         let overflow = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize + 1];
         assert!(read_bounded_ipc_output(overflow.as_slice()).is_err());
         assert!(read_bounded_ipc_output([0xff].as_slice()).is_err());
