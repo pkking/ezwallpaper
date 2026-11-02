@@ -204,6 +204,7 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
 /// This replaces the pathname (and thus its inode/metadata/hardlink identity)
 /// on success rather than modifying the old file in place. This does not
 /// guarantee power-loss durability or stop concurrent changes to parent paths.
+#[cfg(test)]
 fn write_complete_download<R: Read>(destination: &Path, source: R) -> Result<u64> {
     write_complete_download_with_limit(destination, source, DEFAULT_DOWNLOAD_LIMIT)
 }
@@ -263,6 +264,7 @@ fn write_complete_download_with_limit<R: Read>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
 
     #[test]
     fn retries_bounded_429_and_rejects_untrusted_image_origins() {
