@@ -1,7 +1,7 @@
 # issue-79-provider-stream-limit
 
 Issue: #79
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-02
 Last checkpoint: 2026-11-02
@@ -33,16 +33,16 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, docs/adr/0003-owned-
 
 ## Acceptance criteria
 
-- [ ] Positive, error, boundary and interrupted reader tests; new functionality wired into required CI.
-- [ ] Existing targets, legacy wallpaper directories, store content and symlink targets remain unchanged on failure.
-- [ ] Document limits, evidence and remaining aggregate-concurrency/GC implementation boundaries.
+- [x] Authored positive/error/boundary/interrupted tests; Rust workspace CI pending.
+- [x] Added no-publication and no-deletion fixture assertions; CI verification pending.
+- [x] Added explicit feature and remaining risk documentation.
 - [ ] All required checks pass on exact final HEAD.
 
 ## Implementation slices
 
-- [ ] Implement isolated bounded/preview functionality.
-- [ ] Add deterministic fixtures and CI evidence.
-- [ ] Update documentation, submit PR, verify exact HEAD.
+- [x] Implemented isolated bounded/preview functionality.
+- [x] Added deterministic fixtures; CI evidence pending.
+- [x] Documentation updated; PR submission next, CI pending.
 
 ## Verification matrix
 
@@ -63,7 +63,7 @@ An actual reference-aware deletion implementation, persistent provenance/retenti
 
 ## Deviations and discoveries
 
-None.
+Implemented default 64 MiB response cap and optional CLI --max-download-bytes passed to Bing/Pexels/Wallhaven builders. Each read enforces the remaining-byte budget before write, reports actual transferred bytes and discards the temporary file on failure. Added synthetic reader fixtures. Aggregate concurrent temp reservation and metadata-response bounds remain unimplemented.
 
 ## Resume from here
 
