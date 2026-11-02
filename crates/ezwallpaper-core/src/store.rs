@@ -4,7 +4,7 @@
 use anyhow::{bail, Context, Result};
 use cacache::{SyncReader, SyncWriter};
 use sha2::{Digest, Sha256};
-use std::collections::{btree_map::Entry, BTreeMap};
+use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -37,6 +37,24 @@ impl<'a> StoreInventory<'a> {
             entries,
         }
     }
+}
+
+/// A conservative, ephemeral suggestion; candidates are NOT safe-to-delete.
+#[derive(Debug, serde::Serialize)]
+pub struct StoreGcPreview {
+    pub schema_version: u32,
+    pub status: &'static str,
+    pub max_bytes: u64,
+    pub verified_total_bytes: u64,
+    pub verified_entry_count: usize,
+    pub supplied_pinned_ids: Vec<String>,
+    pub supplied_pinned_bytes: u64,
+    pub suggested_candidates: Vec<StoredWallpaper>,
+    pub suggested_reclaim_bytes: u64,
+    pub estimated_remaining_bytes: u64,
+    pub remaining_over_budget_bytes: u64,
+    pub deletes_performed: bool,
+    pub active_references_verified: bool,
 }
 
 /// Independent, explicitly initialized Core-owned storage; no automatic GC.
@@ -152,6 +170,63 @@ impl WallpaperStore {
             }
         }
         Ok(unique.into_values().collect())
+    }
+
+    /// Produce a deterministic no-write capacity preview over a fully
+    /// validated inventory. Only EXPLICIT pinned IDs are protected. Live
+    /// rotation, login screen and video-player references are NOT discovered.
+    /// Never pass these suggestions to an unreviewed remover.
+    pub fn preview_gc(&self, max_bytes: u64, pinned: &[String]) -> Result<StoreGcPreview> {
+        let entries = self.list()?;
+        let mut existing = BTreeMap::new();
+        let mut total = 0u64;
+        for entry in entries {
+            total = total.checked_add(entry.size_bytes)
+                .context("verified store inventory exceeds u64 accounting range")?;
+            existing.insert(entry.content_id.clone(), entry);
+        }
+        let mut protected = BTreeSet::new();
+        let mut pinned_bytes = 0u64;
+        for id in pinned {
+            validate_id(id)?;
+            let entry = existing.get(id).context("pinned content ID missing from verified store")?;
+            if protected.insert(id.clone()) {
+                pinned_bytes = pinned_bytes.checked_add(entry.size_bytes)
+                    .context("pinned store content exceeds u64 accounting range")?;
+            }
+        }
+        let mut unprotected: Vec<_> = existing.into_values()
+            .filter(|entry| !protected.contains(&entry.content_id)).collect();
+        // Largest-first is a transparent deterministic estimate, NOT an
+        // eviction policy based on age/usage or active consumer references.
+        unprotected.sort_by(|left, right| {
+            right.size_bytes.cmp(&left.size_bytes)
+                .then_with(|| left.content_id.cmp(&right.content_id))
+        });
+        let mut remaining = total;
+        let mut candidates = Vec::new();
+        for entry in unprotected {
+            if remaining <= max_bytes {
+                break;
+            }
+            remaining -= entry.size_bytes;
+            candidates.push(entry);
+        }
+        Ok(StoreGcPreview {
+            schema_version: 1,
+            status: "READ_ONLY_UNSAFE_TO_DELETE_PREVIEW",
+            max_bytes,
+            verified_total_bytes: total,
+            verified_entry_count: self.list()?.len(),
+            supplied_pinned_ids: protected.into_iter().collect(),
+            supplied_pinned_bytes: pinned_bytes,
+            suggested_reclaim_bytes: total - remaining,
+            suggested_candidates: candidates,
+            estimated_remaining_bytes: remaining,
+            remaining_over_budget_bytes: remaining.saturating_sub(max_bytes),
+            deletes_performed: false,
+            active_references_verified: false,
+        })
     }
 
     /// Verify the entire blob, not just presence of a metadata index entry.
