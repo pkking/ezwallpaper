@@ -111,7 +111,12 @@ impl GetImgUrl for BingProvider {
     }
 }
 
-fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str, max_bytes: u64) -> Result<String> {
+fn download_image(
+    client: &reqwest::blocking::Client,
+    url: &Url,
+    dir: &str,
+    max_bytes: u64,
+) -> Result<String> {
     let file_name = url
         .query_pairs()
         .find(|(key, _)| key == "id")
@@ -120,7 +125,8 @@ fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str, max_
     let file_path = super::safe_download_path(dir, &file_name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
     debug!("downloading Bing image to {:?}", file_path);
-    let transferred = super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
+    let transferred =
+        super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
     debug!("staged {} Bing image bytes", transferred);
     Ok(file_path
         .to_str()
