@@ -152,6 +152,10 @@ impl GetImgUrl for WallhavenProvider {
                     .ok_or_else(|| anyhow!("Wallhaven image has no filename"))?;
                 let path = super::safe_download_path(&self.dir, file_name)?;
                 let mut response = request_with_retry(client.get(url))?;
+                super::reject_excess_content_length(
+                    response.content_length(),
+                    self.max_download_bytes,
+                )?;
                 debug!("downloading Wallhaven image to {:?}", path);
                 let transferred = super::write_complete_download_with_limit(
                     &path,
