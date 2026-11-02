@@ -124,6 +124,7 @@ fn download_image(
         .ok_or_else(|| anyhow!("Bing image URL has no id filename"))?;
     let file_path = super::safe_download_path(dir, &file_name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
+    super::reject_excess_content_length(response.content_length(), max_bytes)?;
     debug!("downloading Bing image to {:?}", file_path);
     let transferred =
         super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
