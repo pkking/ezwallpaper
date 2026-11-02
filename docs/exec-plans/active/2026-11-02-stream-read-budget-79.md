@@ -31,7 +31,7 @@ Bounded staging download already uses a remaining-byte budget and reads a single
 | Plan integrity | Required Issue and Plan linkage in PR body |
 
 ## Evidence log
-2026-11-02: Updated implementation and registered plan for automated PR integrity checks.
+2026-11-02: Initial run passed Rust quality, Rust tests and platform jobs; plan integrity failed because the run's PR event snapshot predated the Plan metadata update. Re-trigger checks after the PR body now includes the canonical Issue and Plan lines.
 
 ## Resume from here
 Check the latest GitHub Actions run for PR #169, inspect failures, then update the plan evidence and re-run CI.
