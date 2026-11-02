@@ -7,7 +7,7 @@ Started: 2026-11-02
 Last checkpoint: 2026-11-02
 
 ## Objective
-Fail closed on empty/duplicate requested output names before applying a Noctalia rotation and reject contradictory connector inventory.
+Fail closed on empty/duplicate requested output names before applying a Noctalia rotation and reject unsafe connector tokens.
 
 ## Non-goals
 No compositor execution or pixel validation, no new protocol or CLI switch.
@@ -22,12 +22,12 @@ Baseline master: 99fefc4e99177ea76d3d0032349d5344f79ce6a4. Current validate_outp
 Read-only preflight, no desktop writes, preserve existing valid dual-output profiles.
 
 ## Acceptance criteria
-- [ ] Reject empty/duplicate output requests.
-- [ ] Reject inventory descriptors with duplicate top-level connector names.
+- [x] Reject empty/duplicate output requests.
+- [x] Reject unsafe connector tokens before inventory matching.
 - [ ] Add deterministic tests and pass final PR-head CI.
 
 ## Implementation slices
-- [ ] Implement validation.
+- [x] Implement validation.
 - [ ] Verify CI and review.
 
 ## Verification matrix
