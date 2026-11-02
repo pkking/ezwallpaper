@@ -10,11 +10,22 @@ use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::StatusCode;
 use std::fs;
 use std::io::ErrorKind;
-use std::io::{self, Read};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 use tempfile::NamedTempFile;
+
+/// Default per-response transfer cap; independent from persistent CAS retention.
+pub const DEFAULT_DOWNLOAD_LIMIT: u64 = 64 * 1024 * 1024;
+
+/// Shared checked limit for all provider builders and their reader fixtures.
+fn checked_download_limit(value: u64) -> Result<u64> {
+    if value == 0 {
+        bail!("max download bytes must be positive");
+    }
+    Ok(value)
+}
 
 /// Provider-side orientation preference; not pixel decoding (Issue #53).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -193,7 +204,14 @@ fn safe_download_path(dir: &str, name: &str) -> Result<PathBuf> {
 /// This replaces the pathname (and thus its inode/metadata/hardlink identity)
 /// on success rather than modifying the old file in place. This does not
 /// guarantee power-loss durability or stop concurrent changes to parent paths.
-fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result<()> {
+fn write_complete_download<R: Read>(destination: &Path, source: R) -> Result<u64> {
+    write_complete_download_with_limit(destination, source, DEFAULT_DOWNLOAD_LIMIT)
+}
+
+fn write_complete_download_with_limit<R: Read>(
+    destination: &Path, mut source: R, max_bytes: u64,
+) -> Result<u64> {
+    checked_download_limit(max_bytes)?;
     let directory = destination
         .parent()
         .ok_or_else(|| anyhow::anyhow!("download destination has no parent"))?;
@@ -208,18 +226,39 @@ fn write_complete_download<R: Read>(destination: &Path, mut source: R) -> Result
     safe_download_path(dir, name)?;
     let mut stage = NamedTempFile::new_in(directory)
         .with_context(|| format!("cannot stage wallpaper in {}", directory.display()))?;
-    let copied = io::copy(&mut source, stage.as_file_mut())
-        .context("wallpaper stream failed before the file was complete")?;
+    let mut copied: u64 = 0;
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        // The last allowed byte is staged; the next byte is inspected but
+        // never written. This applies even if Content-Length was absent/wrong.
+        let remaining = max_bytes - copied;
+        let read_size = if remaining == 0 {
+            1
+        } else {
+            usize::try_from(remaining.min(buffer.len() as u64))
+                .context("invalid remaining byte count")?
+        };
+        let n = source.read(&mut buffer[..read_size])
+            .context("wallpaper stream failed before completion")?;
+        if n == 0 {
+            break;
+        }
+        if remaining == 0 {
+            bail!("wallpaper download exceeds configured byte limit");
+        }
+        stage.as_file_mut().write_all(&buffer[..n])
+            .context("cannot stage downloaded wallpaper bytes")?;
+        copied += n as u64;
+    }
     if copied == 0 {
         bail!("wallpaper download was empty");
     }
-    // Re-check in case the destination was altered during the stream. The
-    // subsequent rename still has a TOCTOU window, not a sandbox guarantee.
+    // Re-check after download; a parent-path race still needs an independent
+    // filesystem sandbox. No incomplete or oversized entry is published.
     safe_download_path(dir, name)?;
-    stage
-        .persist(destination)
+    stage.persist(destination)
         .with_context(|| format!("cannot publish wallpaper at {}", destination.display()))?;
-    Ok(())
+    Ok(copied)
 }
 
 #[cfg(test)]
