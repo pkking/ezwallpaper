@@ -648,4 +648,53 @@ mod tests {
     fn failed_stream_reports_an_error() {
         assert!(hash_copy(BrokenInput, io::sink()).is_err());
     }
+    #[test]
+    fn read_only_gc_preview_protects_pins_and_orders_largest_candidates() {
+        let (temp, store) = fixture();
+        let files = [("small", b"12".as_slice()), ("medium", b"1234".as_slice()),
+                     ("large", b"123456".as_slice())];
+        let mut ids = Vec::new();
+        for (name, bytes) in files {
+            let path = temp.path().join(name);
+            fs::write(&path, bytes).expect("fixture source");
+            ids.push(store.import_file(path).expect("import").content_id);
+        }
+        let root = store.root.clone();
+        let before = store.list().expect("verified inventory");
+        let preview = store.preview_gc(5, &[ids[0].clone()]).expect("read-only preview");
+        assert_eq!(preview.verified_entry_count, 3);
+        assert_eq!(preview.verified_total_bytes, 12);
+        assert_eq!(preview.supplied_pinned_bytes, 2);
+        assert_eq!(preview.suggested_candidates.len(), 2);
+        assert_eq!(preview.suggested_candidates[0].content_id, ids[2]);
+        assert_eq!(preview.suggested_reclaim_bytes, 10);
+        assert_eq!(preview.estimated_remaining_bytes, 2);
+        assert_eq!(preview.remaining_over_budget_bytes, 0);
+        assert!(!preview.deletes_performed);
+        assert!(!preview.active_references_verified);
+        assert_eq!(store.list().expect("same inventory"), before);
+        assert!(root.join(".ezwallpaper-store").exists());
+    }
+
+    #[test]
+    fn read_only_gc_preview_never_claims_safety_for_unknown_active_refs() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("single.png");
+        fs::write(&source, b"content").expect("fixture");
+        let saved = store.import_file(&source).expect("import");
+        let id = saved.content_id;
+        let all_pinned = store.preview_gc(0, &[id.clone(), id.clone()])
+            .expect("deduplicate explicit pins");
+        assert_eq!(all_pinned.supplied_pinned_ids, vec![id.clone()]);
+        assert_eq!(all_pinned.suggested_reclaim_bytes, 0);
+        assert_eq!(all_pinned.remaining_over_budget_bytes, 7);
+        assert!(all_pinned.suggested_candidates.is_empty());
+        assert!(store.preview_gc(1, &["sha256:".to_owned() + &"0".repeat(64)])
+            .is_err());
+        assert!(store.preview_gc(1, &["not-a-digest".to_owned()]).is_err());
+        let below_budget = store.preview_gc(100, &[]).expect("no pressure");
+        assert!(below_budget.suggested_candidates.is_empty());
+        assert_eq!(fs::read(&source).expect("source unchanged"), b"content");
+    }
+
 }
