@@ -223,6 +223,18 @@ enum StoreOperation {
         #[arg(long)]
         json: bool,
     },
+    /// Preview space savings without deleting anything; requires explicit pins.
+    GcPreview {
+        /// Requested capacity target in bytes, not a persistent store policy.
+        #[arg(long)]
+        max_bytes: u64,
+        /// Explicit content IDs to protect (must exist in the verified store).
+        #[arg(long = "pin")]
+        pinned: Vec<String>,
+        /// Print a versioned JSON read-only report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Copy a local wallpaper into the content-addressable store.
     Import { path: PathBuf },
     /// Read and verify a saved SHA-256 content ID.
@@ -251,6 +263,30 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
             } else {
                 for entry in entries {
                     println!("{}\t{} bytes", entry.content_id, entry.size_bytes);
+                }
+            }
+        }
+        StoreOperation::GcPreview {
+            max_bytes,
+            pinned,
+            json,
+        } => {
+            let preview = store.preview_gc(*max_bytes, pinned)?;
+            if *json {
+                println!("{}", serde_json::to_string_pretty(&preview)?);
+            } else {
+                println!(
+                    "verified={} bytes, pinned={} bytes, suggested={} bytes, remaining_over_budget={} bytes (read-only; NOT safe to delete)",
+                    preview.verified_total_bytes,
+                    preview.supplied_pinned_bytes,
+                    preview.suggested_reclaim_bytes,
+                    preview.remaining_over_budget_bytes
+                );
+                for entry in &preview.suggested_candidates {
+                    println!(
+                        "{}\t{} bytes\tSUGGESTION ONLY",
+                        entry.content_id, entry.size_bytes
+                    );
                 }
             }
         }
