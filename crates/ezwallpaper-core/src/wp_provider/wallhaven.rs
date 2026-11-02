@@ -153,7 +153,11 @@ impl GetImgUrl for WallhavenProvider {
                 let path = super::safe_download_path(&self.dir, file_name)?;
                 let mut response = request_with_retry(client.get(url))?;
                 debug!("downloading Wallhaven image to {:?}", path);
-                let transferred = super::write_complete_download_with_limit(&path, &mut response, self.max_download_bytes)?;
+                let transferred = super::write_complete_download_with_limit(
+                    &path,
+                    &mut response,
+                    self.max_download_bytes,
+                )?;
                 debug!("staged {} Wallhaven image bytes", transferred);
                 wallpapers.push(
                     WallPaper::new().with_type(WpType::FromLocal).with_path(
