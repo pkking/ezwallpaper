@@ -52,10 +52,15 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
             .get("modes")
             .and_then(Value::as_array)
             .ok_or_else(|| anyhow!("niri output modes are missing: {requested_name}"))?;
-        if current_mode >= modes.len() as u64
-            || !output.get("logical").is_some_and(Value::is_object)
-        {
-            bail!("niri output is disabled or unmapped: {requested_name}");
+        let active_mode = modes.get(current_mode as usize).and_then(Value::as_object);
+        let logical = output.get("logical").and_then(Value::as_object);
+        let positive = |value: Option<&Value>| value.and_then(Value::as_u64).is_some_and(|n| n > 0);
+        if active_mode.is_none_or(|mode| {
+            !positive(mode.get("width")) || !positive(mode.get("height"))
+        }) || logical.is_none_or(|geometry| {
+            !positive(geometry.get("width")) || !positive(geometry.get("height"))
+        }) {
+            bail!("niri output is disabled or has invalid geometry: {requested_name}");
         }
     }
     Ok(())
@@ -150,6 +155,20 @@ mod tests {
             "\"logical\":null",
         );
         assert!(validate_outputs(unmapped.as_bytes(), &dual()).is_err());
+    }
+
+    #[test]
+    fn zero_or_missing_active_mode_geometry_is_rejected() {
+        let requested = ["DP-1".to_owned()];
+        for raw in [
+            r#"{"DP-1":{"name":"DP-1","modes":[{"width":0,"height":2160}],"current_mode":0,"logical":{"width":2560,"height":1440}}}"#,
+            r#"{"DP-1":{"name":"DP-1","modes":[{"width":3840}],"current_mode":0,"logical":{"width":2560,"height":1440}}}"#,
+            r#"{"DP-1":{"name":"DP-1","modes":[{"width":3840,"height":2160}],"current_mode":0,"logical":{"width":0,"height":1440}}}"#,
+            r#"{"DP-1":{"name":"DP-1","modes":[{"width":3840,"height":2160}],"current_mode":0,"logical":{"width":2560}}}"#,
+        ] {
+            assert!(validate_outputs(raw.as_bytes(), &requested).is_err());
+        }
+        validate_outputs(&fixture(), &requested).expect("positive active geometry");
     }
 
     #[test]
