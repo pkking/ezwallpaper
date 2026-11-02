@@ -185,7 +185,12 @@ impl GetImgUrl for PexelProvider {
     }
 }
 
-fn download_image(client: &reqwest::blocking::Client, url: &Url, dir: &str, max_bytes: u64) -> Result<String> {
+fn download_image(
+    client: &reqwest::blocking::Client,
+    url: &Url,
+    dir: &str,
+    max_bytes: u64,
+) -> Result<String> {
     let name = url
         .path_segments()
         .and_then(|mut segments| segments.next_back())
