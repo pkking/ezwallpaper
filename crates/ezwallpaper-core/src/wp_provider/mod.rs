@@ -554,6 +554,39 @@ mod tests {
     }
 
     #[test]
+    fn over_limit_reader_is_never_drained_after_first_excess_byte() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+
+        struct CountedReader {
+            remaining: usize,
+            consumed: Rc<Cell<usize>>,
+        }
+
+        impl Read for CountedReader {
+            fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+                let count = self.remaining.min(out.len());
+                out[..count].fill(b'x');
+                self.remaining -= count;
+                self.consumed.set(self.consumed.get() + count);
+                Ok(count)
+            }
+        }
+
+        let dir = tempfile::tempdir().expect("isolated staging directory");
+        let dest = dir.path().join("wallpaper.jpg");
+        let consumed = Rc::new(Cell::new(0));
+        let reader = CountedReader {
+            remaining: 1024 * 1024,
+            consumed: Rc::clone(&consumed),
+        };
+        assert!(write_complete_download_with_limit(&dest, reader, 1024).is_err());
+        assert_eq!(consumed.get(), 1025);
+        assert!(!dest.exists());
+        assert_eq!(fs::read_dir(dir.path()).expect("no staging").count(), 0);
+    }
+
+    #[test]
     fn response_content_length_is_hint_only_and_never_a_bypass() {
         assert!(reject_excess_content_length(Some(6), 5).is_err());
         assert!(reject_excess_content_length(Some(5), 5).is_ok());
