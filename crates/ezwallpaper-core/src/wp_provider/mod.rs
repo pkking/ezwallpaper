@@ -472,4 +472,68 @@ mod tests {
         assert_eq!(fs::read(target).expect("original data"), b"do not truncate");
         fs::remove_dir_all(dir).expect("cleanup");
     }
+    #[test]
+    fn stream_limit_stages_exact_bytes_and_reports_actual_transfer() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        let bytes = write_complete_download_with_limit(&dest, &b"12345"[..], 5)
+            .expect("exact limit is accepted");
+        assert_eq!(bytes, 5);
+        assert_eq!(fs::read(&dest).expect("published bytes"), b"12345");
+        assert_eq!(fs::read_dir(dir.path()).expect("no staging leftovers").count(), 1);
+    }
+
+    #[test]
+    fn stream_overflow_preserves_existing_destination_and_cleans_stage() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        fs::write(&dest, b"older").expect("existing wallpaper");
+        for limit in [1, 4] {
+            assert!(write_complete_download_with_limit(&dest, &b"12345"[..], limit).is_err());
+            assert_eq!(fs::read(&dest).expect("old bytes intact"), b"older");
+            assert_eq!(fs::read_dir(dir.path()).expect("no staged part").count(), 1);
+        }
+        assert!(write_complete_download_with_limit(&dest, &b"12345"[..], 0).is_err());
+        assert_eq!(fs::read(&dest).expect("still old"), b"older");
+    }
+
+    #[test]
+    fn stream_limit_is_checked_even_with_misleading_or_unknown_length() {
+        use std::io::Cursor;
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        // Reader provides no Content-Length: actual bytes, not metadata, govern.
+        let oversized = Cursor::new(vec![7u8; 128 * 1024]);
+        assert!(write_complete_download_with_limit(&dest, oversized, 64 * 1024).is_err());
+        assert!(!dest.exists());
+        assert_eq!(fs::read_dir(dir.path()).expect("no staged files").count(), 0);
+        let bytes = write_complete_download_with_limit(&dest, &b"retry"[..], 5)
+            .expect("safe retry");
+        assert_eq!(bytes, 5);
+        assert_eq!(fs::read(&dest).expect("retry committed"), b"retry");
+    }
+
+    #[test]
+    fn interrupted_or_empty_stream_rejects_and_preserves_prior_bytes_under_limit() {
+        let dir = tempfile::tempdir().expect("isolated fixture");
+        let dest = dir.path().join("wallpaper.jpg");
+        fs::write(&dest, b"good").expect("original");
+        assert!(write_complete_download_with_limit(
+            &dest, InterruptedStream { sent: false }, 10,
+        ).is_err());
+        assert!(write_complete_download_with_limit(&dest, &b""[..], 10).is_err());
+        assert_eq!(fs::read(&dest).expect("original remains"), b"good");
+        assert_eq!(fs::read_dir(dir.path()).expect("no leaked temp").count(), 1);
+    }
+
+    #[test]
+    fn provider_builders_reject_zero_and_accept_explicit_limit() {
+        assert!(super::bing::BingProvider::new().with_max_download_bytes(0).is_err());
+        assert!(super::pexel::PexelProvider::new().with_max_download_bytes(0).is_err());
+        assert!(super::wallhaven::WallhavenProvider::new()
+            .with_max_download_bytes(0).is_err());
+        assert!(super::bing::BingProvider::new()
+            .with_max_download_bytes(1024).is_ok());
+    }
+
 }
