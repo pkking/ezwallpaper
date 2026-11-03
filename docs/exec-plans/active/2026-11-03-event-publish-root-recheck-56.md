@@ -25,12 +25,12 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; src/rotation_event.r
 No automatic event replay, schema change, privileged use, or new hook. User-owned parent-directory races are not eliminated; filesystem sandbox is a separate decision.
 
 ## Acceptance criteria
-- [ ] publish itself rejects symlink directory, absent directory, and nonregular/symlink event targets
-- [ ] Valid per-output atomic JSON publication and pathObserved fields unchanged
+- [x] publish itself rejects symlink directory, absent directory, and nonregular/symlink event targets
+- [x] Valid per-output atomic JSON publication and pathObserved fields unchanged
 - [ ] Final required CI passes for current PR head
 
 ## Implementation slices
-- [ ] Revalidate directory and target in publication and add isolated regression fixtures
+- [x] Revalidate directory and target in publication and add isolated regression fixtures
 - [ ] Update plan and review CI logs; fix errors before merge
 
 ## Verification matrix
@@ -45,10 +45,11 @@ No automatic event replay, schema change, privileged use, or new hook. User-owne
 None. Security and architecture boundaries remain accepted; no new trusted input or privilege is introduced.
 
 ## Evidence log
+- 2026-11-03: publish now rechecks canonical real directory before staging, including target file; direct-call symlink and absent-directory regression fixtures added. No local Cargo toolchain; PR CI required.
 - 2026-11-03: inspected source and accepted ADR at ee25482987b711fb0ec444ae2fe454b9cf6f524c; prepared Issue-linked plan before code. Runtime tests pending.
 
 ## Deviations and discoveries
-No deviation yet.
+No schema changes; read-only/declarative guard within existing interfaces.
 
 ## Resume from here
 Check exact-head CI for this PR, diagnose failed job logs, correct and rerun until all required jobs pass.
