@@ -19,7 +19,6 @@ use tempfile::NamedTempFile;
 /// Default per-response transfer cap; independent from persistent CAS retention.
 pub const DEFAULT_DOWNLOAD_LIMIT: u64 = 64 * 1024 * 1024;
 
-
 /// Metadata JSON is much smaller than image content. Bound response buffering
 /// independently of the per-image download limit, including unknown lengths.
 const MAX_PROVIDER_METADATA_BYTES: u64 = 2 * 1024 * 1024;
@@ -314,8 +313,7 @@ mod tests {
             "{}"
         );
         assert!(
-            read_bounded_metadata(b"{}".as_slice(), Some(MAX_PROVIDER_METADATA_BYTES + 1))
-                .is_err()
+            read_bounded_metadata(b"{}".as_slice(), Some(MAX_PROVIDER_METADATA_BYTES + 1)).is_err()
         );
         let exact = vec![b'x'; MAX_PROVIDER_METADATA_BYTES as usize];
         assert_eq!(
