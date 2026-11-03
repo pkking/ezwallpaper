@@ -22,13 +22,13 @@ Baseline master: 9188f2c9fbb5b03edbfb22a442f6534751d97582. Profile validates nam
 Keep atomic per-output publication and user-owned directory; do not follow symlinks or allow traversal outside the selected directory.
 
 ## Acceptance criteria
-- [ ] Reject invalid event names at both public helper boundaries before path construction.
-- [ ] Test traversal, empty, dot and valid names with no outside write.
+- [x] Reject invalid event names at both public helper boundaries before path construction.
+- [x] Add traversal, empty, dot and existing valid-name fixtures; pending CI execution.
 - [ ] Final PR-head CI green.
 
 ## Implementation slices
-- [ ] Add shared connector name guard.
-- [ ] Add negative regression fixtures.
+- [x] Add event-local connector name guard matching rotation profile token contract.
+- [x] Add negative regression fixtures.
 - [ ] Review CI before merge.
 
 ## Verification matrix
