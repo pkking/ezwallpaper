@@ -177,10 +177,15 @@ mod tests {
 
     #[test]
     fn ipc_stdout_limit_rejects_overflow_without_truncating() {
-        assert_eq!(read_bounded_ipc_output(b"ok".as_slice()).expect("small valid response"), "ok");
+        assert_eq!(
+            read_bounded_ipc_output(b"ok".as_slice()).expect("small valid response"),
+            "ok"
+        );
         let exact = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize];
         assert_eq!(
-            read_bounded_ipc_output(exact.as_slice()).expect("exact limit accepted").len(),
+            read_bounded_ipc_output(exact.as_slice())
+                .expect("exact limit accepted")
+                .len(),
             exact.len()
         );
         let overflow = vec![b'x'; MAX_IPC_OUTPUT_BYTES as usize + 1];
