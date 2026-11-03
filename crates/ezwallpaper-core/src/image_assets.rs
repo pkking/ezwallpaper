@@ -317,7 +317,10 @@ mod tests {
         let destination = dir.path().join("derived.png");
         let stage = NamedTempFile::new_in(dir.path()).expect("stage");
         assert!(validate_encoded_output_size(&stage).is_err());
-        stage.as_file().set_len(MAX_FILE_BYTES).expect("exact limit");
+        stage
+            .as_file()
+            .set_len(MAX_FILE_BYTES)
+            .expect("exact limit");
         validate_encoded_output_size(&stage).expect("64 MiB accepted");
         stage
             .as_file()
