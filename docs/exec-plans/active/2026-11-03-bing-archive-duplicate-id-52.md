@@ -24,13 +24,13 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0005-provid
 Validate full response before writing any provider-sourced image. Preserve valid unique entries, max 8 archive count and stable filename derivation. No shell or desktop actions.
 
 ## Acceptance criteria
-- [ ] Repeated ID, including percent-encoded ID alias, fails before download in image_urls.
-- [ ] Unique multi-image archive fixture remains accepted.
+- [x] Repeated ID, including percent-encoded ID alias, fails before download in image_urls.
+- [x] Unique multi-image archive fixture remains accepted.
 - [ ] PR-head required CI passes.
 
 ## Implementation slices
-- [ ] Add per-response ID dedup at the same query identifier used for filenames.
-- [ ] Add synthetic same-ID, alias and unique-ID tests, record CI evidence.
+- [x] Add per-response ID dedup at the same query identifier used for filenames.
+- [x] Add synthetic same-ID, alias and unique-ID tests, record CI evidence.
 
 ## Verification matrix
 | Scope | Gate | Status |
@@ -43,10 +43,11 @@ Validate full response before writing any provider-sourced image. Preserve valid
 None. Same Core provider transport boundary and same accepted ADR; Architecture diagram: unchanged - no new component, API or data flow.
 
 ## Evidence log
+- 2026-11-03: implemented fully parsed archive filename-set uniqueness and deterministic alias fixtures; Rust CI has not completed.
 - 2026-11-03: inspected existing Bing URL generation and download filename derivation at master ee25482987b711fb0ec444ae2fe454b9cf6f524c; created plan before code.
 
 ## Deviations and discoveries
-None.
+No new schema, network endpoint or download path. CI validation pending.
 
 ## Resume from here
 Inspect the latest final-head GitHub CI jobs for the linked PR; fix and rerun failing gates before squash merge.
