@@ -46,6 +46,21 @@ use tempfile::NamedTempFile;
 
 /// Caller-supplied user directory must exist; never create an implicit
 /// publication destination or follow a symlink at the directory entry.
+fn validate_event_output(output: &str) -> Result<()> {
+    // Keep the same connector token boundary as rotation profiles. This
+    // must be checked even if callers bypass the profile parser.
+    if output.is_empty()
+        || matches!(output, "." | "..")
+        || output.len() > 128
+        || !output
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.'))
+    {
+        bail!("invalid wallpaper event output connector");
+    }
+    Ok(())
+}
+
 pub fn prepare_directory<'a>(
     directory: &Path,
     outputs: impl IntoIterator<Item = &'a str>,
@@ -57,6 +72,7 @@ pub fn prepare_directory<'a>(
     }
     let canonical = directory.canonicalize()?;
     for output in outputs {
+        validate_event_output(output)?;
         check_target(&event_path(&canonical, output))?;
     }
     Ok(canonical)
@@ -80,6 +96,7 @@ fn check_target(path: &Path) -> Result<()> {
 /// Atomic replacement of only one acknowledged output, under the caller's
 /// rotation lock. Files are untrusted user data, never privileged instructions.
 pub fn publish(directory: &Path, change: &WallpaperChange) -> Result<()> {
+    validate_event_output(&change.output)?;
     let target = event_path(directory, &change.output);
     check_target(&target)?;
     let mut staged = NamedTempFile::new_in(directory).context("cannot stage wallpaper event")?;
@@ -174,6 +191,27 @@ mod tests {
         symlink(&outside, real.join("DP-1.json")).expect("file link");
         assert!(prepare_directory(&real, ["DP-1"]).is_err());
         assert_eq!(fs::read(outside).expect("outside"), b"untouched");
+    }
+
+    #[test]
+    fn malformed_event_output_never_escapes_destination_directory() {
+        let temp = tempfile::tempdir().expect("event guard root");
+        let root = temp.path().join("events");
+        fs::create_dir(&root).expect("events");
+        let outside = temp.path().join("outside.json");
+        fs::write(&outside, b"untouched").expect("outside sentinel");
+        for name in ["", ".", "..", "../outside", "DP/1", "DP\\\\1", "DP 1"] {
+            assert!(prepare_directory(&root, [name]).is_err());
+            let change = WallpaperChange::acknowledged(
+                name.to_owned(),
+                1,
+                "sha256:test".to_owned(),
+                PathBuf::from("/tmp/image.png"),
+            );
+            assert!(publish(&root, &change).is_err());
+        }
+        assert_eq!(fs::read(&outside).expect("read sentinel"), b"untouched");
+        assert_eq!(fs::read_dir(&root).expect("events directory").count(), 0);
     }
 
     #[test]
