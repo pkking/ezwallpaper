@@ -4,8 +4,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
-use std::fmt;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -51,7 +51,6 @@ impl<'de> Deserialize<'de> for UniqueInventory {
         deserializer.deserialize_map(UniqueInventoryVisitor)
     }
 }
-
 
 pub(crate) fn verify_running_outputs(requested: &[String]) -> Result<()> {
     let bytes = query_niri_outputs()?;
