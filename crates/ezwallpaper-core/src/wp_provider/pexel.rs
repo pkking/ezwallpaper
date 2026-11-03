@@ -163,7 +163,7 @@ impl GetImgUrl for PexelProvider {
             let url = self.search_url(page, nums)?;
             let response =
                 request_with_retry(client.get(url).header("Authorization", &self.token))?;
-            let body = response.text()?;
+            let body = super::read_metadata_response(response)?;
             let urls = self.accepted_urls(&body)?;
             let parsed: Images = serde_json::from_str(&body)?;
             if urls.is_empty() && parsed.next_page.is_none() {

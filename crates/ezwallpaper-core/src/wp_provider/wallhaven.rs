@@ -142,7 +142,9 @@ impl GetImgUrl for WallhavenProvider {
             if wallpapers.len() >= nums as usize {
                 break;
             }
-            let body = request_with_retry(client.get(self.search_url(page)?))?.text()?;
+            let body = super::read_metadata_response(request_with_retry(
+                client.get(self.search_url(page)?),
+            )?)?;
             let (urls, last_page) = self.accepted_urls(&body)?;
             let no_candidates = urls.is_empty();
             for url in urls.into_iter().take(nums as usize - wallpapers.len()) {

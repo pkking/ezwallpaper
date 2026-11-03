@@ -19,6 +19,30 @@ use tempfile::NamedTempFile;
 /// Default per-response transfer cap; independent from persistent CAS retention.
 pub const DEFAULT_DOWNLOAD_LIMIT: u64 = 64 * 1024 * 1024;
 
+/// Metadata JSON is much smaller than image content. Bound response buffering
+/// independently of the per-image download limit, including unknown lengths.
+const MAX_PROVIDER_METADATA_BYTES: u64 = 2 * 1024 * 1024;
+
+fn read_bounded_metadata<R: Read>(source: R, declared_length: Option<u64>) -> Result<String> {
+    if declared_length.is_some_and(|length| length > MAX_PROVIDER_METADATA_BYTES) {
+        bail!("provider metadata Content-Length exceeds 2 MiB limit");
+    }
+    let mut bytes = Vec::new();
+    source
+        .take(MAX_PROVIDER_METADATA_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .context("cannot read provider metadata response")?;
+    if bytes.len() as u64 > MAX_PROVIDER_METADATA_BYTES {
+        bail!("provider metadata response exceeds 2 MiB limit");
+    }
+    String::from_utf8(bytes).context("provider metadata response is not UTF-8")
+}
+
+fn read_metadata_response(mut response: Response) -> Result<String> {
+    let declared_length = response.content_length();
+    read_bounded_metadata(&mut response, declared_length)
+}
+
 /// Shared checked limit for all provider builders and their reader fixtures.
 fn checked_download_limit(value: u64) -> Result<u64> {
     if value == 0 {
@@ -281,6 +305,43 @@ fn write_complete_download_with_limit<R: Read>(
 mod tests {
     use super::*;
     use std::io;
+
+    #[test]
+    fn metadata_reader_rejects_large_or_lying_responses_without_unbounded_reads() {
+        assert_eq!(
+            read_bounded_metadata(b"{}".as_slice(), Some(2)).expect("valid metadata"),
+            "{}"
+        );
+        assert!(
+            read_bounded_metadata(b"{}".as_slice(), Some(MAX_PROVIDER_METADATA_BYTES + 1)).is_err()
+        );
+        let exact = vec![b'x'; MAX_PROVIDER_METADATA_BYTES as usize];
+        assert_eq!(
+            read_bounded_metadata(exact.as_slice(), None)
+                .expect("exact boundary accepted")
+                .len(),
+            exact.len()
+        );
+        let oversized = vec![b'x'; MAX_PROVIDER_METADATA_BYTES as usize + 128];
+        let mut observed = std::io::Cursor::new(oversized);
+        assert!(read_bounded_metadata(&mut observed, Some(1)).is_err());
+        assert_eq!(observed.position(), MAX_PROVIDER_METADATA_BYTES + 1);
+        assert!(read_bounded_metadata([0xff].as_slice(), None).is_err());
+    }
+
+    #[test]
+    fn interrupted_metadata_read_is_reported_not_parsed() {
+        struct FailedRead;
+        impl Read for FailedRead {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionReset,
+                    "fixture read failure",
+                ))
+            }
+        }
+        assert!(read_bounded_metadata(FailedRead, None).is_err());
+    }
 
     #[test]
     fn retries_bounded_429_and_rejects_untrusted_image_origins() {

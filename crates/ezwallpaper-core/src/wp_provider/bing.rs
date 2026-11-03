@@ -95,7 +95,7 @@ impl GetImgUrl for BingProvider {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>> {
         let archive = self.archive_url(nums)?;
         let client = http_client()?;
-        let body = request_with_retry(client.get(archive))?.text()?;
+        let body = super::read_metadata_response(request_with_retry(client.get(archive))?)?;
         let urls = self.image_urls(&body)?;
         if urls.len() > nums as usize {
             bail!("Bing returned more images than requested");
