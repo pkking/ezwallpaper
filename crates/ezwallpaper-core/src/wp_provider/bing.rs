@@ -5,6 +5,7 @@ use crate::wp_selector::{WallPaper, WpType};
 use anyhow::{anyhow, bail, Result};
 use log::debug;
 use serde::Deserialize;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use url::Url;
 
@@ -72,22 +73,32 @@ impl BingProvider {
 
     fn image_urls(&self, body: &str) -> Result<Vec<Url>> {
         let response: Images = serde_json::from_str(body)?;
-        response
-            .images
-            .iter()
-            .map(|image| {
-                if !image.urlbase.starts_with("/th?id=") {
-                    bail!("Bing returned unexpected image base path");
-                }
-                checked_image_url(
-                    &format!(
-                        "https://www.bing.com{}_{}.jpg",
-                        image.urlbase, self.resolution
-                    ),
-                    &["www.bing.com"],
-                )
-            })
-            .collect()
+        let mut filenames = BTreeSet::new();
+        let mut urls = Vec::with_capacity(response.images.len());
+        for image in &response.images {
+            if !image.urlbase.starts_with("/th?id=") {
+                bail!("Bing returned unexpected image base path");
+            }
+            let url = checked_image_url(
+                &format!(
+                    "https://www.bing.com{}_{}.jpg",
+                    image.urlbase, self.resolution
+                ),
+                &["www.bing.com"],
+            )?;
+            // Match the same URL query identifier download_image later uses
+            // as a local filename. Decode percent-encoded aliases first.
+            let filename = url
+                .query_pairs()
+                .find(|(key, _)| key == "id")
+                .map(|(_, value)| value.into_owned())
+                .ok_or_else(|| anyhow!("Bing image URL has no id filename"))?;
+            if !filenames.insert(filename) {
+                bail!("Bing archive contains duplicate image filenames");
+            }
+            urls.push(url);
+        }
+        Ok(urls)
     }
 }
 
@@ -183,6 +194,30 @@ mod tests {
             .image_urls(r#"{"images":[{"urlbase":"/th?id=..%2Fescape"}]}"#)
             .is_ok());
         assert!(provider.image_urls("not json").is_err());
+    }
+
+    #[test]
+    fn bing_archive_rejects_duplicate_and_encoded_alias_filenames() {
+        let provider = BingProvider::new();
+        let duplicate = r#"{"images":[
+            {"urlbase":"/th?id=OHR.Flower_EN-US"},
+            {"urlbase":"/th?id=OHR.Flower_EN-US"}
+        ]}"#;
+        assert!(provider.image_urls(duplicate).is_err());
+
+        let alias = r#"{"images":[
+            {"urlbase":"/th?id=OHR.Flower_EN-US"},
+            {"urlbase":"/th?id=OHR.%46lower_EN-US"}
+        ]}"#;
+        assert!(provider.image_urls(alias).is_err());
+
+        let unique = r#"{"images":[
+            {"urlbase":"/th?id=OHR.Flower_EN-US"},
+            {"urlbase":"/th?id=OHR.Forest_EN-US"}
+        ]}"#;
+        let urls = provider.image_urls(unique).expect("two distinct images");
+        assert_eq!(urls.len(), 2);
+        assert_ne!(urls[0], urls[1]);
     }
 
     #[test]
