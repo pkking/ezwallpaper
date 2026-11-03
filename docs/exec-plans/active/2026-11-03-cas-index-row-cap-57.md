@@ -25,13 +25,13 @@ AGENTS.md; docs/agents/workflow.md; crates/ezwallpaper-core/src/store.rs; docs/a
 Valid third-party cacache index entries larger than the limit will be rejected; do not write, repair or delete a store automatically. Original external user files and existing store entries must remain unchanged on failure.
 
 ## Acceptance criteria
-- [ ] Read a physical index record with a fixed maximum line length, fail closed on overflow without loading the rest.
-- [ ] Valid cacache rows, CRLF, and final unterminated lines retain established behavior; corrupted rows are rejected and source/store files remain unchanged.
+- [x] Read a physical index record with a fixed maximum line length, fail closed on overflow without loading the rest.
+- [x] Valid cacache rows, CRLF, and final unterminated lines retain established behavior; corrupted rows are rejected and source/store files remain unchanged.
 - [ ] Final required PR-head CI passes.
 
 ## Implementation slices
-- [ ] Replace unbounded BufRead::lines with bounded per-line streaming parser.
-- [ ] Add fixture index tests for oversized and valid records and read-only behavior.
+- [x] Replace unbounded BufRead::lines with bounded per-line streaming parser.
+- [x] Add fixture index tests for oversized and valid records and read-only behavior.
 - [ ] Review exact-head CI and update evidence.
 
 ## Verification matrix
@@ -45,10 +45,11 @@ Valid third-party cacache index entries larger than the limit will be rejected; 
 None: Only index verification implementation changes, not format, GC policy, or Core/CLI boundaries.
 
 ## Evidence log
+- 2026-11-03: replaced unbounded per-row string allocation with a 64 KiB guard and added physical index fixtures. Tests remain unexecuted until PR CI.
 - 2026-11-03: read repository source at 8ac702486da7e65608a0cd76ff7580e5bb96a848; found unbounded read path; created independent Issue-linked branch and plan before implementing.
 
 ## Deviations and discoveries
-None.
+No new dependencies or persisted schema; production code is implemented, validation pending CI.
 
 ## Resume from here
 Inspect the final PR-head CI run, correct any failed checks and merge only if all required jobs pass.
