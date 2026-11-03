@@ -15,6 +15,9 @@ const VERSION: &[u8] = b"ezwallpaper-store-v1\n";
 const CACHE: &str = "cache";
 // cacache 13.x index layout. Used only to reject rows its list_sync silently skips.
 const CACHE_INDEX: &str = "index-v5";
+// Maximum physical cacache index record, including its newline. Do not load
+// arbitrarily long damaged index lines into memory during read-only scans.
+const MAX_INDEX_ROW_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct StoredWallpaper {
@@ -338,11 +341,34 @@ fn validate_cache_index(cache: &Path) -> Result<bool> {
 fn validate_index_bucket(path: &Path) -> Result<()> {
     let input = File::open(path)
         .with_context(|| format!("cannot open Core store index bucket {}", path.display()))?;
+    let mut reader = BufReader::new(input);
     let mut records = 0usize;
-    for (line_number, line) in BufReader::new(input).lines().enumerate() {
-        let line = line.context("cannot read Core store index row")?;
+    let mut line_number = 0usize;
+    loop {
+        let mut bytes = Vec::new();
+        // Unbounded BufRead::lines grows a String without a limit for a
+        // malformed index entry. Read at most one byte beyond our budget.
+        let length = reader
+            .by_ref()
+            .take(MAX_INDEX_ROW_BYTES + 1)
+            .read_until(b'\n', &mut bytes)
+            .context("cannot read Core store index row")?;
+        if length == 0 {
+            break;
+        }
+        if length as u64 > MAX_INDEX_ROW_BYTES {
+            bail!("Core store index row exceeds 64 KiB safety limit");
+        }
+        if bytes.last() == Some(&b'\n') {
+            bytes.pop();
+        }
+        if bytes.last() == Some(&b'\r') {
+            bytes.pop();
+        }
+        let line = std::str::from_utf8(&bytes).context("Core store index row is not UTF-8")?;
         if line_number == 0 && line.is_empty() {
             // cacache prepends a newline to its append-only bucket entries.
+            line_number += 1;
             continue;
         }
         let (expected_hash, record) = line
@@ -362,6 +388,7 @@ fn validate_index_bucket(path: &Path) -> Result<()> {
             .parse::<cacache::Integrity>()
             .context("Core store index has malformed integrity identifier")?;
         records += 1;
+        line_number += 1;
     }
     if records == 0 {
         bail!("Core store index bucket contains no valid entries");
@@ -485,6 +512,45 @@ mod tests {
             .expect("index bucket")
             .expect("index bucket entry")
             .path()
+    }
+
+    #[test]
+    fn list_rejects_oversized_index_rows_without_modifying_store_or_source() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("original.jpg");
+        fs::write(&source, b"keep-source").expect("source fixture");
+        store.import_file(&source).expect("store fixture");
+        let bucket = first_index_bucket(&store);
+        let mut oversized = vec![b'\n'];
+        oversized.extend(vec![b'x'; MAX_INDEX_ROW_BYTES as usize + 1]);
+        fs::write(&bucket, &oversized).expect("inject oversized index record");
+        let failure = store.list().expect_err("oversized index must fail closed");
+        assert!(failure.to_string().contains("64 KiB"));
+        assert_eq!(fs::read(&bucket).expect("read-only index"), oversized);
+        assert_eq!(fs::read(&source).expect("original intact"), b"keep-source");
+    }
+
+    #[test]
+    fn index_row_reader_preserves_valid_unterminated_and_crlf_prefix() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("source.jpg");
+        fs::write(&source, b"content").expect("fixture");
+        let expected = store.import_file(&source).expect("import");
+        let bucket = first_index_bucket(&store);
+        let normal = fs::read(&bucket).expect("physical cacache bucket");
+        assert_eq!(normal.first(), Some(&b'\n'));
+        validate_index_bucket(&bucket).expect("valid native records");
+
+        let mut crlf_prefix = b"\r\n".to_vec();
+        crlf_prefix.extend_from_slice(&normal[1..]);
+        fs::write(&bucket, &crlf_prefix).expect("CRLF fixture");
+        validate_index_bucket(&bucket).expect("CRLF prefix accepted");
+        fs::write(&bucket, &normal).expect("restore exact original");
+        assert_eq!(
+            store.list().expect("verified inventory after restore"),
+            vec![expected]
+        );
+        assert_eq!(fs::read(&source).expect("source intact"), b"content");
     }
 
     #[test]
