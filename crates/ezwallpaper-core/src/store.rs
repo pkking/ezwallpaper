@@ -546,7 +546,10 @@ mod tests {
         fs::write(&bucket, &crlf_prefix).expect("CRLF fixture");
         validate_index_bucket(&bucket).expect("CRLF prefix accepted");
         fs::write(&bucket, &normal).expect("restore exact original");
-        assert_eq!(store.list().expect("verified inventory after restore"), vec![expected]);
+        assert_eq!(
+            store.list().expect("verified inventory after restore"),
+            vec![expected]
+        );
         assert_eq!(fs::read(&source).expect("source intact"), b"content");
     }
 
