@@ -25,12 +25,12 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; crates/ezwallpaper-c
 No new format, output naming or overwrite policy. The 64 MiB limit aligns with existing image probe input cap; no live wallpaper change.
 
 ## Acceptance criteria
-- [ ] Exact 64 MiB staged payload accepted and 64 MiB + 1 rejected before publication with no file writes to destination
-- [ ] derive_image verifies actual encoded output size before persist_noclobber; ordinary valid derivation remains unchanged
+- [x] Exact 64 MiB staged payload accepted and 64 MiB + 1 rejected before publication with no file writes to destination
+- [x] derive_image verifies actual encoded output size before persist_noclobber; ordinary valid derivation remains unchanged
 - [ ] Final required CI passes for current PR head
 
 ## Implementation slices
-- [ ] Implement staged encoded-output size guard and deterministic sparse-file boundary test
+- [x] Implement staged encoded-output size guard and deterministic sparse-file boundary test
 - [ ] Update plan and review CI logs; fix errors before merge
 
 ## Verification matrix
@@ -45,10 +45,11 @@ No new format, output naming or overwrite policy. The 64 MiB limit aligns with e
 None. Security and architecture boundaries remain accepted; no new trusted input or privilege is introduced.
 
 ## Evidence log
+- 2026-11-03: implemented NamedTempFile encoded-byte check, fail closed before publish; sparse staged fixture at 0, exact 64 MiB and 64 MiB+1. No local Cargo toolchain; PR CI required.
 - 2026-11-03: inspected source and accepted ADR at ee25482987b711fb0ec444ae2fe454b9cf6f524c; prepared Issue-linked plan before code. Runtime tests pending.
 
 ## Deviations and discoveries
-No deviation yet.
+No schema changes; read-only/declarative guard within existing interfaces.
 
 ## Resume from here
 Check exact-head CI for this PR, diagnose failed job logs, correct and rerun until all required jobs pass.
