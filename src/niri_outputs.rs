@@ -1,7 +1,10 @@
 //! Read-only, opt-in niri connector preflight for Noctalia rotation.
 //! Never launch a compositor or claim that its framebuffer has changed.
 use anyhow::{anyhow, bail, Context, Result};
+use serde::de::{MapAccess, Visitor};
+use serde::{Deserialize, Deserializer};
 use serde_json::Value;
+use std::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -10,6 +13,45 @@ use std::time::{Duration, Instant};
 
 const MAX_OUTPUTS_JSON: u64 = 1024 * 1024;
 const IPC_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// serde_json::Value/BTreeMap normally accept duplicate map keys, leaving
+/// only the last descriptor. Reject ambiguity before trusting the snapshot.
+struct UniqueInventory(BTreeMap<String, Value>);
+
+impl<'de> Deserialize<'de> for UniqueInventory {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct UniqueInventoryVisitor;
+
+        impl<'de> Visitor<'de> for UniqueInventoryVisitor {
+            type Value = UniqueInventory;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a niri output map with unique connector names")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<Self::Value, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut inventory = BTreeMap::new();
+                while let Some((connector, descriptor)) = map.next_entry::<String, Value>()? {
+                    if inventory.insert(connector.clone(), descriptor).is_some() {
+                        return Err(serde::de::Error::custom(format!(
+                            "duplicate niri inventory connector: {connector}"
+                        )));
+                    }
+                }
+                Ok(UniqueInventory(inventory))
+            }
+        }
+
+        deserializer.deserialize_map(UniqueInventoryVisitor)
+    }
+}
+
 
 pub(crate) fn verify_running_outputs(requested: &[String]) -> Result<()> {
     let bytes = query_niri_outputs()?;
@@ -32,7 +74,7 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
             bail!("duplicate niri output connector: {name}");
         }
     }
-    let inventory: BTreeMap<String, Value> =
+    let UniqueInventory(inventory) =
         serde_json::from_slice(bytes).context("invalid niri outputs JSON")?;
     for requested_name in requested {
         let value = inventory
@@ -134,6 +176,16 @@ mod tests {
         assert!(validate_outputs(&fixture(), &["DP-1".to_owned(), "DP-1".to_owned()]).is_err());
         assert!(validate_outputs(&fixture(), &["DP-1/escape".to_owned()]).is_err());
         assert!(validate_outputs(&fixture(), &["".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn repeated_inventory_connectors_are_rejected_even_when_escaped() {
+        let requested = ["DP-1".to_owned()];
+        let descriptor = r#"{"name":"DP-1","modes":[{"width":3840,"height":2160}],"current_mode":0,"logical":{"width":2560,"height":1440}}"#;
+        for alias in ["DP-1", r"\u0044P-1"] {
+            let inventory = format!(r#"{{"DP-1":{descriptor},"{alias}":{descriptor}}}"#);
+            assert!(validate_outputs(inventory.as_bytes(), &requested).is_err());
+        }
     }
 
     #[test]
