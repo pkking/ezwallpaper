@@ -207,7 +207,10 @@ mod tests {
             PathBuf::from("/tmp/a.png"),
         );
         assert!(publish(&alias, &change).is_err());
-        assert_eq!(fs::read_dir(&outside).expect("outside preserved").count(), 0);
+        assert_eq!(
+            fs::read_dir(&outside).expect("outside preserved").count(),
+            0
+        );
     }
 
     #[test]
