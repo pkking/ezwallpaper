@@ -22,13 +22,13 @@ Baseline master: 99fefc4e99177ea76d3d0032349d5344f79ce6a4. Noctalia IPC wait_wit
 No shell; preserve existing 5-second deadline, exit status and no-token logging; reject over-limit output instead of truncating it into an acknowledgement.
 
 ## Acceptance criteria
-- [ ] Bounded stdout read, reject overflow.
-- [ ] Deterministic boundary tests.
+- [x] Bounded stdout read, reject overflow.
+- [x] Deterministic boundary tests.
 - [ ] Final PR-head CI green.
 
 ## Implementation slices
-- [ ] Implement bounded IPC reader.
-- [ ] Add edge tests and verify CI.
+- [x] Implement bounded IPC reader.
+- [x] Add edge tests; verify CI after latest commit.
 
 ## Verification matrix
 | Gate | Result |
@@ -41,6 +41,7 @@ None: safety hardening within existing Noctalia protocol.
 
 ## Evidence log
 2026-11-02: baseline inspected; previous PR #164 and #165 merged, master SHA recorded.
+2026-11-03: CI run 41486615692: Rust tests, macOS, Windows, E2E and plan integrity passed; Rust quality failed only at cargo fmt in two test expressions. Corrected formatting in commit 6d2e97b4a54870e6c828b0ac90b304742b0d4b9e. Reverification pending.
 
 ## Deviations and discoveries
 None.
