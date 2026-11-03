@@ -22,13 +22,13 @@ Baseline master: 9188f2c9fbb5b03edbfb22a442f6534751d97582. Current BTreeMap JSON
 Preflight remains read-only, bounded and fail closed. Preserve valid two-output snapshot and accepted output names.
 
 ## Acceptance criteria
-- [ ] Reject repeated connector keys, including alternate JSON escape spelling.
-- [ ] Existing valid and malformed topology fixtures retain expected results.
+- [x] Reject repeated connector keys, including alternate JSON escape spelling.
+- [x] Existing valid and malformed topology fixtures remain covered; pending CI execution.
 - [ ] All PR-head required CI checks pass.
 
 ## Implementation slices
-- [ ] Introduce strict top-level map deserializer without new dependencies.
-- [ ] Add deterministic duplicate-fixture regression tests.
+- [x] Introduce strict top-level map deserializer without new dependencies.
+- [x] Add deterministic duplicate-fixture regression tests.
 - [ ] Review final CI before merging.
 
 ## Verification matrix
