@@ -190,7 +190,10 @@ impl GetImgUrl for PexelProvider {
             if urls.is_empty() && parsed.next_page.is_none() {
                 break;
             }
-            let chosen: Vec<_> = urls.into_iter().take(nums as usize - wallpapers.len()).collect();
+            let chosen: Vec<_> = urls
+                .into_iter()
+                .take(nums as usize - wallpapers.len())
+                .collect();
             let validated_names = self.preflight_downloads(&chosen, &seen)?;
             for url in chosen {
                 let path = download_image(&client, &url, &self.dir, self.max_download_bytes)?;
@@ -291,7 +294,9 @@ mod tests {
             Url::parse("https://images.pexels.com/photos/1/original.jpeg").expect("URL"),
             Url::parse("https://images.pexels.com/photos/2/original.jpeg").expect("URL"),
         ];
-        assert!(provider.preflight_downloads(&urls, &BTreeSet::new()).is_err());
+        assert!(provider
+            .preflight_downloads(&urls, &BTreeSet::new())
+            .is_err());
         assert_eq!(std::fs::read_dir(temp.path()).expect("empty").count(), 0);
         let different_case = [
             Url::parse("https://images.pexels.com/photos/1/Photo.JPG").expect("URL"),
