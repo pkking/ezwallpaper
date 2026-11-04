@@ -96,10 +96,11 @@ fn check_target(path: &Path) -> Result<()> {
 /// Atomic replacement of only one acknowledged output, under the caller's
 /// rotation lock. Files are untrusted user data, never privileged instructions.
 pub fn publish(directory: &Path, change: &WallpaperChange) -> Result<()> {
-    validate_event_output(&change.output)?;
-    let target = event_path(directory, &change.output);
-    check_target(&target)?;
-    let mut staged = NamedTempFile::new_in(directory).context("cannot stage wallpaper event")?;
+    // Re-check the boundary at the actual write, not only in the optional
+    // caller preflight. A replaced symlink directory must never be followed.
+    let canonical = prepare_directory(directory, [&change.output[..]])?;
+    let target = event_path(&canonical, &change.output);
+    let mut staged = NamedTempFile::new_in(&canonical).context("cannot stage wallpaper event")?;
     serde_json::to_writer_pretty(&mut staged, change)?;
     staged.write_all(b"\n")?;
     staged.flush()?;
@@ -109,7 +110,7 @@ pub fn publish(directory: &Path, change: &WallpaperChange) -> Result<()> {
         .persist(&target)
         .context("cannot atomically publish wallpaper event")?;
     #[cfg(unix)]
-    File::open(directory)?.sync_all()?;
+    File::open(&canonical)?.sync_all()?;
     Ok(())
 }
 
@@ -166,6 +167,50 @@ mod tests {
         publish(&root, &second).expect("second output");
         assert!(root.join("DP-1.json").exists());
         assert!(root.join("HDMI-A-1.json").exists());
+    }
+
+    #[test]
+    fn direct_publish_rejects_missing_directory_and_nonregular_target() {
+        let temp = tempfile::tempdir().expect("isolated event fixture");
+        let missing = temp.path().join("absent");
+        let change = WallpaperChange::acknowledged(
+            "DP-1".to_owned(),
+            10,
+            "sha256:test".to_owned(),
+            PathBuf::from("/tmp/a.png"),
+        );
+        assert!(publish(&missing, &change).is_err());
+        assert!(!missing.exists());
+
+        let existing = temp.path().join("events");
+        fs::create_dir(&existing).expect("event directory");
+        fs::create_dir(existing.join("DP-1.json")).expect("nonregular event target");
+        assert!(publish(&existing, &change).is_err());
+        assert!(existing.join("DP-1.json").is_dir());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn direct_publish_rejects_symlink_directory_without_touching_referent() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().expect("sandbox");
+        let outside = temp.path().join("outside");
+        fs::create_dir(&outside).expect("real directory");
+        let alias = temp.path().join("events-link");
+        symlink(&outside, &alias).expect("redirect event directory");
+
+        let change = WallpaperChange::acknowledged(
+            "DP-1".to_owned(),
+            10,
+            "sha256:test".to_owned(),
+            PathBuf::from("/tmp/a.png"),
+        );
+        assert!(publish(&alias, &change).is_err());
+        assert_eq!(
+            fs::read_dir(&outside).expect("outside preserved").count(),
+            0
+        );
     }
 
     #[test]
