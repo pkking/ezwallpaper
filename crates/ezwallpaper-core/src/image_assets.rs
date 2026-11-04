@@ -176,6 +176,16 @@ fn decode_limited(path: &Path) -> Result<Decoded> {
     })
 }
 
+/// Never publish a derived file that exceeds the same 64 MiB limit as
+/// accepted probe inputs. Query actual staged bytes, not encoded dimensions.
+fn validate_encoded_output_size(staged: &NamedTempFile) -> Result<()> {
+    let bytes = staged.as_file().metadata()?.len();
+    if bytes == 0 || bytes > MAX_FILE_BYTES {
+        bail!("derived image must encode to between 1 byte and 64 MiB");
+    }
+    Ok(())
+}
+
 /// Validate the image completely and return versioned metadata without mutation.
 pub fn probe_image(path: &Path) -> Result<ImageProbe> {
     let manager = WallpaperManager;
@@ -239,6 +249,7 @@ pub fn derive_image(
     };
     output_image.write_to(staged.as_file_mut(), format.image_format())?;
     staged.as_file_mut().flush()?;
+    validate_encoded_output_size(&staged)?;
     // persist_noclobber uses an atomic no-overwrite publish on supported FSs.
     // An existing source/output/symlink pathname is never intentionally replaced.
     staged.persist_noclobber(destination).with_context(|| {
@@ -296,6 +307,28 @@ mod tests {
         fs::write(&bogus, b"this is not image bytes").expect("fixture");
         assert!(probe_image(&bogus).is_err());
         assert!(probe_image(&dir.path().join("missing.jpg")).is_err());
+    }
+
+    #[test]
+    fn encoded_size_guard_checks_actual_staged_bytes_before_publication() {
+        let dir = tempfile::tempdir().expect("sandbox");
+        let original = dir.path().join("source.png");
+        fs::write(&original, b"unchanged").expect("original fixture");
+        let destination = dir.path().join("derived.png");
+        let stage = NamedTempFile::new_in(dir.path()).expect("stage");
+        assert!(validate_encoded_output_size(&stage).is_err());
+        stage
+            .as_file()
+            .set_len(MAX_FILE_BYTES)
+            .expect("exact limit");
+        validate_encoded_output_size(&stage).expect("64 MiB accepted");
+        stage
+            .as_file()
+            .set_len(MAX_FILE_BYTES + 1)
+            .expect("over limit");
+        assert!(validate_encoded_output_size(&stage).is_err());
+        assert!(!destination.exists());
+        assert_eq!(fs::read(&original).expect("original intact"), b"unchanged");
     }
 
     #[test]
