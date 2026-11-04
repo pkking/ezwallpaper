@@ -175,7 +175,10 @@ impl GetImgUrl for WallhavenProvider {
             )?)?;
             let (urls, last_page) = self.accepted_urls(&body)?;
             let no_candidates = urls.is_empty();
-            let chosen: Vec<_> = urls.into_iter().take(nums as usize - wallpapers.len()).collect();
+            let chosen: Vec<_> = urls
+                .into_iter()
+                .take(nums as usize - wallpapers.len())
+                .collect();
             let validated_names = self.preflight_downloads(&chosen, &seen)?;
             for url in chosen {
                 let file_name = image_filename(&url)?;
