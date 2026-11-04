@@ -1,7 +1,7 @@
 # Preflight unique Pexels target filenames across pages
 
 Issue: #52
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-04
 Last checkpoint: 2026-11-04
@@ -31,8 +31,8 @@ Prior pages may already have committed complete files before a later-page respon
 - [ ] Final-head required CI gates pass.
 
 ## Implementation slices
-- [ ] Introduce validation helper limited to the existing module; no new public interface.
-- [ ] Add deterministic local tests for valid, invalid, and boundary cases.
+- [x] Introduce validation helper limited to the existing module; no new public interface.
+- [x] Add deterministic local tests for valid, invalid, and boundary cases.
 - [ ] Verify all required final-head GitHub Actions jobs and resolve failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ Prior pages may already have committed complete files before a later-page respon
 None. Accepted ADR remains unchanged. No privileged operations or user-facing flags.
 
 ## Evidence log
+- 2026-11-04: implemented code SHA e68cd5ac1c4cea8fe5b352646ab41dc754c8efa7. Verification not executed locally; PR CI pending.
 - 2026-11-04: baseline e20f8e5ce6cae51b4020a36c40456eab509c2e98; code inspection, design and issue-link plan created before implementation. CI UNASSESSED.
 
 ## Deviations and discoveries
-None yet.
+Pexels now preflights all selected URLs on each page with stable basename extraction, path checks, ASCII case-folded cross-page duplicate protection, and isolated offline tests. Legacy downloads of unrelated existing files remain unchanged.
 
 ## Resume from here
 Fetch current PR head and its complete latest CI run; fix the first failing job before reconsidering merge.
