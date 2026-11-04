@@ -1,7 +1,7 @@
 # Bound store-version marker reads and reject symlink markers
 
 Issue: #57
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-04
 Last checkpoint: 2026-11-04
@@ -31,8 +31,8 @@ No store migration, deletion, GC or change to marker bytes. Symlink-stat/open TO
 - [ ] Final-head required CI gates pass.
 
 ## Implementation slices
-- [ ] Introduce validation helper limited to the existing module; no new public interface.
-- [ ] Add deterministic local tests for valid, invalid, and boundary cases.
+- [x] Introduce validation helper limited to the existing module; no new public interface.
+- [x] Add deterministic local tests for valid, invalid, and boundary cases.
 - [ ] Verify all required final-head GitHub Actions jobs and resolve failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ No store migration, deletion, GC or change to marker bytes. Symlink-stat/open TO
 None. Accepted ADR remains unchanged. No privileged operations or user-facing flags.
 
 ## Evidence log
+- 2026-11-04: implemented code SHA e3a29e90444daa5ba21a64d8ad53eeff2c899af7. Verification not executed locally; PR CI pending.
 - 2026-11-04: baseline e20f8e5ce6cae51b4020a36c40456eab509c2e98; code inspection, design and issue-link plan created before implementation. CI UNASSESSED.
 
 ## Deviations and discoveries
-None yet.
+CAS open now requires a real, exact-size marker and reads at most VERSION.len()+1 bytes, with valid, oversized, malformed, directory and symlink fixtures. No file deletion/migration.
 
 ## Resume from here
 Fetch current PR head and its complete latest CI run; fix the first failing job before reconsidering merge.
