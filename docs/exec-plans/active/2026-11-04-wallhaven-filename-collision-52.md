@@ -1,7 +1,7 @@
 # Preflight unique Wallhaven target filenames across pages
 
 Issue: #52
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-04
 Last checkpoint: 2026-11-04
@@ -31,8 +31,8 @@ Provider pagination remains bounded to three pages. Earlier pages can remain com
 - [ ] Final-head required CI gates pass.
 
 ## Implementation slices
-- [ ] Introduce validation helper limited to the existing module; no new public interface.
-- [ ] Add deterministic local tests for valid, invalid, and boundary cases.
+- [x] Introduce validation helper limited to the existing module; no new public interface.
+- [x] Add deterministic local tests for valid, invalid, and boundary cases.
 - [ ] Verify all required final-head GitHub Actions jobs and resolve failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ Provider pagination remains bounded to three pages. Earlier pages can remain com
 None. Accepted ADR remains unchanged. No privileged operations or user-facing flags.
 
 ## Evidence log
+- 2026-11-04: implemented code SHA a182683462052c5cd30e11d50aa9121637975dd4. Verification not executed locally; PR CI pending.
 - 2026-11-04: baseline e20f8e5ce6cae51b4020a36c40456eab509c2e98; code inspection, design and issue-link plan created before implementation. CI UNASSESSED.
 
 ## Deviations and discoveries
-None yet.
+Wallhaven now preflights selected URLs for unsafe/colliding basenames, tracks cross-page names, and includes deterministic duplicate, case alias, unsafe target and unique-page fixtures.
 
 ## Resume from here
 Fetch current PR head and its complete latest CI run; fix the first failing job before reconsidering merge.
