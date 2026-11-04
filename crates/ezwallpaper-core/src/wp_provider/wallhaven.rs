@@ -2,6 +2,7 @@
 use anyhow::{anyhow, bail, Result};
 use log::debug;
 use serde::Deserialize;
+use std::collections::BTreeSet;
 use url::Url;
 
 use super::{checked_image_url, http_client, request_with_retry, GetImgUrl, Orientation};
@@ -114,6 +115,25 @@ impl WallhavenProvider {
         Ok(url)
     }
 
+    /// Check local targets for the entire selected page before making any
+    /// image request, and reject same-name results across prior pages.
+    fn preflight_downloads(
+        &self,
+        urls: &[Url],
+        seen: &BTreeSet<String>,
+    ) -> Result<BTreeSet<String>> {
+        let mut filenames = seen.clone();
+        for url in urls {
+            let name = image_filename(url)?;
+            super::safe_download_path(&self.dir, name)?;
+            // Portable collision rule for case-insensitive target volumes.
+            if !filenames.insert(name.to_ascii_lowercase()) {
+                bail!("Wallhaven response contains colliding download filenames");
+            }
+        }
+        Ok(filenames)
+    }
+
     fn accepted_urls(&self, body: &str) -> Result<(Vec<Url>, Option<u32>)> {
         let response: SearchResults = serde_json::from_str(body)?;
         let urls = response
@@ -130,6 +150,13 @@ impl WallhavenProvider {
     }
 }
 
+fn image_filename(url: &Url) -> Result<&str> {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|name| !name.is_empty())
+        .ok_or_else(|| anyhow!("Wallhaven image has no filename"))
+}
+
 impl GetImgUrl for WallhavenProvider {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>> {
         if !(1..=48).contains(&nums) {
@@ -137,6 +164,7 @@ impl GetImgUrl for WallhavenProvider {
         }
         let client = http_client()?;
         let mut wallpapers = Vec::with_capacity(nums as usize);
+        let mut seen = BTreeSet::new();
         // Wallhaven returns at most 24 per page. Fetch no more than 3 pages.
         for page in self.page..=(self.page + 2).min(20) {
             if wallpapers.len() >= nums as usize {
@@ -147,11 +175,10 @@ impl GetImgUrl for WallhavenProvider {
             )?)?;
             let (urls, last_page) = self.accepted_urls(&body)?;
             let no_candidates = urls.is_empty();
-            for url in urls.into_iter().take(nums as usize - wallpapers.len()) {
-                let file_name = url
-                    .path_segments()
-                    .and_then(|mut segments| segments.next_back())
-                    .ok_or_else(|| anyhow!("Wallhaven image has no filename"))?;
+            let chosen: Vec<_> = urls.into_iter().take(nums as usize - wallpapers.len()).collect();
+            let validated_names = self.preflight_downloads(&chosen, &seen)?;
+            for url in chosen {
+                let file_name = image_filename(&url)?;
                 let path = super::safe_download_path(&self.dir, file_name)?;
                 let mut response = request_with_retry(client.get(url))?;
                 super::reject_excess_content_length(
@@ -173,6 +200,7 @@ impl GetImgUrl for WallhavenProvider {
                     ),
                 );
             }
+            seen = validated_names;
             if last_page.is_some_and(|last| page >= last) || (no_candidates && last_page.is_none())
             {
                 break;
@@ -225,6 +253,47 @@ mod tests {
         assert!(provider.accepted_urls(hostile).is_err());
         assert!(provider.accepted_urls("not json").is_err());
         assert!(provider.accepted_urls(r#"{"data":[]}"#).is_ok());
+    }
+
+    #[test]
+    fn page_preflight_rejects_colliding_and_unsafe_wallhaven_targets() {
+        let temp = tempfile::tempdir().expect("sandbox");
+        let provider = WallhavenProvider::new().with_dir(temp.path().to_str().expect("path"));
+        let duplicates = [
+            Url::parse("https://w.wallhaven.cc/aa/wallhaven-abc.jpg").expect("URL"),
+            Url::parse("https://w.wallhaven.cc/bb/wallhaven-abc.jpg").expect("URL"),
+        ];
+        assert!(provider
+            .preflight_downloads(&duplicates, &BTreeSet::new())
+            .is_err());
+        let aliases = [
+            Url::parse("https://w.wallhaven.cc/aa/ABC.jpeg").expect("URL"),
+            Url::parse("https://w.wallhaven.cc/bb/abc.JPEG").expect("URL"),
+        ];
+        assert!(provider
+            .preflight_downloads(&aliases, &BTreeSet::new())
+            .is_err());
+        let unsafe_name = [Url::parse("https://w.wallhaven.cc/aa/CON.jpg").expect("URL")];
+        assert!(provider
+            .preflight_downloads(&unsafe_name, &BTreeSet::new())
+            .is_err());
+        assert_eq!(std::fs::read_dir(temp.path()).expect("empty").count(), 0);
+    }
+
+    #[test]
+    fn page_preflight_blocks_later_page_collisions_but_keeps_unique_names() {
+        let temp = tempfile::tempdir().expect("sandbox");
+        let provider = WallhavenProvider::new().with_dir(temp.path().to_str().expect("path"));
+        let first = [Url::parse("https://w.wallhaven.cc/aa/a.png").expect("URL")];
+        let second = [Url::parse("https://w.wallhaven.cc/bb/b.png").expect("URL")];
+        let seen = provider
+            .preflight_downloads(&first, &BTreeSet::new())
+            .expect("first batch");
+        let seen = provider
+            .preflight_downloads(&second, &seen)
+            .expect("distinct next page");
+        assert_eq!(seen.len(), 2);
+        assert!(provider.preflight_downloads(&first, &seen).is_err());
     }
 
     #[test]
