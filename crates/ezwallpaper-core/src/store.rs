@@ -107,8 +107,21 @@ impl WallpaperStore {
             bail!("store root must be a real directory, not a symlink");
         }
         let root = root.canonicalize()?;
-        let marker = fs::read(root.join(MARKER))
+        let marker_path = root.join(MARKER);
+        let marker_meta = fs::symlink_metadata(&marker_path)
             .context("missing Core store marker; run store init on an empty directory")?;
+        if marker_meta.file_type().is_symlink()
+            || !marker_meta.is_file()
+            || marker_meta.len() != VERSION.len() as u64
+        {
+            bail!("Core store version marker must be a real file of the expected size");
+        }
+        // Bound reads even if another process changes the marker after stat.
+        let mut marker = Vec::with_capacity(VERSION.len() + 1);
+        File::open(&marker_path)?
+            .take(VERSION.len() as u64 + 1)
+            .read_to_end(&mut marker)
+            .context("cannot read Core store version marker")?;
         if marker != VERSION {
             bail!("unsupported Core store version; automatic migration is forbidden");
         }
@@ -440,6 +453,37 @@ mod tests {
         let store =
             WallpaperStore::init(temp.path().join("managed")).expect("initialize fresh store");
         (temp, store)
+    }
+
+    #[test]
+    fn opening_store_rejects_invalid_and_oversized_version_markers() {
+        let (_temp, store) = fixture();
+        let marker = store.root.join(MARKER);
+        WallpaperStore::open(&store.root).expect("exact version marker accepted");
+
+        fs::write(&marker, vec![b'x'; VERSION.len() + 16]).expect("oversize fixture");
+        assert!(WallpaperStore::open(&store.root).is_err());
+        fs::write(&marker, b"wrong-store-v1\\n").expect("wrong version fixture");
+        assert!(WallpaperStore::open(&store.root).is_err());
+
+        fs::remove_file(&marker).expect("remove version marker");
+        fs::create_dir(&marker).expect("directory marker fixture");
+        assert!(WallpaperStore::open(&store.root).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn opening_store_rejects_symlink_version_marker_even_if_contents_match() {
+        use std::os::unix::fs::symlink;
+
+        let (temp, store) = fixture();
+        let outside = temp.path().join("external-marker");
+        fs::write(&outside, VERSION).expect("outside marker");
+        let marker = store.root.join(MARKER);
+        fs::remove_file(&marker).expect("replace fixture marker");
+        symlink(&outside, &marker).expect("marker symlink");
+        assert!(WallpaperStore::open(&store.root).is_err());
+        assert_eq!(fs::read(outside).expect("unchanged target"), VERSION);
     }
 
     #[test]
