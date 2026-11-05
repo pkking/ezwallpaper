@@ -110,6 +110,33 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
         {
             bail!("niri output is disabled or has invalid geometry: {requested_name}");
         }
+
+        // If the compositor publishes a scale, independently reconcile its
+        // physical mode against logical pixels. A syntactically active mode
+        // with inconsistent geometry must not pass the optional niri guard.
+        if let (Some(mode), Some(logical)) = (active_mode, logical) {
+            if let Some(raw_scale) = logical.get("scale") {
+                let scale = raw_scale
+                    .as_f64()
+                    .filter(|scale| scale.is_finite() && *scale > 0.0 && *scale <= 16.0)
+                    .ok_or_else(|| anyhow!("invalid niri output scale: {requested_name}"))?;
+                for dimension in ["width", "height"] {
+                    let physical = mode
+                        .get(dimension)
+                        .and_then(Value::as_u64)
+                        .ok_or_else(|| anyhow!("invalid niri physical dimensions"))?;
+                    let scaled = logical
+                        .get(dimension)
+                        .and_then(Value::as_u64)
+                        .ok_or_else(|| anyhow!("invalid niri logical dimensions"))?;
+                    if (physical as f64 / scale - scaled as f64).abs() > 1.0 {
+                        bail!(
+                            "niri physical and logical output geometry disagree: {requested_name}"
+                        );
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -227,6 +254,55 @@ mod tests {
             assert!(validate_outputs(raw.as_bytes(), &requested).is_err());
         }
         validate_outputs(&fixture(), &requested).expect("positive active geometry");
+    }
+
+    #[test]
+    fn published_niri_scale_must_match_physical_and_logical_pixels() {
+        let requested = dual();
+        validate_outputs(&fixture(), &requested).expect("3840x2160 1.5x and 1080x1920 1x");
+
+        let mut topology: Value = serde_json::from_slice(&fixture()).expect("fixture");
+        topology["DP-1"]["logical"]["scale"] = serde_json::json!(1.25);
+        let mismatched = serde_json::to_vec(&topology).expect("mismatch");
+        assert!(validate_outputs(&mismatched, &requested).is_err());
+
+        topology["DP-1"]["logical"]["scale"] = serde_json::json!(1.5);
+        topology["DP-1"]["logical"]["width"] = serde_json::json!(1920);
+        assert!(validate_outputs(
+            &serde_json::to_vec(&topology).expect("wrong logical width"),
+            &requested
+        )
+        .is_err());
+
+        let mut topology: Value = serde_json::from_slice(&fixture()).expect("fixture");
+        for scale in [
+            serde_json::json!(0),
+            serde_json::json!(-1),
+            serde_json::json!(17),
+            serde_json::json!("1.5"),
+            serde_json::json!(null),
+            serde_json::json!(true),
+        ] {
+            topology["DP-1"]["logical"]["scale"] = scale;
+            assert!(validate_outputs(
+                &serde_json::to_vec(&topology).expect("invalid scale"),
+                &requested
+            )
+            .is_err());
+        }
+
+        // Older output reports without an explicit scale still retain the
+        // previous positive physical/logical geometry validation behavior.
+        let mut compatible: Value = serde_json::from_slice(&fixture()).expect("fixture");
+        compatible["DP-1"]["logical"]
+            .as_object_mut()
+            .expect("logical map")
+            .remove("scale");
+        validate_outputs(
+            &serde_json::to_vec(&compatible).expect("legacy geometry"),
+            &requested,
+        )
+        .expect("backward-compatible mode-only snapshot");
     }
 
     #[test]
