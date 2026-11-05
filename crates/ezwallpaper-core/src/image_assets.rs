@@ -6,8 +6,9 @@ use image::imageops::{overlay, FilterType};
 use image::metadata::Orientation;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::Write;
+use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
@@ -102,6 +103,8 @@ struct Decoded {
     orientation: Orientation,
     raw_width: u32,
     raw_height: u32,
+    content_id: String,
+    size_bytes: u64,
 }
 
 fn recognized_format(format: ImageFormat) -> Result<(&'static str, &'static str)> {
@@ -138,13 +141,25 @@ fn check_output_geometry(width: u32, height: u32) -> Result<()> {
     Ok(())
 }
 
-/// Read actual bytes, not filename extensions, with an explicit decode bound.
+/// Hash and decode the same immutable, size-bounded byte snapshot. A path
+/// can change while we work; a second path-based hash would mislabel pixels.
 fn decode_limited(path: &Path) -> Result<Decoded> {
-    let metadata = fs::metadata(path).with_context(|| "cannot stat image for decoding")?;
+    let mut source = fs::File::open(path).context("cannot open image for decoding")?;
+    let metadata = source.metadata().context("cannot stat image for decoding")?;
     if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES {
         bail!("image must be a regular file no larger than 64 MiB");
     }
-    let reader = ImageReader::open(path)?
+    let mut bytes = Vec::new();
+    source
+        .take(MAX_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .context("cannot read bounded image snapshot")?;
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        bail!("image grew beyond 64 MiB during decoding snapshot");
+    }
+    let size_bytes = bytes.len() as u64;
+    let content_id = format!("sha256:{:x}", Sha256::digest(&bytes));
+    let reader = ImageReader::new(Cursor::new(bytes.as_slice()))
         .with_guessed_format()
         .context("cannot identify image file header")?;
     let format = reader
@@ -173,6 +188,8 @@ fn decode_limited(path: &Path) -> Result<Decoded> {
         orientation,
         raw_width,
         raw_height,
+        content_id,
+        size_bytes,
     })
 }
 
@@ -195,8 +212,8 @@ pub fn probe_image(path: &Path) -> Result<ImageProbe> {
     Ok(ImageProbe {
         schema_version: 1,
         path: asset.path().to_owned(),
-        content_id: manager.content_id(&asset)?,
-        size_bytes: asset.size_bytes(),
+        content_id: decoded.content_id,
+        size_bytes: decoded.size_bytes,
         format,
         mime_type,
         raw_width: decoded.raw_width,
@@ -220,7 +237,7 @@ pub fn derive_image(
     let manager = WallpaperManager;
     let source_asset = manager.open_local(source)?;
     let decoded = decode_limited(source_asset.path())?;
-    let source_content_id = manager.content_id(&source_asset)?;
+    let source_content_id = decoded.content_id.clone();
 
     let converted = match fit {
         FitMode::Cover => decoded
@@ -307,6 +324,31 @@ mod tests {
         fs::write(&bogus, b"this is not image bytes").expect("fixture");
         assert!(probe_image(&bogus).is_err());
         assert!(probe_image(&dir.path().join("missing.jpg")).is_err());
+    }
+
+    #[test]
+    fn snapshot_identity_matches_decoded_bytes_when_source_path_changes() {
+        let temp = tempfile::tempdir().expect("sandbox");
+        let source = temp.path().join("source.png");
+        fixture(&source, 16, 8);
+        let manager = WallpaperManager;
+        let original = manager.open_local(&source).expect("original input");
+        let original_id = manager.content_id(&original).expect("original hash");
+        let decoded = decode_limited(&source).expect("first snapshot");
+        assert_eq!(decoded.content_id, original_id);
+        assert_eq!((decoded.image.width(), decoded.image.height()), (16, 8));
+
+        // Simulate a path replacement after the immutable snapshot was read.
+        fixture(&source, 4, 12);
+        let replacement = manager.open_local(&source).expect("new source");
+        let new_id = manager.content_id(&replacement).expect("new hash");
+        assert_ne!(decoded.content_id, new_id);
+        assert_eq!((decoded.image.width(), decoded.image.height()), (16, 8));
+
+        let probe = probe_image(&source).expect("new snapshot");
+        assert_eq!(probe.content_id, new_id);
+        assert_eq!((probe.width, probe.height), (4, 12));
+        assert_eq!(probe.size_bytes, fs::metadata(&source).expect("size").len());
     }
 
     #[test]
