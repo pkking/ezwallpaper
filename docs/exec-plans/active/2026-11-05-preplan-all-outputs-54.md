@@ -1,7 +1,7 @@
 # Precompute every output rotation proposal before any desktop apply
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ Original CLI defaults, v1 JSON schemas, per-output state-commit semantics and re
 - [ ] Exact final-head Rust, cross-platform and scoped native compositor CI passes.
 
 ## Implementation slices
-- [ ] Minimal safe implementation isolated to existing boundary.
-- [ ] Positive, negative and boundary regression coverage.
+- [x] Minimal safe implementation isolated to existing boundary.
+- [x] Positive, negative and boundary regression coverage.
 - [ ] Final-head CI and mergeability reviewed, then merge only on success.
 
 ## Verification matrix
@@ -47,6 +47,7 @@ Original CLI defaults, v1 JSON schemas, per-output state-commit semantics and re
 None; behavior is validation-strengthening inside already accepted policy, with no backward-incompatible user-facing flags.
 
 ## Evidence log
+- 2026-11-05: Controller now computes all pure proposals from locked catalog/state before first IPC, with regression for u64::MAX cycle on second output proving zero desktop calls and exact state bytes preserved. CI pending.
 - 2026-11-05: master 2b0754861a0ed958c802e80b5f229b490cb054ff, plan created before implementation; CI UNASSESSED.
 
 ## Deviations and discoveries
