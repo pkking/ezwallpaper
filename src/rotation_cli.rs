@@ -654,12 +654,23 @@ fn run_with_backend_interval_scoped(
                 .with_context(|| format!("cannot prepare wallpaper pool for {}", output.name))
         })
         .collect::<Result<Vec<_>>>()?;
+    // Plan every output against the initial durable state before sending the
+    // first desktop request. A later valid-looking but exhausted shuffle
+    // counter must not leave an avoidable one-screen-only change.
+    let plans = profile
+        .outputs
+        .iter()
+        .zip(&pools)
+        .map(|(output, by_id)| {
+            let candidate_ids = by_id.keys().cloned().collect::<Vec<_>>();
+            let previous = saved.outputs.get(&output.name).cloned().unwrap_or_default();
+            plan_rotation(&output.name, epoch, &candidate_ids, &previous, force)
+                .with_context(|| format!("cannot plan rotation for {}", output.name))
+        })
+        .collect::<Result<Vec<_>>>()?;
     let mut outcomes = Vec::with_capacity(profile.outputs.len());
 
-    for (output, by_id) in profile.outputs.iter().zip(&pools) {
-        let candidate_ids = by_id.keys().cloned().collect::<Vec<_>>();
-        let previous = saved.outputs.get(&output.name).cloned().unwrap_or_default();
-        let proposed = plan_rotation(&output.name, epoch, &candidate_ids, &previous, force)?;
+    for ((output, by_id), proposed) in profile.outputs.iter().zip(&pools).zip(&plans) {
         let selected_path = proposed
             .content_id
             .as_ref()
@@ -1014,6 +1025,38 @@ mod tests {
             .is_err()
         );
         assert!(!state.exists());
+    }
+
+    #[test]
+    fn overflowing_second_output_plan_never_changes_first_output_or_state() {
+        let (_root, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state parent")).expect("state dir");
+        let parsed = load_profile(&profile).expect("profile");
+        let mut saved = SavedState::empty(&parsed);
+        saved.outputs.insert(
+            "HDMI-A-1".to_owned(),
+            RotationState {
+                cycle: u64::MAX,
+                ..RotationState::default()
+            },
+        );
+        let original = serde_json::to_vec_pretty(&saved).expect("valid saved state");
+        fs::write(&state, &original).expect("seed state");
+
+        let mut calls = 0;
+        let failed = run_with_adapter(&profile, &state, None, false, true, |_, _| {
+            calls += 1;
+            Ok(ApplyStatus::PathObserved)
+        })
+        .expect_err("the later output cannot increment its shuffle cycle");
+        assert!(failed.to_string().contains("HDMI-A-1"));
+        assert_eq!(calls, 0, "all pure proposals precede the first desktop call");
+        assert_eq!(fs::read(&state).expect("unchanged state"), original);
+        let preview = run_with_adapter(&profile, &state, Some(123), false, false, |_, _| {
+            panic!("preview never calls the setter");
+        });
+        assert!(preview.is_err(), "preview must report the same planning error");
+        assert_eq!(fs::read(&state).expect("still unchanged"), original);
     }
 
     #[test]
