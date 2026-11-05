@@ -725,7 +725,7 @@ fn run_with_backend_interval_scoped(
             output: output.name.clone(),
             epoch,
             decision: proposed.decision,
-            content_id: proposed.content_id,
+            content_id: proposed.content_id.clone(),
             path: selected_path,
             applied_path_observed: observed,
             visually_verified: false,
