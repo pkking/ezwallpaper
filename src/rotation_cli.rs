@@ -1050,12 +1050,18 @@ mod tests {
         })
         .expect_err("the later output cannot increment its shuffle cycle");
         assert!(failed.to_string().contains("HDMI-A-1"));
-        assert_eq!(calls, 0, "all pure proposals precede the first desktop call");
+        assert_eq!(
+            calls, 0,
+            "all pure proposals precede the first desktop call"
+        );
         assert_eq!(fs::read(&state).expect("unchanged state"), original);
         let preview = run_with_adapter(&profile, &state, Some(123), false, false, |_, _| {
             panic!("preview never calls the setter");
         });
-        assert!(preview.is_err(), "preview must report the same planning error");
+        assert!(
+            preview.is_err(),
+            "preview must report the same planning error"
+        );
         assert_eq!(fs::read(&state).expect("still unchanged"), original);
     }
 
