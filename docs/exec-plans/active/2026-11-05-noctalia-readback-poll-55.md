@@ -1,7 +1,7 @@
 # Wait briefly for eventual Noctalia path readback before reporting failure
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -32,8 +32,8 @@ Do not spawn swaybg, infer pixels, retry mutating wallpaper-set, change CLI defa
 - [ ] All required CI checks pass on exact final PR head.
 
 ## Implementation slices
-- [ ] Internal validation/polling/preflight unit implemented.
-- [ ] Deterministic positive/negative/boundary tests added.
+- [x] Internal validation/polling/preflight unit implemented.
+- [x] Deterministic positive/negative/boundary tests added.
 - [ ] CI checks on final revision and review completed.
 
 ## Verification matrix
@@ -48,6 +48,7 @@ Do not spawn swaybg, infer pixels, retry mutating wallpaper-set, change CLI defa
 None; additive resilience and evidence checks within existing accepted user-visible semantics.
 
 ## Evidence log
+- 2026-11-05: one wallpaper-set, up to four exact-path wallpaper-get attempts with at most three 150ms pauses; stale-then-current, permanently stale and readback IPC failures covered by injected offline protocol fixtures. Native CI pending.
 - 2026-11-05: inspected baseline baace2d5d817a466b81cf4d8e6da2e63dabc8358; created plan before source edits.
 
 ## Deviations and discoveries
