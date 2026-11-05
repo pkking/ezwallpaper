@@ -17,7 +17,8 @@ fn require_noctalia_session_with(
     if !available {
         bail!("Noctalia v5 setter unavailable; requires Linux Wayland session and noctalia executable (no swaybg fallback)");
     }
-    ipc(&["msg", "status"]).context("Noctalia v5 session IPC unreachable; no rotation state changed")?;
+    ipc(&["msg", "status"])
+        .context("Noctalia v5 session IPC unreachable; no rotation state changed")?;
     Ok(())
 }
 
