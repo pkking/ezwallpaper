@@ -1,7 +1,7 @@
 # Require a reachable Noctalia v5 session before rotation state changes
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ Preserve default backend, CLI flags, renderer ownership, manifest/state formats.
 - [ ] All required GitHub CI jobs pass on final PR HEAD, including native integration when selected.
 
 ## Implementation slices
-- [ ] Implement one bounded behavior inside existing abstraction.
-- [ ] Add deterministic offline positive/negative and regression tests.
+- [x] Implement one bounded behavior inside existing abstraction.
+- [x] Add deterministic offline positive/negative and regression tests.
 - [ ] Fix CI and verify final-head platform + applicable native E2E.
 
 ## Verification matrix
@@ -47,6 +47,7 @@ Preserve default backend, CLI flags, renderer ownership, manifest/state formats.
 None. Routine additive opt-in safety checks within existing supported code boundaries; no default changes.
 
 ## Evidence log
+- 2026-11-05: registry now checks read-only `noctalia msg status` before creating a Noctalia rotation backend. Injected tests check missing binary, unreachable shell and successful exact argv, with no desktop calls. CI pending.
 - 2026-11-05: reviewed master 432ea59218a38387052c04296331ad0e23cbd1c7, linked Issue #55, created plan before implementation.
 
 ## Deviations and discoveries
