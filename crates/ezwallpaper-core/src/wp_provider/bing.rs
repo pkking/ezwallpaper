@@ -73,11 +73,27 @@ impl BingProvider {
 
     fn image_urls(&self, body: &str) -> Result<Vec<Url>> {
         let response: Images = serde_json::from_str(body)?;
+        if response.images.len() > 8 {
+            bail!("Bing archive returned more than eight image entries");
+        }
         let mut filenames = BTreeSet::new();
         let mut urls = Vec::with_capacity(response.images.len());
         for image in &response.images {
             if !image.urlbase.starts_with("/th?id=") {
                 bail!("Bing returned unexpected image base path");
+            }
+            // Parse BEFORE appending the requested resolution: an untrusted
+            // fragment or additional parameter can otherwise swallow the
+            // suffix and change the local filename/remote request.
+            let base = Url::parse(&format!("https://www.bing.com{}", image.urlbase))?;
+            let mut parameters = base.query_pairs();
+            let id = parameters.next();
+            if base.path() != "/th"
+                || base.fragment().is_some()
+                || id.as_ref().is_none_or(|(key, value)| key != "id" || value.is_empty())
+                || parameters.next().is_some()
+            {
+                bail!("Bing image base must contain one id query parameter");
             }
             let url = checked_image_url(
                 &format!(
@@ -86,15 +102,17 @@ impl BingProvider {
                 ),
                 &["www.bing.com"],
             )?;
-            // Match the same URL query identifier download_image later uses
-            // as a local filename. Decode percent-encoded aliases first.
+            // Match the same decoded filename used by download_image. Validate
+            // ALL names before the first image transfer, including Windows
+            // aliases and reserved path components.
             let filename = url
                 .query_pairs()
                 .find(|(key, _)| key == "id")
                 .map(|(_, value)| value.into_owned())
                 .ok_or_else(|| anyhow!("Bing image URL has no id filename"))?;
-            if !filenames.insert(filename) {
-                bail!("Bing archive contains duplicate image filenames");
+            super::safe_download_path(&self.dir, &filename)?;
+            if !filenames.insert(filename.to_ascii_lowercase()) {
+                bail!("Bing archive contains colliding image filenames");
             }
             urls.push(url);
         }
@@ -192,7 +210,7 @@ mod tests {
             .is_err());
         assert!(provider
             .image_urls(r#"{"images":[{"urlbase":"/th?id=..%2Fescape"}]}"#)
-            .is_ok());
+            .is_err());
         assert!(provider.image_urls("not json").is_err());
     }
 
@@ -218,6 +236,42 @@ mod tests {
         let urls = provider.image_urls(unique).expect("two distinct images");
         assert_eq!(urls.len(), 2);
         assert_ne!(urls[0], urls[1]);
+    }
+
+    #[test]
+    fn archive_preflight_refuses_query_injection_and_bad_filenames() {
+        let provider = BingProvider::new();
+        for urlbase in [
+            "/th?id=OHR.Photo_EN-US&other=value",
+            "/th?id=OHR.Photo_EN-US#fragment",
+            "/th?id=",
+            "/th?id=..%2Fescape",
+            "/th?id=OHR.Photo_EN-US%5Cescape",
+            "/other?id=OHR.Photo_EN-US",
+        ] {
+            let body = serde_json::json!({"images": [{"urlbase": urlbase}]}).to_string();
+            assert!(provider.image_urls(&body).is_err(), "rejected: {}", urlbase);
+        }
+    }
+
+    #[test]
+    fn archive_preflight_rejects_portable_case_collisions_and_oversized_lists() {
+        let provider = BingProvider::new();
+        let aliases = r#"{"images":[
+            {"urlbase":"/th?id=OHR.Forest_EN-US"},
+            {"urlbase":"/th?id=ohr.forest_en-us"}
+        ]}"#;
+        assert!(provider.image_urls(aliases).is_err());
+        let entries: Vec<_> = (0..9)
+            .map(|i| serde_json::json!({"urlbase": format!("/th?id=OHR.Day{i}_EN-US")}))
+            .collect();
+        let body = serde_json::json!({"images": entries}).to_string();
+        assert!(provider.image_urls(&body).is_err());
+        let valid = r#"{"images":[
+            {"urlbase":"/th?id=OHR.Forest_EN-US"},
+            {"urlbase":"/th?id=OHR.Desert_EN-US"}
+        ]}"#;
+        assert_eq!(provider.image_urls(valid).expect("valid archive").len(), 2);
     }
 
     #[test]
