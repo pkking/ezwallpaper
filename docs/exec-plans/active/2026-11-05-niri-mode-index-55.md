@@ -1,7 +1,7 @@
 # Reject unrepresentable niri output mode indices
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ No changes to niri CLI command, Noctalia IPC, display selection, wallpaper state
 - [ ] Exact final PR-head CI success including applicable integration gates.
 
 ## Implementation slices
-- [ ] Introduce a narrowly scoped validation or budget guard.
-- [ ] Add deterministic positive, negative and boundary tests.
+- [x] Introduce a narrowly scoped validation or budget guard.
+- [x] Add deterministic positive, negative and boundary tests.
 - [ ] Confirm latest-head CI and fix any observed failure.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ No changes to niri CLI command, Noctalia IPC, display selection, wallpaper state
 None; constrained to existing accepted ADR and API behavior.
 
 ## Evidence log
+- 2026-11-05: niri current_mode now uses checked u64->usize conversion; fixtures cover mode 1, negative/null/out-of-bounds/2^32/u64::MAX. CI pending.
 - 2026-11-05: created plan before changing code; baseline SHA 5517518580bafdd332252772a8b54b8679e37db4.
 
 ## Deviations and discoveries
-None.
+No changes to desktop ownership, CLI defaults, persistent data or architecture dataflow.
 
 ## Resume from here
 Fetch the current PR head SHA and workflow run; inspect failures and repair on the branch, then merge only when all required final-head checks pass.
