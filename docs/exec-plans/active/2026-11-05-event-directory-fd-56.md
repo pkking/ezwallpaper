@@ -1,7 +1,7 @@
 # Pin event snapshot reads to an opened directory descriptor
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ POSIX directory-file-descriptor implementation for Linux Wayland consumer; no pr
 - [ ] All required CI gates successful on the final PR head.
 
 ## Implementation slices
-- [ ] Add internal validation/guard without new public interface.
-- [ ] Add deterministic offline positive, failure and boundary tests.
+- [x] Add internal validation/guard without new public interface.
+- [x] Add deterministic offline positive, failure and boundary tests.
 - [ ] Validate PR latest-head CI and review failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ POSIX directory-file-descriptor implementation for Linux Wayland consumer; no pr
 None: routine internal behavior within the accepted ADR and no persistent or user-facing default change.
 
 ## Evidence log
+- 2026-11-05: event snapshots now open one directory fd, verify root identity, and use dir_fd+no-follow for each output. A test renames/replaces the directory pathname between outputs; CI UNASSESSED.
 - 2026-11-05: inspected code at f6fe95249b47eab59ee71a99b73159cb1d5eeb7f; created Issue #56 plan before changing source. CI pending.
 
 ## Deviations and discoveries
-None at creation.
+No new persistent schema, dependency, privilege or architecture dataflow.
 
 ## Resume from here
 Inspect the latest PR head and its CI run; fix the first failing gate, then rerun the final revision without bypassing checks.
