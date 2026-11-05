@@ -614,10 +614,21 @@ fn run_with_backend_interval_scoped(
         None
     };
     let mut saved = read_state(&state_path, &profile)?;
+    // Resolve every output pool before changing the first desktop output.
+    // A bad second catalog is a predictable input failure, not a reason to
+    // leave the first monitor changed. Keep per-output acknowledgements for
+    // genuine IPC failures, and rehash selected bytes just before each apply.
+    let pools = profile
+        .outputs
+        .iter()
+        .map(|output| {
+            selected_candidates(output)
+                .with_context(|| format!("cannot prepare wallpaper pool for {}", output.name))
+        })
+        .collect::<Result<Vec<_>>>()?;
     let mut outcomes = Vec::with_capacity(profile.outputs.len());
 
-    for output in &profile.outputs {
-        let by_id = selected_candidates(output)?;
+    for (output, by_id) in profile.outputs.iter().zip(&pools) {
         let candidate_ids = by_id.keys().cloned().collect::<Vec<_>>();
         let previous = saved.outputs.get(&output.name).cloned().unwrap_or_default();
         let proposed = plan_rotation(&output.name, epoch, &candidate_ids, &previous, force)?;
@@ -860,6 +871,41 @@ mod tests {
             .iter()
             .all(|x| x.decision == RotationDecision::AlreadyApplied));
         assert!(state_lock_path(&state).exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bad_second_pool_never_changes_first_niri_noctalia_output() {
+        use std::os::unix::fs::symlink;
+
+        let (root, profile, state) = fixture();
+        // Existing files are otherwise valid. This opt-in recursive catalog
+        // has a link escaping the second output root, which must fail closed.
+        symlink(
+            root.path().join("landscape/a.png"),
+            root.path().join("portrait/external.png"),
+        )
+        .expect("symlink outside portrait pool");
+        fs::write(
+            &profile,
+            r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"landscape"},{"name":"HDMI-A-1","dir":"portrait","recursive":true,"follow_symlinks":true}]}"#,
+        )
+        .expect("profile with opted-in symlink traversal");
+
+        let mut applied = 0;
+        let result = run_with_adapter(&profile, &state, None, false, true, |_, _| {
+            applied += 1;
+            Ok(ApplyStatus::PathObserved)
+        });
+        let error = result.expect_err("second pool is outside its root");
+        assert!(error.to_string().contains("HDMI-A-1"));
+        assert_eq!(applied, 0, "both catalogs must pass before first IPC");
+        assert!(!state.exists(), "no completed state is claimed");
+        assert!(run_with_adapter(&profile, &state, Some(100), false, false, |_, _| {
+            panic!("preview never invokes desktop IPC");
+        })
+        .is_err());
+        assert!(!state.exists());
     }
 
     #[test]
