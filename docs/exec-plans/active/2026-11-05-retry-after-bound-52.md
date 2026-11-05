@@ -1,7 +1,7 @@
 # Respect bounded Retry-After for provider 429 responses
 
 Issue: #52
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ Only numeric delta-seconds are supported; HTTP-date uses existing bounded fallba
 - [ ] All required CI gates successful on the final PR head.
 
 ## Implementation slices
-- [ ] Add internal validation/guard without new public interface.
-- [ ] Add deterministic offline positive, failure and boundary tests.
+- [x] Add internal validation/guard without new public interface.
+- [x] Add deterministic offline positive, failure and boundary tests.
 - [ ] Validate PR latest-head CI and review failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ Only numeric delta-seconds are supported; HTTP-date uses existing bounded fallba
 None: routine internal behavior within the accepted ADR and no persistent or user-facing default change.
 
 ## Evidence log
+- 2026-11-05: numeric 429 Retry-After 0..5s honored, >5s refuses another retry; missing/malformed hint retains existing backoff. Added local HTTP 429 fixture and boundary tests; CI UNASSESSED.
 - 2026-11-05: inspected code at f6fe95249b47eab59ee71a99b73159cb1d5eeb7f; created Issue #52 plan before changing source. CI pending.
 
 ## Deviations and discoveries
-None at creation.
+No new persistent schema, dependency, privilege or architecture dataflow.
 
 ## Resume from here
 Inspect the latest PR head and its CI run; fix the first failing gate, then rerun the final revision without bypassing checks.
