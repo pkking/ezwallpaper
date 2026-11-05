@@ -217,7 +217,11 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
                     .ok_or_else(|| anyhow!("invalid niri output scale: {requested_name}"))?;
                 for dimension in ["width", "height"] {
                     let physical_axis = if transposed {
-                        if dimension == "width" { "height" } else { "width" }
+                        if dimension == "width" {
+                            "height"
+                        } else {
+                            "width"
+                        }
                     } else {
                         dimension
                     };
