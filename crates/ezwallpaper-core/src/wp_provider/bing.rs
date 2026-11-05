@@ -90,7 +90,9 @@ impl BingProvider {
             let id = parameters.next();
             if base.path() != "/th"
                 || base.fragment().is_some()
-                || id.as_ref().is_none_or(|(key, value)| key != "id" || value.is_empty())
+                || id
+                    .as_ref()
+                    .is_none_or(|(key, value)| key != "id" || value.is_empty())
                 || parameters.next().is_some()
             {
                 bail!("Bing image base must contain one id query parameter");
