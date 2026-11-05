@@ -41,18 +41,20 @@ def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
     return record
 
 
-def read_event(root: Path, output: str, epoch: int) -> dict:
-    path = root / f"{output}.json"
+def read_event(directory_fd: int, output: str, epoch: int) -> dict:
+    filename = f"{output}.json"
     try:
-        meta = path.lstat()
+        meta = os.stat(filename, dir_fd=directory_fd, follow_symlinks=False)
         if not stat.S_ISREG(meta.st_mode) or meta.st_size > MAX_EVENT_BYTES:
             raise SnapshotError("unsafe_event_file")
-        # O_NOFOLLOW closes final-component link substitution on supported OSs.
+        # The opened directory inode remains fixed across every output.
+        # No-follow prevents final-component symlinks on POSIX.
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-        fd = os.open(path, flags)
+        fd = os.open(filename, flags, dir_fd=directory_fd)
         with os.fdopen(fd, "rb") as handle:
             info = os.fstat(handle.fileno())
-            if not stat.S_ISREG(info.st_mode):
+            if (not stat.S_ISREG(info.st_mode)
+                    or (info.st_dev, info.st_ino) != (meta.st_dev, meta.st_ino)):
                 raise SnapshotError("unsafe_event_file")
             payload = handle.read(MAX_EVENT_BYTES + 1)
         if len(payload) > MAX_EVENT_BYTES:
@@ -86,10 +88,18 @@ def snapshot(directory: Path, outputs: list[str], epoch: int) -> dict:
         meta = directory.lstat()
         if not stat.S_ISDIR(meta.st_mode):
             raise SnapshotError("unsafe_event_directory")
-        root = directory.resolve(strict=True)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(directory, flags)
     except OSError as exc:
         raise SnapshotError("cannot_read_event_directory") from exc
-    records = [read_event(root, output, epoch) for output in outputs]
+    try:
+        opened = os.fstat(fd)
+        if (not stat.S_ISDIR(opened.st_mode)
+                or (opened.st_dev, opened.st_ino) != (meta.st_dev, meta.st_ino)):
+            raise SnapshotError("unsafe_event_directory")
+        records = [read_event(fd, output, epoch) for output in outputs]
+    finally:
+        os.close(fd)
     return {"schema_version": 1, "epoch": epoch, "complete": True, "outputs": records}
 
 

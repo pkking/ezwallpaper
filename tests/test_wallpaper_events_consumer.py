@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import read_wallpaper_events as reader  # noqa: E402
@@ -99,6 +100,37 @@ class EventConsumerTests(unittest.TestCase):
         (self.root / "HDMI-A-1.json").write_bytes(b"x" * (reader.MAX_EVENT_BYTES + 1))
         code, stdout, _ = self.run_cli()
         self.assertEqual((code, stdout), (2, ""))
+
+    def test_directory_path_replacement_during_snapshot_cannot_redirect_output(self):
+        events = self.root / "events"
+        events.mkdir()
+        outside = self.root / "replacement"
+        outside.mkdir()
+        for output in OUTPUTS:
+            raw = (self.root / f"{output}.json").read_bytes()
+            (events / f"{output}.json").write_bytes(raw)
+            injected = json.loads(raw)
+            injected["image_path"] = "/attacker/substituted.png"
+            (outside / f"{output}.json").write_text(json.dumps(injected))
+
+        original = reader.read_event
+        moved = self.root / "original-events"
+
+        def replace_path_after_first(fd, output, epoch):
+            if output == "HDMI-A-1":
+                events.rename(moved)
+                events.symlink_to(outside, target_is_directory=True)
+            return original(fd, output, epoch)
+
+        if not hasattr(__import__("os"), "symlink"):
+            self.skipTest("OS lacks directory symlinks")
+        with mock.patch.object(reader, "read_event", side_effect=replace_path_after_first):
+            result = reader.snapshot(events, OUTPUTS, 101)
+        self.assertEqual(
+            [row["image_path"] for row in result["outputs"]],
+            ["/untrusted/user/wallpaper.png"] * 2,
+        )
+        self.assertEqual((outside / "HDMI-A-1.json").exists(), True)
 
     def test_symlinks_and_directories_are_not_read(self):
         outside = self.root / "outside.json"
