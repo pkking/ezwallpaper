@@ -298,7 +298,7 @@ mod tests {
         let path = Path::new("/tmp/landscape with space.png");
         let mut calls = Vec::new();
         let mut waits = Vec::new();
-        let mut reads = [
+        let mut reads = vec![
             "/tmp/old.png\n",
             "/tmp/old.png\n",
             "/tmp/landscape with space.png\n",
@@ -322,7 +322,9 @@ mod tests {
             calls[0],
             vec!["msg", "wallpaper-set", "DP-1", "/tmp/landscape with space.png"]
         );
-        assert!(calls[1..].iter().all(|argv| argv == &vec!["msg", "wallpaper-get", "DP-1"]));
+        assert!(calls[1..].iter().all(|argv| {
+            argv.len() == 3 && argv[0] == "msg" && argv[1] == "wallpaper-get" && argv[2] == "DP-1"
+        }));
         assert_eq!(calls.len(), 4, "one set plus three readbacks");
         assert_eq!(waits, vec![Duration::from_millis(150); 2]);
     }
@@ -347,7 +349,9 @@ mod tests {
         );
         assert!(stale.is_err(), "persistently wrong path is not acknowledged");
         assert_eq!(calls[0], vec!["msg", "wallpaper-set", "/tmp/new.png"]);
-        assert!(calls[1..].iter().all(|argv| argv == &vec!["msg", "wallpaper-get"]));
+        assert!(calls[1..].iter().all(|argv| {
+            argv.len() == 2 && argv[0] == "msg" && argv[1] == "wallpaper-get"
+        }));
         assert_eq!(calls.len(), 5, "no second mutating request");
         assert_eq!(waits, 3);
 
