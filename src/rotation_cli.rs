@@ -205,6 +205,19 @@ fn read_state(path: &Path, profile: &Profile) -> Result<SavedState> {
     if saved.outputs.len() > MAX_OUTPUTS {
         bail!("rotation state has too many outputs");
     }
+    // Validate every saved output up front. Without this check a damaged
+    // second output is discovered only after the first desktop apply and
+    // state commit, resulting in avoidable partial side effects.
+    let configured: HashSet<_> = profile.outputs.iter().map(|output| output.name.as_str()).collect();
+    for (name, state) in &saved.outputs {
+        if !configured.contains(name.as_str()) {
+            bail!("rotation state contains an unknown output: {}", name);
+        }
+        // Empty candidates force the pure planner's state/schema validation
+        // without selecting or modifying a wallpaper, even for an old epoch.
+        plan_rotation(name, 0, &[], state, false)
+            .with_context(|| format!("invalid persisted rotation state for {}", name))?;
+    }
     Ok(saved)
 }
 
@@ -1432,6 +1445,43 @@ mod tests {
             .is_err()
         );
         assert!(!state.exists());
+    }
+
+    #[test]
+    fn corrupt_later_output_is_rejected_before_any_desktop_apply() {
+        let (_dir, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state folder")).expect("mkdir");
+        let current = load_profile(&profile).expect("profile");
+        let mut saved = SavedState::empty(&current);
+        saved.outputs.insert("DP-1".to_owned(), RotationState::default());
+        saved.outputs.insert(
+            "HDMI-A-1".to_owned(),
+            RotationState {
+                schema_version: 99,
+                ..RotationState::default()
+            },
+        );
+        let corrupt = serde_json::to_vec(&saved).expect("serialize corrupt state");
+        fs::write(&state, &corrupt).expect("state fixture");
+        let result = run_with_adapter(&profile, &state, None, false, true, |_, _| {
+            panic!("no output may apply before all persisted states validate")
+        });
+        assert!(result.is_err());
+        assert_eq!(fs::read(&state).expect("state unchanged"), corrupt);
+
+        // A successful first-output-only apply may legitimately leave the
+        // second output absent, and must remain resumable after restart.
+        saved.outputs.remove("HDMI-A-1");
+        fs::write(&state, serde_json::to_vec(&saved).expect("serialize"))
+            .expect("partial state");
+        assert!(read_state(&state, &current).is_ok());
+
+        saved
+            .outputs
+            .insert("UNCONFIGURED".to_owned(), RotationState::default());
+        fs::write(&state, serde_json::to_vec(&saved).expect("serialize"))
+            .expect("unknown output");
+        assert!(read_state(&state, &current).is_err());
     }
 
     #[test]
