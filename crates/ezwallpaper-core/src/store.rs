@@ -18,6 +18,10 @@ const CACHE_INDEX: &str = "index-v5";
 // Maximum physical cacache index record, including its newline. Do not load
 // arbitrarily long damaged index lines into memory during read-only scans.
 const MAX_INDEX_ROW_BYTES: u64 = 64 * 1024;
+// Bound traversal separately from the per-row limit. A malicious owned-store
+// tree must not force unbounded directory enumeration or metadata allocation.
+const MAX_INDEX_DIRECTORIES: usize = 16_384;
+const MAX_INDEX_FILES: usize = 65_536;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct StoredWallpaper {
@@ -324,6 +328,14 @@ struct IndexedRow {
 /// cacache 13.x ignores corrupt row checksums / JSON in its own enumeration;
 /// without this guard a broken store could be presented as an empty/partial one.
 fn validate_cache_index(cache: &Path) -> Result<bool> {
+    validate_cache_index_with_limits(cache, MAX_INDEX_DIRECTORIES, MAX_INDEX_FILES)
+}
+
+fn validate_cache_index_with_limits(
+    cache: &Path,
+    max_dirs: usize,
+    max_files: usize,
+) -> Result<bool> {
     let index = cache.join(CACHE_INDEX);
     match fs::symlink_metadata(&index) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(false),
@@ -335,13 +347,27 @@ fn validate_cache_index(cache: &Path) -> Result<bool> {
     }
 
     let mut pending = vec![index];
+    let mut seen_dirs = 0usize;
+    let mut seen_files = 0usize;
     while let Some(dir) = pending.pop() {
+        seen_dirs += 1;
+        if seen_dirs > max_dirs {
+            bail!("Core store index exceeds directory traversal limit");
+        }
         for item in fs::read_dir(&dir).context("cannot enumerate Core store index directory")? {
             let item = item.context("cannot read Core store index entry")?;
             let kind = item.file_type()?;
             if kind.is_dir() {
+                // Bound queued paths too, before they accumulate in memory.
+                if seen_dirs + pending.len() >= max_dirs {
+                    bail!("Core store index exceeds directory traversal limit");
+                }
                 pending.push(item.path());
             } else if kind.is_file() {
+                seen_files += 1;
+                if seen_files > max_files {
+                    bail!("Core store index exceeds index-file traversal limit");
+                }
                 validate_index_bucket(&item.path())?;
             } else {
                 bail!("Core store index contains an unsupported entry type");
@@ -556,6 +582,33 @@ mod tests {
             .expect("index bucket")
             .expect("index bucket entry")
             .path()
+    }
+
+    #[test]
+    fn index_scan_budgets_reject_excessive_shards_without_writes() {
+        let (temp, store) = fixture();
+        let source = temp.path().join("source.jpg");
+        fs::write(&source, b"preserve-source").expect("source");
+        let expected = store.import_file(&source).expect("import");
+        let cache = store.cache_dir();
+        assert!(validate_cache_index(&cache).expect("normal index"));
+        let original = first_index_bucket(&store);
+        let original_bytes = fs::read(&original).expect("original bucket");
+        let extra = cache.join(CACHE_INDEX).join("extra-test-bucket");
+        fs::copy(&original, &extra).expect("add valid extra index bucket");
+
+        let file_limit = validate_cache_index_with_limits(&cache, 10, 1)
+            .expect_err("more than one bucket exceeds test budget");
+        assert!(file_limit.to_string().contains("index-file traversal limit"));
+        let dir_limit = validate_cache_index_with_limits(&cache, 2, 10)
+            .expect_err("native sharded index exceeds two directories");
+        assert!(dir_limit.to_string().contains("directory traversal limit"));
+
+        assert_eq!(fs::read(&extra).expect("extra intact"), original_bytes);
+        assert_eq!(fs::read(&original).expect("original intact"), original_bytes);
+        assert_eq!(fs::read(&source).expect("source intact"), b"preserve-source");
+        fs::remove_file(extra).expect("clean fixture only");
+        assert_eq!(store.list().expect("native index still valid"), vec![expected]);
     }
 
     #[test]
