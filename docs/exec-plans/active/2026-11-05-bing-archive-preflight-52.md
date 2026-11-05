@@ -1,7 +1,7 @@
 # Validate entire Bing image archive before downloads
 
 Issue: #52
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,7 +31,7 @@ No network in tests, no change to supported Bing 8-day range, URL resolution suf
 - [ ] Required CI passes for the final PR head SHA.
 
 ## Implementation slices
-- [ ] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
+- [x] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
 - [ ] Check CI equivalence across Rust, Windows, macOS, Sway and scoped Noctalia.
 
 ## Verification matrix
@@ -46,10 +46,11 @@ No network in tests, no change to supported Bing 8-day range, URL resolution suf
 None. Work remains within accepted ADR, and changes no user-facing command defaults, persistent format or permissions.
 
 ## Evidence log
+- 2026-11-05: Bing validates exact /th path and single id key without fragment, caps archive at eight, prechecks all paths and portable aliases. Offline injected-URL and duplicate fixtures added; PR CI unverified.
 - 2026-11-05: inspected source at master 2294d90f5884fd4cdcb3dfe251ffe465a67a7822; created issue-linked plan before code. Actual tests pending.
 
 ## Deviations and discoveries
-None.
+No new components, CLI defaults, persistent versions or privileges; accepted architecture unchanged.
 
 ## Resume from here
 Fetch the linked PR's exact head SHA and full current CI run; correct the first failed job and rerun until all required checks are green.
