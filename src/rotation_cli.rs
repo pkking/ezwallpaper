@@ -901,10 +901,12 @@ mod tests {
         assert!(error.to_string().contains("HDMI-A-1"));
         assert_eq!(applied, 0, "both catalogs must pass before first IPC");
         assert!(!state.exists(), "no completed state is claimed");
-        assert!(run_with_adapter(&profile, &state, Some(100), false, false, |_, _| {
-            panic!("preview never invokes desktop IPC");
-        })
-        .is_err());
+        assert!(
+            run_with_adapter(&profile, &state, Some(100), false, false, |_, _| {
+                panic!("preview never invokes desktop IPC");
+            })
+            .is_err()
+        );
         assert!(!state.exists());
     }
 
