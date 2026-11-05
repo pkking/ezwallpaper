@@ -154,7 +154,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             1234,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/wallpaper.png"),
         );
         let raw = serde_json::to_value(&change).expect("serialize event");
@@ -255,7 +255,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             10,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/a.png"),
         );
         assert!(publish(&missing, &change).is_err());
@@ -282,7 +282,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             10,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/a.png"),
         );
         assert!(publish(&alias, &change).is_err());
@@ -329,7 +329,7 @@ mod tests {
             let change = WallpaperChange::acknowledged(
                 name.to_owned(),
                 1,
-                "sha256:test".to_owned(),
+                format!("sha256:{}", "a".repeat(64)),
                 PathBuf::from("/tmp/image.png"),
             );
             assert!(publish(&root, &change).is_err());
