@@ -1,7 +1,7 @@
 //! Read-only, opt-in niri connector preflight for Noctalia rotation.
 //! Never launch a compositor or claim that its framebuffer has changed.
 use anyhow::{anyhow, bail, Context, Result};
-use serde::de::{MapAccess, Visitor};
+use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -14,6 +14,89 @@ use std::time::{Duration, Instant};
 
 const MAX_OUTPUTS_JSON: u64 = 1024 * 1024;
 const IPC_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Parse every nesting level without serde_json::Value's last-wins map
+/// behavior. niri's active mode and logical scale are trusted only after
+/// duplicate field names (including JSON-escaped aliases) have been rejected.
+struct UniqueJsonValue(Value);
+
+impl<'de> Deserialize<'de> for UniqueJsonValue {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct UniqueJsonVisitor;
+        impl<'de> Visitor<'de> for UniqueJsonVisitor {
+            type Value = UniqueJsonValue;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a JSON value with no duplicate object keys")
+            }
+
+            fn visit_bool<E: serde::de::Error>(self, value: bool) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::Bool(value)))
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::Number(value.into())))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::Number(value.into())))
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Self::Value, E> {
+                let number = serde_json::Number::from_f64(value)
+                    .ok_or_else(|| E::custom("invalid niri JSON number"))?;
+                Ok(UniqueJsonValue(Value::Number(number)))
+            }
+
+            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::String(value.to_owned())))
+            }
+
+            fn visit_string<E: serde::de::Error>(self, value: String) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::String(value)))
+            }
+
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::Null))
+            }
+
+            fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(UniqueJsonValue(Value::Null))
+            }
+
+            fn visit_seq<A: SeqAccess<'de>>(
+                self,
+                mut sequence: A,
+            ) -> Result<Self::Value, A::Error> {
+                let mut values = Vec::new();
+                while let Some(value) = sequence.next_element::<UniqueJsonValue>()? {
+                    values.push(value.0);
+                }
+                Ok(UniqueJsonValue(Value::Array(values)))
+            }
+
+            fn visit_map<A: MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> Result<Self::Value, A::Error> {
+                let mut values = serde_json::Map::new();
+                while let Some((key, value)) = map.next_entry::<String, UniqueJsonValue>()? {
+                    if values.contains_key(&key) {
+                        return Err(serde::de::Error::custom(format!(
+                            "duplicate niri JSON field: {key}"
+                        )));
+                    }
+                    values.insert(key, value.0);
+                }
+                Ok(UniqueJsonValue(Value::Object(values)))
+            }
+        }
+        deserializer.deserialize_any(UniqueJsonVisitor)
+    }
+}
 
 /// serde_json::Value/BTreeMap normally accept duplicate map keys, leaving
 /// only the last descriptor. Reject ambiguity before trusting the snapshot.
@@ -38,8 +121,10 @@ impl<'de> Deserialize<'de> for UniqueInventory {
                 M: MapAccess<'de>,
             {
                 let mut inventory = BTreeMap::new();
-                while let Some((connector, descriptor)) = map.next_entry::<String, Value>()? {
-                    if inventory.insert(connector.clone(), descriptor).is_some() {
+                while let Some((connector, descriptor)) =
+                    map.next_entry::<String, UniqueJsonValue>()?
+                {
+                    if inventory.insert(connector.clone(), descriptor.0).is_some() {
                         return Err(serde::de::Error::custom(format!(
                             "duplicate niri inventory connector: {connector}"
                         )));
@@ -218,6 +303,25 @@ mod tests {
             let inventory = format!(r#"{{"DP-1":{descriptor},"{alias}":{descriptor}}}"#);
             assert!(validate_outputs(inventory.as_bytes(), &requested).is_err());
         }
+    }
+
+    #[test]
+    fn repeated_nested_output_fields_cannot_fake_active_niri_topology() {
+        let requested = ["DP-1".to_owned()];
+        let descriptors = [
+            r#"{"name":"DP-1","current_mode":0,"current_mode":1,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440}}"#,
+            r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"width":1,"height":2160}],"logical":{"width":2560,"height":1440}}"#,
+            r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440,"scale":1.5,"scale":1.0}}"#,
+            r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440,"scale":1.5,"sc\\u0061le":1.0}}"#,
+        ];
+        for descriptor in descriptors {
+            let inventory = format!(r#"{{"DP-1":{descriptor}}}"#);
+            let error = validate_outputs(inventory.as_bytes(), &requested)
+                .expect_err("duplicate nested field must be rejected");
+            let detail = format!("{error:#}");
+            assert!(detail.contains("duplicate niri JSON field"), "{}", detail);
+        }
+        validate_outputs(&fixture(), &dual()).expect("original fractional-scale fixture");
     }
 
     #[test]
