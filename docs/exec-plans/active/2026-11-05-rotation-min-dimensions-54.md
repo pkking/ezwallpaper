@@ -1,7 +1,7 @@
 # Opt-in decoded minimum dimensions per output for niri portrait and landscape pools
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ Additive opt-in JSON profile fields only; existing v1 profile and state schemas 
 - [ ] All required GitHub CI jobs pass on final PR HEAD, including native integration when selected.
 
 ## Implementation slices
-- [ ] Implement one bounded behavior inside existing abstraction.
-- [ ] Add deterministic offline positive/negative and regression tests.
+- [x] Implement one bounded behavior inside existing abstraction.
+- [x] Add deterministic offline positive/negative and regression tests.
 - [ ] Fix CI and verify final-head platform + applicable native E2E.
 
 ## Verification matrix
@@ -47,6 +47,7 @@ Additive opt-in JSON profile fields only; existing v1 profile and state schemas 
 None. Routine additive opt-in safety checks within existing supported code boundaries; no default changes.
 
 ## Evidence log
+- 2026-11-05: schema-v1 output accepts opt-in min_width/min_height pair, Core decoded probe filters inadequate candidates before shuffle. Two valid offline PNG geometries and bad fields/data exercised; README and accepted ADR clarified. CI pending.
 - 2026-11-05: reviewed master 432ea59218a38387052c04296331ad0e23cbd1c7, linked Issue #54, created plan before implementation.
 
 ## Deviations and discoveries
