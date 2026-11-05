@@ -1,7 +1,7 @@
 # Reject duplicate output identities in persisted rotation state
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -26,13 +26,13 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0009-locked
 - No changes to architectural subsystem boundaries, so no ADR/diagram update.
 
 ## Acceptance criteria
-- [ ] Duplicate `outputs` keys, including JSON escapes, reject at deserialize.
-- [ ] Valid unique-key state still decodes and a malformed state cannot call the fake backend or overwrite previous file.
+- [x] Duplicate `outputs` keys, including JSON escapes, reject at deserialize.
+- [x] Valid unique-key state still decodes and a malformed state cannot call the fake backend or overwrite previous file.
 - [ ] Deterministic offline fixtures and full required final-head CI pass.
 
 ## Implementation slices
-- [ ] 1. Add scoped unique-output map deserializer.
-- [ ] 2. Add duplicate and valid state regression tests, including no-IPC check.
+- [x] 1. Add scoped unique-output map deserializer.
+- [x] 2. Add duplicate and valid state regression tests, including no-IPC check.
 - [ ] 3. Verify PR CI on final head, review, then merge and archive plan only with evidence.
 
 ## Verification matrix
@@ -47,13 +47,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0009-locked
 None: fail-closed handling of malformed existing state within accepted semantics.
 
 ## Evidence log
+- 2026-11-05: added `SavedState.outputs` duplicate-key rejecting deserializer and deterministic normal/escaped-alias fixtures; proved by source code only, Rust tests and PR-head CI still pending.
 - 2026-11-05: inspected baseline `SavedState`, `read_state`, rotation controller fake-backend tests; observed master success 42052968364. New branch is not yet tested.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement duplicate-key validation and offline fixtures, then create linked PR for current-head CI.
+Create linked PR and inspect first failed final-head CI check; do not merge pending/failed revision.
 
 ## Completion
 Final commit: pending
