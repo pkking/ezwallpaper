@@ -155,6 +155,8 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
 fn checked_image_url(raw: &str, allowed_hosts: &[&str]) -> Result<url::Url> {
     let url = url::Url::parse(raw)?;
     if url.scheme() != "https"
+        || url.port_or_known_default() != Some(443)
+        || url.fragment().is_some()
         || !allowed_hosts
             .iter()
             .any(|host| url.host_str() == Some(host))
@@ -446,16 +448,20 @@ mod tests {
         assert_eq!(result, "ok");
         server.join().expect("fixture server ended");
 
-        assert!(checked_image_url(
+        for url in [
             "https://images.pexels.com/photos/1/photo.jpeg",
-            &["images.pexels.com"]
-        )
-        .is_ok());
+            "https://images.pexels.com:443/photos/1/photo.jpeg?auto=compress",
+        ] {
+            assert!(checked_image_url(url, &["images.pexels.com"]).is_ok());
+        }
         for url in [
             "http://images.pexels.com/photo.jpg",
             "file:///etc/passwd",
             "https://evil.example/photo.jpg",
             "https://user:pass@images.pexels.com/photo.jpg",
+            "https://images.pexels.com:8443/photo.jpg",
+            "https://images.pexels.com/photo.jpg#ignored-fragment",
+            "https://images.pexels.com/photo.jpg#",
         ] {
             assert!(checked_image_url(url, &["images.pexels.com"]).is_err());
         }
