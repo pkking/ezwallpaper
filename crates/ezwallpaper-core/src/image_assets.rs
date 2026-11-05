@@ -144,7 +144,7 @@ fn check_output_geometry(width: u32, height: u32) -> Result<()> {
 /// Hash and decode the same immutable, size-bounded byte snapshot. A path
 /// can change while we work; a second path-based hash would mislabel pixels.
 fn decode_limited(path: &Path) -> Result<Decoded> {
-    let mut source = fs::File::open(path).context("cannot open image for decoding")?;
+    let source = fs::File::open(path).context("cannot open image for decoding")?;
     let metadata = source.metadata().context("cannot stat image for decoding")?;
     if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES {
         bail!("image must be a regular file no larger than 64 MiB");
