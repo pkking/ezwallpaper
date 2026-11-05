@@ -78,10 +78,7 @@ impl<'de> Deserialize<'de> for UniqueJsonValue {
                 Ok(UniqueJsonValue(Value::Array(values)))
             }
 
-            fn visit_map<A: MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<Self::Value, A::Error> {
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
                 let mut values = serde_json::Map::new();
                 while let Some((key, value)) = map.next_entry::<String, UniqueJsonValue>()? {
                     if values.contains_key(&key) {
