@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use log::debug;
 use serde::Deserialize;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use url::Url;
 
@@ -131,6 +132,25 @@ impl PexelProvider {
         Ok(url)
     }
 
+    /// Validate every URL selected for this page before any download starts.
+    /// Preserve earlier-page names to stop the same batch overwriting itself.
+    fn preflight_downloads(
+        &self,
+        urls: &[Url],
+        seen: &BTreeSet<String>,
+    ) -> Result<BTreeSet<String>> {
+        let mut names = seen.clone();
+        for url in urls {
+            let name = image_filename(url)?;
+            super::safe_download_path(&self.dir, name)?;
+            // Windows and typical macOS volumes are case-insensitive.
+            if !names.insert(name.to_ascii_lowercase()) {
+                bail!("Pexels response contains colliding download filenames");
+            }
+        }
+        Ok(names)
+    }
+
     fn accepted_urls(&self, body: &str) -> Result<Vec<Url>> {
         let response: Images = serde_json::from_str(body)?;
         response
@@ -155,6 +175,7 @@ impl GetImgUrl for PexelProvider {
         }
         let client = http_client()?;
         let mut wallpapers = Vec::with_capacity(nums as usize);
+        let mut seen = BTreeSet::new();
         // Bounded pagination: at most three pages, fail closed on empty/exhausted pages.
         for page in self.page..=(self.page + 2).min(20) {
             if wallpapers.len() >= nums as usize {
@@ -169,7 +190,12 @@ impl GetImgUrl for PexelProvider {
             if urls.is_empty() && parsed.next_page.is_none() {
                 break;
             }
-            for url in urls.into_iter().take(nums as usize - wallpapers.len()) {
+            let chosen: Vec<_> = urls
+                .into_iter()
+                .take(nums as usize - wallpapers.len())
+                .collect();
+            let validated_names = self.preflight_downloads(&chosen, &seen)?;
+            for url in chosen {
                 let path = download_image(&client, &url, &self.dir, self.max_download_bytes)?;
                 wallpapers.push(
                     WallPaper::new()
@@ -177,6 +203,7 @@ impl GetImgUrl for PexelProvider {
                         .with_path(path),
                 );
             }
+            seen = validated_names;
             if parsed.next_page.is_none() {
                 break;
             }
@@ -185,16 +212,20 @@ impl GetImgUrl for PexelProvider {
     }
 }
 
+fn image_filename(url: &Url) -> Result<&str> {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|name| !name.is_empty())
+        .ok_or_else(|| anyhow!("Pexels image URL has no path filename"))
+}
+
 fn download_image(
     client: &reqwest::blocking::Client,
     url: &Url,
     dir: &str,
     max_bytes: u64,
 ) -> Result<String> {
-    let name = url
-        .path_segments()
-        .and_then(|mut segments| segments.next_back())
-        .ok_or_else(|| anyhow!("Pexels image URL has no path filename"))?;
+    let name = image_filename(url)?;
     let path = super::safe_download_path(dir, name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
     super::reject_excess_content_length(response.content_length(), max_bytes)?;
@@ -253,6 +284,47 @@ mod tests {
             0
         );
         assert!(provider.accepted_urls("bad json").is_err());
+    }
+
+    #[test]
+    fn page_preflight_rejects_filename_collisions_before_download() {
+        let temp = tempfile::tempdir().expect("sandbox");
+        let provider = PexelProvider::new().with_dir(temp.path().to_str().expect("path"));
+        let urls = [
+            Url::parse("https://images.pexels.com/photos/1/original.jpeg").expect("URL"),
+            Url::parse("https://images.pexels.com/photos/2/original.jpeg").expect("URL"),
+        ];
+        assert!(provider
+            .preflight_downloads(&urls, &BTreeSet::new())
+            .is_err());
+        assert_eq!(std::fs::read_dir(temp.path()).expect("empty").count(), 0);
+        let different_case = [
+            Url::parse("https://images.pexels.com/photos/1/Photo.JPG").expect("URL"),
+            Url::parse("https://images.pexels.com/photos/2/photo.jpg").expect("URL"),
+        ];
+        assert!(provider
+            .preflight_downloads(&different_case, &BTreeSet::new())
+            .is_err());
+    }
+
+    #[test]
+    fn page_preflight_preserves_previous_names_and_unique_candidates() {
+        let temp = tempfile::tempdir().expect("sandbox");
+        let provider = PexelProvider::new().with_dir(temp.path().to_str().expect("path"));
+        let first = [Url::parse("https://images.pexels.com/photos/1/a.jpeg").expect("URL")];
+        let second = [Url::parse("https://images.pexels.com/photos/2/b.jpeg").expect("URL")];
+        let names = provider
+            .preflight_downloads(&first, &BTreeSet::new())
+            .expect("page one");
+        let names = provider
+            .preflight_downloads(&second, &names)
+            .expect("different filename");
+        assert_eq!(names.len(), 2);
+        assert!(provider.preflight_downloads(&first, &names).is_err());
+        let unsafe_name = [Url::parse("https://images.pexels.com/photos/3/CON.jpg").expect("URL")];
+        assert!(provider
+            .preflight_downloads(&unsafe_name, &BTreeSet::new())
+            .is_err());
     }
 
     #[test]
