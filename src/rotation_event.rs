@@ -61,6 +61,36 @@ fn validate_event_output(output: &str) -> Result<()> {
     Ok(())
 }
 
+/// Only publish events that the v1 read-only consumer can accept. This is
+/// contract validation, not a trusted assertion of compositor pixels.
+fn validate_change(change: &WallpaperChange) -> Result<()> {
+    validate_event_output(&change.output)?;
+    let digest_ok = change
+        .content_id
+        .strip_prefix("sha256:")
+        .is_some_and(|hex| {
+            hex.len() == 64
+                && hex
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        });
+    let image_path_ok = change.image_path.is_absolute()
+        && change.image_path.to_str().is_some_and(|path| {
+            !path.contains('\0') && !path.contains('\n') && !path.contains('\r')
+        });
+    if change.schema_version != 1
+        || change.producer != "ezwallpaper"
+        || change.epoch < 0
+        || !digest_ok
+        || !image_path_ok
+        || !change.applied_path_observed
+        || change.visually_verified
+    {
+        bail!("wallpaper change does not meet acknowledged event v1 contract");
+    }
+    Ok(())
+}
+
 pub fn prepare_directory<'a>(
     directory: &Path,
     outputs: impl IntoIterator<Item = &'a str>,
@@ -96,6 +126,7 @@ fn check_target(path: &Path) -> Result<()> {
 /// Atomic replacement of only one acknowledged output, under the caller's
 /// rotation lock. Files are untrusted user data, never privileged instructions.
 pub fn publish(directory: &Path, change: &WallpaperChange) -> Result<()> {
+    validate_change(change)?;
     // Re-check the boundary at the actual write, not only in the optional
     // caller preflight. A replaced symlink directory must never be followed.
     let canonical = prepare_directory(directory, [&change.output[..]])?;
@@ -123,7 +154,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             1234,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/wallpaper.png"),
         );
         let raw = serde_json::to_value(&change).expect("serialize event");
@@ -139,14 +170,62 @@ mod tests {
     }
 
     #[test]
+    fn invalid_claims_never_replace_a_previous_event() {
+        let temp = tempfile::tempdir().expect("event sandbox");
+        let root = temp.path();
+        let valid = WallpaperChange::acknowledged(
+            "DP-1".to_owned(),
+            42,
+            format!("sha256:{}", "a".repeat(64)),
+            root.join("wallpaper.png"),
+        );
+        publish(root, &valid).expect("baseline");
+        let target = root.join("DP-1.json");
+        let baseline = fs::read(&target).expect("baseline bytes");
+
+        let mut invalid = Vec::new();
+        let mut wrong = valid.clone();
+        wrong.schema_version = 2;
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.producer = "other".to_owned();
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.epoch = -1;
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.content_id = "sha256:abc".to_owned();
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.content_id = format!("sha256:{}", "A".repeat(64));
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.image_path = PathBuf::from("relative.png");
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.image_path = root.join("line\nfeed.png");
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.applied_path_observed = false;
+        invalid.push(wrong);
+        let mut wrong = valid.clone();
+        wrong.visually_verified = true;
+        invalid.push(wrong);
+        for change in invalid {
+            assert!(publish(root, &change).is_err());
+            assert_eq!(fs::read(&target).expect("unchanged event"), baseline);
+        }
+    }
+
+    #[test]
     fn opt_in_publish_is_atomic_and_per_output() {
         let temp = tempfile::tempdir().expect("temp events");
         let root = prepare_directory(temp.path(), ["DP-1", "HDMI-A-1"]).expect("valid root");
         let first = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             10,
-            "sha256:abc".to_owned(),
-            PathBuf::from("/tmp/a.png"),
+            format!("sha256:{}", "a".repeat(64)),
+            temp.path().join("a.png"),
         );
         publish(&root, &first).expect("first output");
         assert!(!root.join("HDMI-A-1.json").exists());
@@ -161,8 +240,8 @@ mod tests {
         let second = WallpaperChange::acknowledged(
             "HDMI-A-1".to_owned(),
             10,
-            "sha256:def".to_owned(),
-            PathBuf::from("/tmp/b.png"),
+            format!("sha256:{}", "b".repeat(64)),
+            temp.path().join("b.png"),
         );
         publish(&root, &second).expect("second output");
         assert!(root.join("DP-1.json").exists());
@@ -176,7 +255,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             10,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/a.png"),
         );
         assert!(publish(&missing, &change).is_err());
@@ -203,7 +282,7 @@ mod tests {
         let change = WallpaperChange::acknowledged(
             "DP-1".to_owned(),
             10,
-            "sha256:test".to_owned(),
+            format!("sha256:{}", "a".repeat(64)),
             PathBuf::from("/tmp/a.png"),
         );
         assert!(publish(&alias, &change).is_err());
@@ -250,7 +329,7 @@ mod tests {
             let change = WallpaperChange::acknowledged(
                 name.to_owned(),
                 1,
-                "sha256:test".to_owned(),
+                format!("sha256:{}", "a".repeat(64)),
                 PathBuf::from("/tmp/image.png"),
             );
             assert!(publish(&root, &change).is_err());
