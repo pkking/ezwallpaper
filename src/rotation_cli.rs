@@ -1,7 +1,9 @@
 //! Opt-in, user-owned persistent rotation orchestration.
 //! Core selection is pure; this CLI boundary owns I/O and apply acknowledgement.
 use anyhow::{anyhow, bail, Context, Result};
-use ezwallpaper_core::{plan_rotation, RotationDecision, RotationState, WallpaperManager};
+use ezwallpaper_core::{
+    plan_rotation, probe_image, RotationDecision, RotationState, WallpaperManager,
+};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
@@ -37,6 +39,9 @@ struct OutputFile {
     recursive: bool,
     #[serde(default)]
     follow_symlinks: bool,
+    /// Optional EXIF-adjusted decoded pixel floor, not a file-name hint.
+    min_width: Option<u32>,
+    min_height: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -45,6 +50,7 @@ struct Output {
     dir: PathBuf,
     recursive: bool,
     follow_symlinks: bool,
+    min_size: Option<(u32, u32)>,
 }
 
 #[derive(Debug)]
@@ -140,6 +146,15 @@ fn load_profile(path: &Path) -> Result<Profile> {
         if output.follow_symlinks && !output.recursive {
             bail!("follow_symlinks requires recursive listing");
         }
+        let min_size = match (output.min_width, output.min_height) {
+            (None, None) => None,
+            (Some(width), Some(height))
+                if (1..=16_384).contains(&width) && (1..=16_384).contains(&height) =>
+            {
+                Some((width, height))
+            }
+            _ => bail!("rotation output min_width and min_height must both be in 1..16384"),
+        };
         let chosen = if output.dir.is_absolute() {
             output.dir
         } else {
@@ -156,6 +171,7 @@ fn load_profile(path: &Path) -> Result<Profile> {
             dir,
             recursive: output.recursive,
             follow_symlinks: output.follow_symlinks,
+            min_size,
         });
     }
     Ok(Profile {
@@ -291,7 +307,19 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
         if asset.size_bytes() > MAX_ASSET_BYTES {
             bail!("local wallpaper exceeds 64 MiB rotation source limit");
         }
-        let id = manager.content_id(&asset)?;
+        let id = if let Some((min_width, min_height)) = output.min_size {
+            // Only explicit pixel constraints opt into bounded full decoding.
+            // A verified display orientation (including EXIF) is necessary:
+            // filename extensions and source HTTP metadata are not sufficient.
+            let verified = probe_image(asset.path())
+                .with_context(|| format!("cannot decode candidate for output {}", output.name))?;
+            if verified.width < min_width || verified.height < min_height {
+                continue;
+            }
+            verified.content_id
+        } else {
+            manager.content_id(&asset)?
+        };
         by_id
             .entry(id)
             .or_insert_with(|| asset.path().to_path_buf());
@@ -722,6 +750,84 @@ mod tests {
         )
         .expect("profile");
         (dir, p, state)
+    }
+
+    #[test]
+    fn per_output_decoded_pixel_floors_select_only_matching_geometry() {
+        // Two real independently decodable PNGs, both same color but different
+        // pixel dimensions. No external codec, renderer or network is used.
+        let (root, profile, state) = fixture();
+        let pool = root.path().join("filtered");
+        fs::create_dir(&pool).expect("pool");
+        let landscape: &[u8] = &[
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0xda, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x44, 0x00, 0x08, 0xfe, 0x01, 0xff, 0x19, 0xc0,
+            0x6b, 0xe7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        let portrait: &[u8] = &[
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x16, 0xe3, 0x21, 0x70, 0x00, 0x00, 0x00, 0x0e, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0xda, 0x63, 0xf8, 0xcf, 0xc0, 0xc0, 0x00, 0xc4, 0x00, 0x09, 0xfe, 0x01, 0xff, 0x9e,
+            0x8a, 0x60, 0x4e, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
+            0x82,
+        ];
+        fs::write(pool.join("landscape.png"), landscape).expect("landscape image");
+        fs::write(pool.join("portrait.png"), portrait).expect("portrait image");
+        fs::write(
+            &profile,
+            r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"filtered","min_width":2,"min_height":1},{"name":"HDMI-A-1","dir":"filtered","min_width":1,"min_height":2}]}"#,
+        )
+        .expect("opt-in geometry profile");
+
+        let parsed = load_profile(&profile).expect("bounded profile");
+        let left = selected_candidates(&parsed.outputs[0]).expect("landscape choices");
+        let right = selected_candidates(&parsed.outputs[1]).expect("portrait choices");
+        assert_eq!(left.len(), 1);
+        assert_eq!(right.len(), 1);
+        assert_eq!(
+            left.values().next().expect("landscape").file_name(),
+            Some(std::ffi::OsStr::new("landscape.png"))
+        );
+        assert_eq!(
+            right.values().next().expect("portrait").file_name(),
+            Some(std::ffi::OsStr::new("portrait.png"))
+        );
+        assert_ne!(left.keys().next(), right.keys().next());
+        assert!(!state.exists(), "catalog filtering must not persist state");
+
+        fs::write(pool.join("broken.jpg"), b"not an image").expect("corrupt candidate");
+        assert!(selected_candidates(&parsed.outputs[0]).is_err());
+        assert!(!state.exists());
+    }
+
+    #[test]
+    fn malformed_partial_or_oversized_geometry_profile_fails_before_apply() {
+        let (_dir, profile, state) = fixture();
+        let base: serde_json::Value =
+            serde_json::from_slice(&fs::read(&profile).expect("profile")).expect("JSON");
+        for (width, height) in [
+            (Some(0), Some(1)),
+            (Some(16_385), Some(1)),
+            (Some(1), None),
+            (None, Some(1)),
+        ] {
+            let mut invalid = base.clone();
+            let output = invalid["outputs"][0]
+                .as_object_mut()
+                .expect("output object");
+            if let Some(value) = width {
+                output.insert("min_width".to_owned(), serde_json::json!(value));
+            }
+            if let Some(value) = height {
+                output.insert("min_height".to_owned(), serde_json::json!(value));
+            }
+            fs::write(&profile, serde_json::to_vec(&invalid).expect("JSON")).expect("profile");
+            assert!(load_profile(&profile).is_err());
+        }
+        assert!(!state.exists());
     }
 
     #[test]

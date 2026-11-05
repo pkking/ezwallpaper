@@ -25,6 +25,10 @@ The legacy `rotate next --profile FILE` command and existing hourly state JSON v
 
 A failed Noctalia apply does not commit per-output rotation state. With an unchanged candidate set, a same-bucket retry produces the same deterministic proposal; previously acknowledged other outputs remain committed. Changing the source pool between failed attempts can change an uncommitted proposal, and retaining a durable pending reservation requires a separate future state design. `--force` deliberately bypasses idempotency and must never be used for service failure retries. The change does not install a timer, initiate a download or change the Noctalia single-authority policy. The downstream dotfiles#84 may explicitly choose 30-minute scheduling, but upstream's default stays 60 minutes.
 
+## Additive, opt-in decoded candidate geometry (2026-11-05, Issue #54)
+
+The existing user-authored schema v1 profile accepts an optional `min_width` and `min_height` pair on each output (both in 1..16384). When absent, no image decoding occurs and the existing content-ID catalog behavior is preserved. When present, the CLI uses the already-approved bounded Core `probe_image` to validate image bytes and EXIF-oriented dimensions, excluding undersized candidates before planning. Invalid decoding fails the pool preflight before any wallpaper IPC. This can be expensive for large opt-in pools; projects should curate/derive images ahead of recurring rotation. The stored rotation state schema and default CLI are unchanged. A floor is a source-resolution constraint, not desktop pixel verification.
+
 ## Consequences and limitations
 
 Adds small, maintained Rust dependencies `fs2` (portable advisory file locking) and `tempfile`/`serde` to the CLI crate; headless Core remains independent of desktop and storage effects. State stores only hashes and routing metadata, not credentials. Advisory locks coordinate cooperating ezwallpaper processes, not hostile writers. Filesystem symlink and parent-directory races, external state deletion, state-persist errors after an IPC success and unclean power loss can still lead to an idempotent retry. The interface is not a privileged path sandbox. Real Noctalia screens, hotplug, media decoding and pixels are unassessed until Issue #59.
@@ -49,4 +53,4 @@ Adds small, maintained Rust dependencies `fs2` (portable advisory file locking) 
 
 Changed: adds an opt-in CLI rotation profile and locked/atomic state adapter around pure Core plans; Noctalia IPC remains the only applied multi-output backend. Update docs/architecture.svg and docs/architecture.md together with this ADR.
 
-Diagram impact: none - the optional minute bucket is computed within the existing CLI rotation and locked state boundary; it introduces no new Core/CLI, external application, storage edge or compositor integration in the already-rendered diagram.
+Diagram impact: none - optional period buckets and decoded source-size checks reuse the existing Core image probe and CLI rotation boundary; no new component, external dependency, data flow or compositor integration.
