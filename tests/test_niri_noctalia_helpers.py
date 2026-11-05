@@ -191,6 +191,28 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(E2EFailure):
                 niri_topology_from_json(bad)
 
+    def test_duplicate_niri_json_fields_never_count_as_native_evidence(self):
+        original = outputs().decode()
+        right = json.loads(original)["HEADLESS-2"]
+        duplicate_connector = original[:-1] + ', "HEADLESS-2": ' + json.dumps(right) + '}'
+        # JSON parser must treat an escaped key as the SAME connector.
+        escaped = original[:-1] + ', "\\u0048EADLESS-2": ' + json.dumps(right) + '}'
+        nested = original.replace(
+            '"current_mode": 0', '"current_mode": 0, "current_mode": 0', 1
+        )
+        deep = scaled_outputs().decode().replace(
+            '"scale": 1.25', '"scale": 1.25, "scale": 1.0', 1
+        )
+        for payload in (duplicate_connector, escaped, nested, deep):
+            with self.subTest(payload=payload[:90]):
+                with self.assertRaisesRegex(E2EFailure, "duplicate niri JSON key"):
+                    niri_topology_from_json(payload.encode())
+        with self.assertRaisesRegex(E2EFailure, "duplicate niri JSON key"):
+            fractional_scale_from_json(
+                deep.encode(), {"HEADLESS-1": 1.25, "HEADLESS-2": 1.0}
+            )
+        self.assertEqual(niri_topology_from_json(outputs()), GEOMETRY)
+
     def test_fail_closed_on_ambiguous_current_mode(self):
         data = json.loads(outputs())
         for value in (None, -1, 100, "0", True):
