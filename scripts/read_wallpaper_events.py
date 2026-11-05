@@ -72,7 +72,7 @@ def read_event(directory_fd: int, output: str, epoch: int) -> dict:
             or not CONTENT_ID.fullmatch(event["content_id"])
             or not isinstance(event["image_path"], str)
             or not Path(event["image_path"]).is_absolute()
-            or "\x00" in event["image_path"]
+            or any(control in event["image_path"] for control in ("\x00", "\n", "\r"))
             or event["applied_path_observed"] is not True
             or event["visually_verified"] is not False):
         raise SnapshotError("event_not_acknowledged_for_epoch")
