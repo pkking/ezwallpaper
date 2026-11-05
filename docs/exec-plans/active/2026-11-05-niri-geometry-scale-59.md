@@ -1,7 +1,7 @@
 # Validate active niri logical scale and pixel geometry before Noctalia rotation
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ No new IPC endpoint, no compositor mutation, no physical niri or GPU success cla
 - [ ] All required GitHub CI jobs pass on final PR HEAD, including native integration when selected.
 
 ## Implementation slices
-- [ ] Implement one bounded behavior inside existing abstraction.
-- [ ] Add deterministic offline positive/negative and regression tests.
+- [x] Implement one bounded behavior inside existing abstraction.
+- [x] Add deterministic offline positive/negative and regression tests.
 - [ ] Fix CI and verify final-head platform + applicable native E2E.
 
 ## Verification matrix
@@ -47,6 +47,7 @@ No new IPC endpoint, no compositor mutation, no physical niri or GPU success cla
 None. Routine additive opt-in safety checks within existing supported code boundaries; no default changes.
 
 ## Evidence log
+- 2026-11-05: niri inventory validator now checks reported logical scale for finite positive <=16 and reconciles physical/logical pixel dimensions with 1px tolerance. Tests cover native 3840x2160/1.5 and portrait, contradictions and malformed scales; legacy missing scale accepted. CI pending.
 - 2026-11-05: reviewed master 432ea59218a38387052c04296331ad0e23cbd1c7, linked Issue #59, created plan before implementation.
 
 ## Deviations and discoveries
