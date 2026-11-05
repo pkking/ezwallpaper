@@ -184,7 +184,9 @@ fn apply_noctalia_with(
             pause(Duration::from_millis(150));
         }
     }
-    bail!("Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)")
+    bail!(
+        "Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)"
+    )
 }
 
 #[cfg(test)]
@@ -320,7 +322,12 @@ mod tests {
         .expect("eventually confirmed exact path");
         assert_eq!(
             calls[0],
-            vec!["msg", "wallpaper-set", "DP-1", "/tmp/landscape with space.png"]
+            vec![
+                "msg",
+                "wallpaper-set",
+                "DP-1",
+                "/tmp/landscape with space.png"
+            ]
         );
         assert!(calls[1..].iter().all(|argv| {
             argv.len() == 3 && argv[0] == "msg" && argv[1] == "wallpaper-get" && argv[2] == "DP-1"
@@ -347,11 +354,14 @@ mod tests {
             },
             |_| waits += 1,
         );
-        assert!(stale.is_err(), "persistently wrong path is not acknowledged");
+        assert!(
+            stale.is_err(),
+            "persistently wrong path is not acknowledged"
+        );
         assert_eq!(calls[0], vec!["msg", "wallpaper-set", "/tmp/new.png"]);
-        assert!(calls[1..].iter().all(|argv| {
-            argv.len() == 2 && argv[0] == "msg" && argv[1] == "wallpaper-get"
-        }));
+        assert!(calls[1..]
+            .iter()
+            .all(|argv| { argv.len() == 2 && argv[0] == "msg" && argv[1] == "wallpaper-get" }));
         assert_eq!(calls.len(), 5, "no second mutating request");
         assert_eq!(waits, 3);
 
