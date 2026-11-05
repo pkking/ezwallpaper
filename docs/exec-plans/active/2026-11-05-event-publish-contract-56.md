@@ -1,7 +1,7 @@
 # Validate acknowledged wallpaper events before publication
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,7 +31,7 @@ No privileged trust claim; publication is still an unprivileged claim only. Pres
 - [ ] Required CI passes for the final PR head SHA.
 
 ## Implementation slices
-- [ ] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
+- [x] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
 - [ ] Check CI equivalence across Rust, Windows, macOS, Sway and scoped Noctalia.
 
 ## Verification matrix
@@ -46,10 +46,11 @@ No privileged trust claim; publication is still an unprivileged claim only. Pres
 None. Work remains within accepted ADR, and changes no user-facing command defaults, persistent format or permissions.
 
 ## Evidence log
+- 2026-11-05: publish validates v1 producer, nonnegative epoch, lowercase SHA-256, absolute UTF-8 path and acknowledgement/pixel flags before staging. Reject-and-preserve regression added; PR CI unverified.
 - 2026-11-05: inspected source at master 2294d90f5884fd4cdcb3dfe251ffe465a67a7822; created issue-linked plan before code. Actual tests pending.
 
 ## Deviations and discoveries
-None.
+No new components, CLI defaults, persistent versions or privileges; accepted architecture unchanged.
 
 ## Resume from here
 Fetch the linked PR's exact head SHA and full current CI run; correct the first failed job and rerun until all required checks are green.
