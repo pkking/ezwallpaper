@@ -99,12 +99,26 @@ fn http_client() -> Result<Client> {
         .build()?)
 }
 
+/// A rate-limit hint must never make the synchronous CLI sleep for minutes.
+/// Large delta-seconds are surfaced to the caller instead of being ignored.
+fn bounded_retry_after(raw: Option<&str>, attempt: u32) -> Result<Duration> {
+    let fallback = Duration::from_millis(100 * (1u64 << attempt));
+    match raw.and_then(|value| value.trim().parse::<u64>().ok()) {
+        Some(seconds) if seconds > 5 => {
+            bail!("provider rate limit requires waiting longer than 5 seconds");
+        }
+        Some(seconds) => Ok(Duration::from_secs(seconds)),
+        None => Ok(fallback),
+    }
+}
+
 /// Retry only bounded transient failures. Keep authorization headers out of logs.
 fn request_with_retry(request: RequestBuilder) -> Result<Response> {
     for attempt in 0..3 {
         let call = request
             .try_clone()
             .ok_or_else(|| anyhow::anyhow!("provider request cannot be retried"))?;
+        let mut delay = Duration::from_millis(100 * (1u64 << attempt));
         match call.send() {
             Ok(response) if response.status().is_redirection() => {
                 bail!("provider request returned a redirect, refusing to follow");
@@ -116,6 +130,13 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
                 if attempt == 2 {
                     return Ok(response.error_for_status()?);
                 }
+                if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                    let hint = response
+                        .headers()
+                        .get(reqwest::header::RETRY_AFTER)
+                        .and_then(|value| value.to_str().ok());
+                    delay = bounded_retry_after(hint, attempt)?;
+                }
             }
             Ok(response) => return Ok(response.error_for_status()?),
             Err(err) if err.is_connect() || err.is_timeout() => {
@@ -125,7 +146,7 @@ fn request_with_retry(request: RequestBuilder) -> Result<Response> {
             }
             Err(err) => return Err(err.into()),
         }
-        thread::sleep(Duration::from_millis(100 * (1 << attempt)));
+        thread::sleep(delay);
     }
     unreachable!("bounded retry loop always returns")
 }
@@ -341,6 +362,55 @@ mod tests {
             }
         }
         assert!(read_bounded_metadata(FailedRead, None).is_err());
+    }
+
+    #[test]
+    fn retry_after_backoff_is_bounded_and_preserves_fallback() {
+        assert_eq!(
+            bounded_retry_after(None, 0).expect("fallback"),
+            Duration::from_millis(100)
+        );
+        assert_eq!(
+            bounded_retry_after(Some("not-a-number"), 1).expect("fallback"),
+            Duration::from_millis(200)
+        );
+        assert_eq!(
+            bounded_retry_after(Some("2"), 0).expect("bounded hint"),
+            Duration::from_secs(2)
+        );
+        assert_eq!(
+            bounded_retry_after(Some("5"), 1).expect("max bounded hint"),
+            Duration::from_secs(5)
+        );
+        assert!(bounded_retry_after(Some("6"), 0).is_err());
+        assert!(bounded_retry_after(Some("3600"), 0).is_err());
+    }
+
+    #[test]
+    fn rate_limit_with_large_retry_after_aborts_without_retrials() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("fixture server");
+        let address = listener.local_addr().expect("address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("request");
+            let mut request = [0u8; 1024];
+            assert!(stream.read(&mut request).expect("request body") > 0);
+            stream
+                .write_all(
+                    b"HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .expect("rate-limit fixture");
+        });
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("client");
+        let err = request_with_retry(client.get(format!("http://{address}/limited")))
+            .expect_err("do not wait or retry a two-minute rate limit");
+        assert!(err.to_string().contains("longer than 5 seconds"));
+        server.join().expect("server completed");
     }
 
     #[test]
