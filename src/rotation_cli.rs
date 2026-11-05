@@ -208,7 +208,11 @@ fn read_state(path: &Path, profile: &Profile) -> Result<SavedState> {
     // Validate every saved output up front. Without this check a damaged
     // second output is discovered only after the first desktop apply and
     // state commit, resulting in avoidable partial side effects.
-    let configured: HashSet<_> = profile.outputs.iter().map(|output| output.name.as_str()).collect();
+    let configured: HashSet<_> = profile
+        .outputs
+        .iter()
+        .map(|output| output.name.as_str())
+        .collect();
     for (name, state) in &saved.outputs {
         if !configured.contains(name.as_str()) {
             bail!("rotation state contains an unknown output: {}", name);
@@ -1453,7 +1457,9 @@ mod tests {
         fs::create_dir_all(state.parent().expect("state folder")).expect("mkdir");
         let current = load_profile(&profile).expect("profile");
         let mut saved = SavedState::empty(&current);
-        saved.outputs.insert("DP-1".to_owned(), RotationState::default());
+        saved
+            .outputs
+            .insert("DP-1".to_owned(), RotationState::default());
         saved.outputs.insert(
             "HDMI-A-1".to_owned(),
             RotationState {
@@ -1472,15 +1478,13 @@ mod tests {
         // A successful first-output-only apply may legitimately leave the
         // second output absent, and must remain resumable after restart.
         saved.outputs.remove("HDMI-A-1");
-        fs::write(&state, serde_json::to_vec(&saved).expect("serialize"))
-            .expect("partial state");
+        fs::write(&state, serde_json::to_vec(&saved).expect("serialize")).expect("partial state");
         assert!(read_state(&state, &current).is_ok());
 
         saved
             .outputs
             .insert("UNCONFIGURED".to_owned(), RotationState::default());
-        fs::write(&state, serde_json::to_vec(&saved).expect("serialize"))
-            .expect("unknown output");
+        fs::write(&state, serde_json::to_vec(&saved).expect("serialize")).expect("unknown output");
         assert!(read_state(&state, &current).is_err());
     }
 
