@@ -5,6 +5,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
 use std::fmt;
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -93,7 +94,12 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
             .get("modes")
             .and_then(Value::as_array)
             .ok_or_else(|| anyhow!("niri output modes are missing: {requested_name}"))?;
-        let active_mode = modes.get(current_mode as usize).and_then(Value::as_object);
+        // JSON numbers are u64; a narrowing cast can wrap to a valid mode
+        // index on 32-bit platforms (e.g. 2^32 becomes mode 0).
+        let active_mode = usize::try_from(current_mode)
+            .ok()
+            .and_then(|index| modes.get(index))
+            .and_then(Value::as_object);
         let logical = output.get("logical").and_then(Value::as_object);
         let positive = |value: Option<&Value>| value.and_then(Value::as_u64).is_some_and(|n| n > 0);
         if active_mode
@@ -221,6 +227,28 @@ mod tests {
             assert!(validate_outputs(raw.as_bytes(), &requested).is_err());
         }
         validate_outputs(&fixture(), &requested).expect("positive active geometry");
+    }
+
+    #[test]
+    fn mode_index_never_truncates_to_a_valid_display_mode() {
+        let requested = ["DP-1".to_owned()];
+        let valid_second = br#"{
+            "DP-1":{"name":"DP-1",
+                "modes":[{"width":3840,"height":2160},{"width":1920,"height":1080}],
+                "current_mode":1,"logical":{"width":1920,"height":1080}
+            }
+        }"#;
+        validate_outputs(valid_second, &requested).expect("valid second mode");
+        for index in ["-1", "null", "2", "4294967296", "18446744073709551615"] {
+            let payload = format!(
+                r#"{{"DP-1":{{"name":"DP-1","modes":[{{"width":3840,"height":2160}}],"current_mode":{index},"logical":{{"width":2560,"height":1440}}}}}}"#
+            );
+            assert!(
+                validate_outputs(payload.as_bytes(), &requested).is_err(),
+                "index {} must not select mode zero",
+                index
+            );
+        }
     }
 
     #[test]
