@@ -1,7 +1,7 @@
 # Respect niri output transform during geometry preflight
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -28,14 +28,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; src/niri_
 - Existing rotation backend remains Noctalia, no swaybg fallback; graphics and physical monitors remain UNASSESSED.
 
 ## Acceptance criteria
-- [ ] 90, 270, Flipped90, Flipped270 treat physical axes as swapped; normal/180/flipped/flipped180 remain same-axis.
-- [ ] Contradictory geometry and unknown/invalid explicit transforms fail closed; old missing-transform fixture remains compatible.
-- [ ] Deterministic Rust fixtures cover positive and negative cases without accessing compositor.
+- [x] 90, 270, Flipped90, Flipped270 treat physical axes as swapped; normal/180/flipped/flipped180 remain same-axis.
+- [x] Contradictory geometry and unknown/invalid explicit transforms fail closed; old missing-transform fixture remains compatible.
+- [x] Deterministic Rust fixtures cover positive and negative cases without accessing compositor.
 - [ ] All required exact-head PR CI gates pass; archive only with evidence.
 
 ## Implementation slices
-- [ ] 1. Add strict optional niri transform parser and geometry mapping inside preflight.
-- [ ] 2. Add rotation/transposition contract tests using fixed v26.04 enum names.
+- [x] 1. Add strict optional niri transform parser and geometry mapping inside preflight.
+- [x] 2. Add rotation/transposition contract tests using fixed v26.04 enum names.
 - [ ] 3. Verify exact-head CI, review and merge when complete.
 
 ## Verification matrix
@@ -50,13 +50,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; src/niri_
 None: opt-in input validation fix within already approved niri/Noctalia integration; no API or deployment decision.
 
 ## Evidence log
+- 2026-11-05: implemented branch `agent/issue-59-niri-rotated-geometry-20261105` with strict eight-variant transform handling, axis swaps for quarter turns, fail-closed unknown variants, and offline fixtures. CI pending; no local Rust tests executed.
 - 2026-11-05: inspected baseline source and v26.04 `niri-ipc` Transform enum; confirmed master workflow 42052968364 successful at base SHA. New PR untested.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement source and deterministic fixtures, create PR, then inspect latest-head CI before any merge.
+Open linked PR, inspect latest-head CI, fix any failures, and merge only after verifying every required check.
 
 ## Completion
 Final commit: pending
