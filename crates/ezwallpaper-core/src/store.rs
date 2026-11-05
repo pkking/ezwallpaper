@@ -599,16 +599,27 @@ mod tests {
 
         let file_limit = validate_cache_index_with_limits(&cache, 10, 1)
             .expect_err("more than one bucket exceeds test budget");
-        assert!(file_limit.to_string().contains("index-file traversal limit"));
+        assert!(file_limit
+            .to_string()
+            .contains("index-file traversal limit"));
         let dir_limit = validate_cache_index_with_limits(&cache, 2, 10)
             .expect_err("native sharded index exceeds two directories");
         assert!(dir_limit.to_string().contains("directory traversal limit"));
 
         assert_eq!(fs::read(&extra).expect("extra intact"), original_bytes);
-        assert_eq!(fs::read(&original).expect("original intact"), original_bytes);
-        assert_eq!(fs::read(&source).expect("source intact"), b"preserve-source");
+        assert_eq!(
+            fs::read(&original).expect("original intact"),
+            original_bytes
+        );
+        assert_eq!(
+            fs::read(&source).expect("source intact"),
+            b"preserve-source"
+        );
         fs::remove_file(extra).expect("clean fixture only");
-        assert_eq!(store.list().expect("native index still valid"), vec![expected]);
+        assert_eq!(
+            store.list().expect("native index still valid"),
+            vec![expected]
+        );
     }
 
     #[test]
