@@ -29,8 +29,6 @@ A failed Noctalia apply does not commit per-output rotation state. With an uncha
 
 The existing user-authored schema v1 profile accepts an optional `min_width` and `min_height` pair on each output (both in 1..16384). When absent, no image decoding occurs and the existing content-ID catalog behavior is preserved. When present, the CLI uses the already-approved bounded Core `probe_image` to validate image bytes and EXIF-oriented dimensions, excluding undersized candidates before planning. Invalid decoding fails the pool preflight before any wallpaper IPC. This can be expensive for large opt-in pools; projects should curate/derive images ahead of recurring rotation. The stored rotation state schema and default CLI are unchanged. A floor is a source-resolution constraint, not desktop pixel verification.
 
-Diagram impact: none - this is an optional selection predicate within the existing Core decode/CLI rotation flow, not a new component or external dependency.
-
 ## Consequences and limitations
 
 Adds small, maintained Rust dependencies `fs2` (portable advisory file locking) and `tempfile`/`serde` to the CLI crate; headless Core remains independent of desktop and storage effects. State stores only hashes and routing metadata, not credentials. Advisory locks coordinate cooperating ezwallpaper processes, not hostile writers. Filesystem symlink and parent-directory races, external state deletion, state-persist errors after an IPC success and unclean power loss can still lead to an idempotent retry. The interface is not a privileged path sandbox. Real Noctalia screens, hotplug, media decoding and pixels are unassessed until Issue #59.
@@ -55,4 +53,4 @@ Adds small, maintained Rust dependencies `fs2` (portable advisory file locking) 
 
 Changed: adds an opt-in CLI rotation profile and locked/atomic state adapter around pure Core plans; Noctalia IPC remains the only applied multi-output backend. Update docs/architecture.svg and docs/architecture.md together with this ADR.
 
-Diagram impact: none - the optional minute bucket is computed within the existing CLI rotation and locked state boundary; it introduces no new Core/CLI, external application, storage edge or compositor integration in the already-rendered diagram.
+Diagram impact: none - optional period buckets and decoded source-size checks reuse the existing Core image probe and CLI rotation boundary; no new component, external dependency, data flow or compositor integration.
