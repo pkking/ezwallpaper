@@ -1,7 +1,7 @@
 # Reject duplicate fields in native niri pixel-E2E output inventory
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -32,8 +32,8 @@ CI-only evidence-strengthening for pinned experimental niri; does not extend sup
 - [ ] All required CI checks pass on exact final PR head.
 
 ## Implementation slices
-- [ ] Internal validation/polling/preflight unit implemented.
-- [ ] Deterministic positive/negative/boundary tests added.
+- [x] Internal validation/polling/preflight unit implemented.
+- [x] Deterministic positive/negative/boundary tests added.
 - [ ] CI checks on final revision and review completed.
 
 ## Verification matrix
@@ -48,6 +48,7 @@ CI-only evidence-strengthening for pinned experimental niri; does not extend sup
 None; additive resilience and evidence checks within existing accepted user-visible semantics.
 
 ## Evidence log
+- 2026-11-05: niri native E2E helper uses JSON object_pairs_hook rejecting duplicate keys at every level in both physical/fractional parsers. Offline fixtures cover duplicate connectors including escaped key and nested mode/scale. CI pending.
 - 2026-11-05: inspected baseline baace2d5d817a466b81cf4d8e6da2e63dabc8358; created plan before source edits.
 
 ## Deviations and discoveries
