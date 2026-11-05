@@ -1,7 +1,7 @@
 # Validate every persisted output state before desktop apply
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,8 +31,8 @@ Never reset damaged state automatically; leave on-disk bytes untouched. Backend 
 - [ ] All required CI gates successful on the final PR head.
 
 ## Implementation slices
-- [ ] Add internal validation/guard without new public interface.
-- [ ] Add deterministic offline positive, failure and boundary tests.
+- [x] Add internal validation/guard without new public interface.
+- [x] Add deterministic offline positive, failure and boundary tests.
 - [ ] Validate PR latest-head CI and review failures.
 
 ## Verification matrix
@@ -47,10 +47,11 @@ Never reset damaged state automatically; leave on-disk bytes untouched. Backend 
 None: routine internal behavior within the accepted ADR and no persistent or user-facing default change.
 
 ## Evidence log
+- 2026-11-05: read_state now validates every configured persisted output with the pure planner before caller starts per-output apply; deterministic corrupt-second-output, unknown-output and partial-state fixture added. CI UNASSESSED.
 - 2026-11-05: inspected code at f6fe95249b47eab59ee71a99b73159cb1d5eeb7f; created Issue #54 plan before changing source. CI pending.
 
 ## Deviations and discoveries
-None at creation.
+No new persistent schema, dependency, privilege or architecture dataflow.
 
 ## Resume from here
 Inspect the latest PR head and its CI run; fix the first failing gate, then rerun the final revision without bypassing checks.
