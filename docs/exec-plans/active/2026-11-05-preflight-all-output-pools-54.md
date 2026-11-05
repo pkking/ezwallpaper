@@ -1,7 +1,7 @@
 # Preflight every niri/Noctalia wallpaper pool before first apply
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -32,8 +32,8 @@ No new CLI switch or persistent state schema. Do not promise atomic simultaneous
 - [ ] All required CI checks pass on exact final PR head.
 
 ## Implementation slices
-- [ ] Internal validation/polling/preflight unit implemented.
-- [ ] Deterministic positive/negative/boundary tests added.
+- [x] Internal validation/polling/preflight unit implemented.
+- [x] Deterministic positive/negative/boundary tests added.
 - [ ] CI checks on final revision and review completed.
 
 ## Verification matrix
@@ -48,6 +48,7 @@ No new CLI switch or persistent state schema. Do not promise atomic simultaneous
 None; additive resilience and evidence checks within existing accepted user-visible semantics.
 
 ## Evidence log
+- 2026-11-05: rotation now builds both output catalog snapshots under existing lock before first IPC; selected image is still rehashed immediately before apply. Added Unix fixture where second pool has opted-in symlink escaping its root: zero backend calls, no committed state; CI pending.
 - 2026-11-05: inspected baseline baace2d5d817a466b81cf4d8e6da2e63dabc8358; created plan before source edits.
 
 ## Deviations and discoveries
