@@ -130,7 +130,9 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
                         .and_then(Value::as_u64)
                         .ok_or_else(|| anyhow!("invalid niri logical dimensions"))?;
                     if (physical as f64 / scale - scaled as f64).abs() > 1.0 {
-                        bail!("niri physical and logical output geometry disagree: {requested_name}");
+                        bail!(
+                            "niri physical and logical output geometry disagree: {requested_name}"
+                        );
                     }
                 }
             }
