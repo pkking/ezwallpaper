@@ -234,7 +234,10 @@ class DesktopAdapterContractTests(unittest.TestCase):
                           EZW_TEST_GET_OVERRIDE="/tmp/other-wallpaper.jpg")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("did not confirm the requested path", result.stderr)
-        self.assertEqual([c["command"] for c in self.calls()], ["noctalia"] * 2)
+        self.assertEqual(self.calls(), [
+            {"command": "noctalia", "args": ["msg", "wallpaper-set", path]},
+            *([{"command": "noctalia", "args": ["msg", "wallpaper-get"]}] * 4),
+        ], "retry only readback; never repeat wallpaper-set or invoke swaybg")
 
     def test_noctalia_rejects_invalid_connector_without_side_effects(self) -> None:
         self.install_stubs("noctalia", "swaybg")

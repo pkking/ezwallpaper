@@ -146,6 +146,18 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
 }
 
 pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
+    apply_noctalia_with(path, output, noctalia_ipc, thread::sleep)
+}
+
+/// Native Noctalia can publish its wallpaper path asynchronously. Retry only
+/// the independent readback, never wallpaper-set; a command reply alone does
+/// not establish a change. Injecting the IPC and pause keeps tests offline.
+fn apply_noctalia_with(
+    path: &Path,
+    output: Option<&str>,
+    mut ipc: impl FnMut(&[&str]) -> Result<String>,
+    mut pause: impl FnMut(Duration),
+) -> Result<()> {
     let path_str = path
         .to_str()
         .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
@@ -162,12 +174,19 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
         get_args.push(connector);
     }
     set_args.push(path_str);
-    noctalia_ipc(&set_args)?;
-    let observed = noctalia_ipc(&get_args)?;
-    if observed.trim_end_matches(&['\r', '\n'][..]) != path_str {
-        bail!("Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)");
+    ipc(&set_args)?;
+    for attempt in 0..4 {
+        let observed = ipc(&get_args)?;
+        if observed.trim_end_matches(&['\r', '\n'][..]) == path_str {
+            return Ok(());
+        }
+        if attempt < 3 {
+            pause(Duration::from_millis(150));
+        }
     }
-    Ok(())
+    bail!(
+        "Noctalia IPC wallpaper-get did not confirm the requested path (pixels remain unverified)"
+    )
 }
 
 #[cfg(test)]
@@ -274,6 +293,93 @@ mod tests {
                 reason
             );
         }
+    }
+
+    #[test]
+    fn noctalia_async_readback_retries_only_get_until_path_is_observed() {
+        let path = Path::new("/tmp/landscape with space.png");
+        let mut calls = Vec::new();
+        let mut waits = Vec::new();
+        let mut reads = vec![
+            "/tmp/old.png\n",
+            "/tmp/old.png\n",
+            "/tmp/landscape with space.png\n",
+        ]
+        .into_iter();
+        apply_noctalia_with(
+            path,
+            Some("DP-1"),
+            |argv| {
+                calls.push(argv.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+                if argv[1] == "wallpaper-set" {
+                    Ok("accepted".to_owned())
+                } else {
+                    Ok(reads.next().expect("three deterministic reads").to_owned())
+                }
+            },
+            |duration| waits.push(duration),
+        )
+        .expect("eventually confirmed exact path");
+        assert_eq!(
+            calls[0],
+            vec![
+                "msg",
+                "wallpaper-set",
+                "DP-1",
+                "/tmp/landscape with space.png"
+            ]
+        );
+        assert!(calls[1..].iter().all(|argv| {
+            argv.len() == 3 && argv[0] == "msg" && argv[1] == "wallpaper-get" && argv[2] == "DP-1"
+        }));
+        assert_eq!(calls.len(), 4, "one set plus three readbacks");
+        assert_eq!(waits, vec![Duration::from_millis(150); 2]);
+    }
+
+    #[test]
+    fn noctalia_stale_or_failed_ipc_never_claims_observation() {
+        let path = Path::new("/tmp/new.png");
+        let mut calls = Vec::new();
+        let mut waits = 0;
+        let stale = apply_noctalia_with(
+            path,
+            None,
+            |argv| {
+                calls.push(argv.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+                Ok(if argv[1] == "wallpaper-set" {
+                    "submitted".to_owned()
+                } else {
+                    "/tmp/old.png\n".to_owned()
+                })
+            },
+            |_| waits += 1,
+        );
+        assert!(
+            stale.is_err(),
+            "persistently wrong path is not acknowledged"
+        );
+        assert_eq!(calls[0], vec!["msg", "wallpaper-set", "/tmp/new.png"]);
+        assert!(calls[1..]
+            .iter()
+            .all(|argv| { argv.len() == 2 && argv[0] == "msg" && argv[1] == "wallpaper-get" }));
+        assert_eq!(calls.len(), 5, "no second mutating request");
+        assert_eq!(waits, 3);
+
+        let mut calls_after_failure = 0;
+        let failed = apply_noctalia_with(
+            path,
+            Some("HDMI-A-1"),
+            |argv| {
+                calls_after_failure += 1;
+                if argv[1] == "wallpaper-get" {
+                    bail!("native Noctalia IPC unavailable");
+                }
+                Ok("submitted".to_owned())
+            },
+            |_| panic!("IPC failure must not sleep or falsely succeed"),
+        );
+        assert!(failed.is_err());
+        assert_eq!(calls_after_failure, 2);
     }
 
     #[test]
