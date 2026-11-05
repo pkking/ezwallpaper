@@ -36,6 +36,23 @@ def require_pinned_source(value: str) -> str:
     return value.strip()
 
 
+def parse_niri_inventory(data: bytes) -> dict:
+    """Reject duplicate connector names and nested descriptor fields.
+
+    Python's default JSON decoder keeps the last value, allowing ambiguous
+    native output snapshots to masquerade as a verified compositor topology.
+    """
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate niri JSON key: {key}")
+            result[key] = value
+        return result
+
+    return json.loads(data, object_pairs_hook=unique_object)
+
+
 def niri_topology_from_json(
     data: bytes, expected: dict[str, tuple[int, int]] | None = None,
 ) -> dict[str, tuple[int, int]]:
@@ -43,7 +60,7 @@ def niri_topology_from_json(
     if expected is None:
         expected = GEOMETRY
     try:
-        outputs = json.loads(data)
+        outputs = parse_niri_inventory(data)
         if not isinstance(outputs, dict) or set(outputs) != set(expected):
             raise ValueError(f"expected precisely {sorted(expected)}, got {sorted(outputs) if isinstance(outputs, dict) else type(outputs).__name__}")
         topology = {}
@@ -221,7 +238,7 @@ def fractional_scale_from_json(data: bytes, expected: dict[str, float]) -> dict:
     """
     physical = niri_topology_from_json(data, GEOMETRY)
     try:
-        outputs = json.loads(data)
+        outputs = parse_niri_inventory(data)
         if set(expected) != set(GEOMETRY):
             raise ValueError("expected exactly two explicitly named scales")
         topology = {}
