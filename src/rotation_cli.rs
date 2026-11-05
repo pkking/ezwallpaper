@@ -5,8 +5,10 @@ use ezwallpaper_core::{
     plan_rotation, probe_image, RotationDecision, RotationState, WallpaperManager,
 };
 use fs2::FileExt;
-use serde::{Deserialize, Serialize};
+use serde::de::{MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeMap, HashSet};
+use std::fmt;
 use std::convert::TryFrom;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -64,7 +66,43 @@ struct Profile {
 struct SavedState {
     schema_version: u32,
     profile: String,
+    #[serde(deserialize_with = "deserialize_unique_output_states")]
     outputs: BTreeMap<String, RotationState>,
+}
+
+/// A persisted state is authoritative for replay protection. JSON's usual
+/// last-wins map handling must not silently discard a duplicate connector.
+fn deserialize_unique_output_states<'de, D>(
+    deserializer: D,
+) -> std::result::Result<BTreeMap<String, RotationState>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct UniqueOutputStates;
+
+    impl<'de> Visitor<'de> for UniqueOutputStates {
+        type Value = BTreeMap<String, RotationState>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("rotation states indexed by unique output names")
+        }
+
+        fn visit_map<M: MapAccess<'de>>(
+            self,
+            mut map: M,
+        ) -> std::result::Result<Self::Value, M::Error> {
+            let mut states = BTreeMap::new();
+            while let Some((name, state)) = map.next_entry::<String, RotationState>()? {
+                if states.insert(name.clone(), state).is_some() {
+                    return Err(serde::de::Error::custom(format!(
+                        "duplicate persisted rotation output: {name}"
+                    )));
+                }
+            }
+            Ok(states)
+        }
+    }
+    deserializer.deserialize_map(UniqueOutputStates)
 }
 
 impl SavedState {
@@ -1652,6 +1690,37 @@ mod tests {
             .is_err()
         );
         assert!(!state.exists());
+    }
+
+    #[test]
+    fn duplicate_persisted_output_names_fail_before_any_apply() {
+        let (_dir, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state directory")).expect("mkdir");
+        let current = load_profile(&profile).expect("profile");
+        let identity = serde_json::to_string(&current.identity).expect("identity JSON");
+        let entry = serde_json::to_string(&RotationState::default()).expect("empty state JSON");
+
+        // An escaped alias must compare after JSON decoding, not as raw bytes.
+        for alias in ["DP-1", r"\u0044P-1"] {
+            let invalid = format!(
+                r#"{{"schema_version":1,"profile":{identity},"outputs":{{"DP-1":{entry},"{alias}":{entry}}}}}"#
+            );
+            fs::write(&state, invalid.as_bytes()).expect("duplicate state fixture");
+            let result = run_with_adapter(&profile, &state, None, false, true, |_, _| {
+                panic!("duplicate output states must be rejected before IPC")
+            });
+            assert!(result.is_err());
+            assert_eq!(
+                fs::read(&state).expect("invalid state remains untouched"),
+                invalid.as_bytes()
+            );
+        }
+
+        let valid = format!(
+            r#"{{"schema_version":1,"profile":{identity},"outputs":{{"DP-1":{entry},"HDMI-A-1":{entry}}}}}"#
+        );
+        fs::write(&state, valid).expect("unique state fixture");
+        read_state(&state, &current).expect("distinct output identities remain compatible");
     }
 
     #[test]
