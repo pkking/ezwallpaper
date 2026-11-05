@@ -312,7 +312,7 @@ mod tests {
             r#"{"name":"DP-1","current_mode":0,"current_mode":1,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440}}"#,
             r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"width":1,"height":2160}],"logical":{"width":2560,"height":1440}}"#,
             r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440,"scale":1.5,"scale":1.0}}"#,
-            r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440,"scale":1.5,"sc\\u0061le":1.0}}"#,
+            r#"{"name":"DP-1","current_mode":0,"modes":[{"width":3840,"height":2160}],"logical":{"width":2560,"height":1440,"scale":1.5,"sc\u0061le":1.0}}"#,
         ];
         for descriptor in descriptors {
             let inventory = format!(r#"{{"DP-1":{descriptor}}}"#);
