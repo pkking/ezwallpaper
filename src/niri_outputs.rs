@@ -245,7 +245,7 @@ mod tests {
             );
             assert!(
                 validate_outputs(payload.as_bytes(), &requested).is_err(),
-                "index {index} must not select mode zero"
+                "index {} must not select mode zero", index
             );
         }
     }
