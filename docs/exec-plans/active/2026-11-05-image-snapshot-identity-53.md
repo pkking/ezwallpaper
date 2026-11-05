@@ -1,7 +1,7 @@
 # Snapshot image bytes for probe and derive identity
 
 Issue: #53
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-05
 Last checkpoint: 2026-11-05
@@ -31,7 +31,7 @@ Read at most 64 MiB + 1 from one opened regular-file handle and reject actual ov
 - [ ] Required CI passes for the final PR head SHA.
 
 ## Implementation slices
-- [ ] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
+- [x] Implement a separately reviewable internal input-contract slice and deterministic fixtures.
 - [ ] Check CI equivalence across Rust, Windows, macOS, Sway and scoped Noctalia.
 
 ## Verification matrix
@@ -46,10 +46,11 @@ Read at most 64 MiB + 1 from one opened regular-file handle and reject actual ov
 None. Work remains within accepted ADR, and changes no user-facing command defaults, persistent format or permissions.
 
 ## Evidence log
+- 2026-11-05: decode_limited now uses one 64 MiB-bounded byte snapshot for codec, SHA-256 and observed size. Offline source-replacement fixture added; no local Rust toolchain, PR CI unverified.
 - 2026-11-05: inspected source at master 2294d90f5884fd4cdcb3dfe251ffe465a67a7822; created issue-linked plan before code. Actual tests pending.
 
 ## Deviations and discoveries
-None.
+No new components, CLI defaults, persistent versions or privileges; accepted architecture unchanged.
 
 ## Resume from here
 Fetch the linked PR's exact head SHA and full current CI run; correct the first failed job and rerun until all required checks are green.
