@@ -193,18 +193,40 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
             bail!("niri output is disabled or has invalid geometry: {requested_name}");
         }
 
-        // If the compositor publishes a scale, independently reconcile its
-        // physical mode against logical pixels. A syntactically active mode
-        // with inconsistent geometry must not pass the optional niri guard.
+        // niri v26.04 serializes the IPC Transform enum as e.g. "90"
+        // or "Flipped90", not the KDL configuration spelling "flipped-90".
+        // A quarter turn transposes the physical axes before scaling.
         if let (Some(mode), Some(logical)) = (active_mode, logical) {
+            let transposed = match logical.get("transform") {
+                // Older fixture/CLI snapshots omitted transform; preserve
+                // the legacy untransformed interpretation.
+                None => false,
+                Some(Value::String(transform)) => match transform.as_str() {
+                    "Normal" | "180" | "Flipped" | "Flipped180" => false,
+                    "90" | "270" | "Flipped90" | "Flipped270" => true,
+                    _ => bail!("unknown niri output transform: {requested_name}"),
+                },
+                Some(_) => bail!("invalid niri output transform: {requested_name}"),
+            };
+            // Only explicit scale enables the numeric geometry comparison,
+            // retaining the existing compatibility behavior for old reports.
             if let Some(raw_scale) = logical.get("scale") {
                 let scale = raw_scale
                     .as_f64()
                     .filter(|scale| scale.is_finite() && *scale > 0.0 && *scale <= 16.0)
                     .ok_or_else(|| anyhow!("invalid niri output scale: {requested_name}"))?;
                 for dimension in ["width", "height"] {
+                    let physical_axis = if transposed {
+                        if dimension == "width" {
+                            "height"
+                        } else {
+                            "width"
+                        }
+                    } else {
+                        dimension
+                    };
                     let physical = mode
-                        .get(dimension)
+                        .get(physical_axis)
                         .and_then(Value::as_u64)
                         .ok_or_else(|| anyhow!("invalid niri physical dimensions"))?;
                     let scaled = logical
@@ -404,6 +426,70 @@ mod tests {
             &requested,
         )
         .expect("backward-compatible mode-only snapshot");
+    }
+
+    #[test]
+    fn niri_ipc_quarter_turns_transpose_physical_geometry() {
+        let requested = ["DP-1".to_owned()];
+        let baseline: Value = serde_json::from_slice(&fixture()).expect("base topology");
+        for transform in ["90", "270", "Flipped90", "Flipped270"] {
+            let mut rotated = baseline.clone();
+            rotated["DP-1"]["logical"]["transform"] = serde_json::json!(transform);
+            rotated["DP-1"]["logical"]["width"] = serde_json::json!(1440);
+            rotated["DP-1"]["logical"]["height"] = serde_json::json!(2560);
+            validate_outputs(
+                &serde_json::to_vec(&rotated).expect("rotated IPC JSON"),
+                &requested,
+            )
+            .expect("3840x2160 rotated at 1.5x is 1440x2560 logical");
+
+            rotated["DP-1"]["logical"]["width"] = serde_json::json!(2560);
+            assert!(
+                validate_outputs(
+                    &serde_json::to_vec(&rotated).expect("mismatched IPC JSON"),
+                    &requested,
+                )
+                .is_err(),
+                "a quarter turn cannot keep unrotated width: {}",
+                transform
+            );
+        }
+        for transform in ["Normal", "180", "Flipped", "Flipped180"] {
+            let mut unrotated = baseline.clone();
+            unrotated["DP-1"]["logical"]["transform"] = serde_json::json!(transform);
+            validate_outputs(
+                &serde_json::to_vec(&unrotated).expect("unrotated IPC JSON"),
+                &requested,
+            )
+            .expect("half-turn and flips preserve physical axis dimensions");
+        }
+        // A legacy report without transform remains compatible.
+        validate_outputs(&fixture(), &requested).expect("legacy output snapshot");
+    }
+
+    #[test]
+    fn invalid_niri_ipc_transform_fails_closed() {
+        let requested = ["DP-1".to_owned()];
+        let baseline: Value = serde_json::from_slice(&fixture()).expect("base topology");
+        for transform in [
+            serde_json::json!("R90"),
+            serde_json::json!("flipped-90"),
+            serde_json::json!(""),
+            serde_json::json!(null),
+            serde_json::json!(90),
+            serde_json::json!(true),
+        ] {
+            let mut invalid = baseline.clone();
+            invalid["DP-1"]["logical"]["transform"] = transform;
+            assert!(
+                validate_outputs(
+                    &serde_json::to_vec(&invalid).expect("unknown IPC JSON"),
+                    &requested,
+                )
+                .is_err(),
+                "unknown transform must not validate"
+            );
+        }
     }
 
     #[test]
