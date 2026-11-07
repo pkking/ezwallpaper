@@ -439,6 +439,13 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     } else {
         None
     };
+    // Repeat the preflight once the state lock is held. A second rotation job
+    // may wait for the lock while niri outputs are disconnected or remapped.
+    let niri_recheck: Option<fn(&[String]) -> Result<()>> = if require_niri_outputs {
+        Some(crate::niri_outputs::verify_running_outputs)
+    } else {
+        None
+    };
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
@@ -464,6 +471,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                 },
                 events_dir,
                 verified_profile,
+                niri_recheck,
             },
         )
     } else {
@@ -482,6 +490,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                 },
                 events_dir,
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
     }
@@ -581,6 +590,7 @@ fn run_with_backend_interval(
             state_scope: None,
             events_dir: None,
             verified_profile: None,
+            niri_recheck: None,
         },
     )
 }
@@ -592,6 +602,7 @@ struct RotationPort<'a> {
     state_scope: Option<&'static str>,
     events_dir: Option<&'a Path>,
     verified_profile: Option<Profile>,
+    niri_recheck: Option<fn(&[String]) -> Result<()>>,
 }
 
 fn run_with_backend_interval_scoped(
@@ -608,6 +619,7 @@ fn run_with_backend_interval_scoped(
         state_scope,
         events_dir,
         verified_profile,
+        niri_recheck,
     } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -690,6 +702,19 @@ fn run_with_backend_interval_scoped(
     } else {
         None
     };
+    // Never trust an output snapshot taken before waiting for the state
+    // lock: recheck the exact same validated profile connectors before any
+    // wallpaper apply. Hardware can still hotplug after this observation.
+    if apply {
+        if let Some(recheck) = niri_recheck {
+            let names = profile
+                .outputs
+                .iter()
+                .map(|output| output.name.clone())
+                .collect::<Vec<_>>();
+            recheck(&names)?;
+        }
+    }
     let mut saved = read_state(&state_path, &profile)?;
     // Resolve every output pool before changing the first desktop output.
     // A bad second catalog is a predictable input failure, not a reason to
@@ -925,6 +950,10 @@ mod tests {
                     state_scope: None,
                     events_dir: None,
                     verified_profile: Some(verified),
+                    niri_recheck: Some(|names| {
+                        assert_eq!(names, &["DP-1".to_owned(), "HDMI-A-1".to_owned()]);
+                        Ok(())
+                    }),
                 },
             )
             .expect("apply against only the verified snapshot")
@@ -955,6 +984,37 @@ mod tests {
         assert!(saved.outputs.contains_key("DP-1"));
         assert!(saved.outputs.contains_key("HDMI-A-1"));
         assert!(!saved.outputs.contains_key("UNVERIFIED"));
+    }
+
+    #[test]
+    fn stale_niri_topology_after_lock_fails_before_any_wallpaper_apply() {
+        let (_dir, profile_path, state) = fixture();
+        let verified = load_profile(&profile_path).expect("preflight snapshot");
+        let mut backend = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| -> Result<ApplyStatus> {
+                panic!("disconnected niri output cannot receive wallpaper")
+            },
+        };
+        let result = run_with_backend_interval_scoped(
+            &profile_path,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3_600),
+            RotationPort {
+                backend: Some(&mut backend),
+                state_scope: None,
+                events_dir: None,
+                verified_profile: Some(verified),
+                niri_recheck: Some(|names| {
+                    assert_eq!(names, &["DP-1".to_owned(), "HDMI-A-1".to_owned()]);
+                    bail!("niri topology changed while awaiting rotation lock")
+                }),
+            },
+        );
+        assert!(result.is_err());
+        assert!(!state.exists(), "failed locked recheck must not commit state");
     }
 
     #[test]
@@ -1035,6 +1095,7 @@ mod tests {
                 state_scope: Some("wpaperd"),
                 events_dir: None,
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
         .expect("offline scoped apply");
@@ -1055,6 +1116,7 @@ mod tests {
                     state_scope: None,
                     events_dir: None,
                     verified_profile: None,
+                    niri_recheck: None,
                 },
             )
             .is_err(),
@@ -1072,6 +1134,7 @@ mod tests {
                 state_scope: Some("wpaperd"),
                 events_dir: None,
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
         .expect("wpaperd offline preview");
@@ -1229,6 +1292,7 @@ mod tests {
                 state_scope: None,
                 events_dir: Some(&events),
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
         .expect("preview");
@@ -1256,6 +1320,7 @@ mod tests {
                 state_scope: None,
                 events_dir: Some(&events),
                 verified_profile: None,
+                niri_recheck: None,
             },
         );
         assert!(result.is_err());
@@ -1292,6 +1357,7 @@ mod tests {
                 state_scope: None,
                 events_dir: Some(&events),
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
         .expect("retry second output");
@@ -1333,6 +1399,7 @@ mod tests {
                 state_scope: None,
                 events_dir: Some(&events),
                 verified_profile: None,
+                niri_recheck: None,
             },
         )
         .is_err());
