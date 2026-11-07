@@ -98,6 +98,12 @@ def snapshot(directory: Path, outputs: list[str], epoch: int) -> dict:
                 or (opened.st_dev, opened.st_ino) != (meta.st_dev, meta.st_ino)):
             raise SnapshotError("unsafe_event_directory")
         records = [read_event(fd, output, epoch) for output in outputs]
+        # Each event file is replaced atomically, but different outputs are
+        # NOT one atomic transaction. A writer may advance an earlier output
+        # between reads; reject snapshots that change during a second pass
+        # through the exact same opened event directory inode.
+        if records != [read_event(fd, output, epoch) for output in outputs]:
+            raise SnapshotError("event_changed_during_snapshot")
     finally:
         os.close(fd)
     return {"schema_version": 1, "epoch": epoch, "complete": True, "outputs": records}
