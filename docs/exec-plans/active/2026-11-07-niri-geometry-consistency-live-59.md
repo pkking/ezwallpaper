@@ -1,7 +1,7 @@
 # niri-geometry-consistency-live: Reject contradictory niri current physical mode/logical geometry/scale/transform in the explicit Noctalia dual-output screenshot helper before changing any wallpaper; include selected orientation evidence.
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -29,14 +29,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; docs/arch
 - Existing CLI flags, event/state schemas and offline preview must remain unchanged.
 
 ## Acceptance criteria
-- [ ] Implement a narrow fail-closed check for objective.
-- [ ] Deterministic offline regression: normal path plus stale/contradictory output fail before mutation.
+- [x] Implement a narrow fail-closed check for objective.
+- [x] Deterministic offline regression: normal path plus stale/contradictory output fail before mutation.
 - [ ] Full final-head CI (Rust/clippy/format/platform/selected E2E) passes.
 
 ## Implementation slices
-- [ ] Modify only affected production/optional verification module.
-- [ ] Add focused regression tests including negative/partial-apply boundaries.
-- [ ] Update evidence docs and keep status truthful.
+- [x] Modify only affected production/optional verification module.
+- [x] Add focused regression tests including negative/partial-apply boundaries.
+- [x] Update evidence docs and keep status truthful.
 - [ ] Verify final-head CI and merge only when all required checks complete successfully.
 
 ## Verification matrix
@@ -54,10 +54,10 @@ None: narrow fail-closed validation inside existing approved optional paths; no 
 - 2026-11-07: inspected eeceeadf94b548a76512de73503914914840f03d, discovered gap; no test result assumed.
 
 ## Deviations and discoveries
-None.
+Implementation and deterministic tests have been committed. The new behavior is not yet validated by latest-head CI; retain VERIFYING status.
 
 ## Resume from here
-Implement first focused code/test slice; then open PR, inspect exact-head CI, resolve failures.
+Open the implementation PR, inspect each latest-head CI check, and repair any failure without weakening the existing gate.
 
 ## Completion
 Final commit: pending
