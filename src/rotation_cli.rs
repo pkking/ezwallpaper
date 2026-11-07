@@ -422,12 +422,12 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         events_dir,
         require_niri_outputs,
     } = request;
-    if require_niri_outputs {
+    let verified_profile = if require_niri_outputs {
         if !apply || choice != registry::RotationBackend::Noctalia {
             bail!("--require-niri-outputs requires --apply with the Noctalia backend");
         }
-        // This read-only preflight precedes state/lock creation and wallpaper
-        // IPC. A hotplug after the snapshot still requires backend readback.
+        // Reuse exactly the profile checked by niri. Another process can
+        // otherwise swap the connector set before the controller rereads it.
         let profile = load_profile(profile_path)?;
         let outputs = profile
             .outputs
@@ -435,7 +435,10 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             .map(|output| output.name.clone())
             .collect::<Vec<_>>();
         crate::niri_outputs::verify_running_outputs(&outputs)?;
-    }
+        Some(profile)
+    } else {
+        None
+    };
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
@@ -460,6 +463,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
                 events_dir,
+                verified_profile,
             },
         )
     } else {
@@ -477,6 +481,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                     registry::RotationBackend::Wpaperd => Some("wpaperd"),
                 },
                 events_dir,
+                verified_profile: None,
             },
         )
     }
@@ -575,6 +580,7 @@ fn run_with_backend_interval(
             backend,
             state_scope: None,
             events_dir: None,
+            verified_profile: None,
         },
     )
 }
@@ -585,6 +591,7 @@ struct RotationPort<'a> {
     backend: Option<&'a mut dyn WallpaperBackend>,
     state_scope: Option<&'static str>,
     events_dir: Option<&'a Path>,
+    verified_profile: Option<Profile>,
 }
 
 fn run_with_backend_interval_scoped(
@@ -600,6 +607,7 @@ fn run_with_backend_interval_scoped(
         mut backend,
         state_scope,
         events_dir,
+        verified_profile,
     } = port;
     let interval_minutes = clock.interval_minutes;
     // Validate before lock/state creation, including preview-only --epoch.
@@ -607,7 +615,10 @@ fn run_with_backend_interval_scoped(
     if apply && epoch_override.is_some() {
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
-    let mut profile = load_profile(profile_path)?;
+    let mut profile = match verified_profile {
+        Some(profile) => profile,
+        None => load_profile(profile_path)?,
+    };
     let events_root = if apply {
         events_dir
             .map(|directory| {
@@ -880,6 +891,73 @@ mod tests {
     }
 
     #[test]
+    fn niri_preflight_reuses_verified_profile_after_on_disk_change() {
+        let (_dir, profile_path, state) = fixture();
+        let verified = load_profile(&profile_path).expect("verified niri profile");
+
+        // Simulate another writer replacing the profile after niri inventory
+        // was checked. No unchecked connector or pool may reach the backend.
+        fs::write(
+            &profile_path,
+            r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"UNVERIFIED","dir":"landscape"}]}"#,
+        )
+        .expect("replace on-disk profile");
+
+        let mut observed = Vec::new();
+        let results = {
+            // Keep the fake backend's mutable observation borrow scoped to the
+            // actual operation, without explicit Drop calls or lint overrides.
+            let mut backend = CallbackBackend {
+                apply_fn: |output: &str, path: &Path| -> Result<ApplyStatus> {
+                    observed.push((output.to_owned(), path.to_path_buf()));
+                    Ok(ApplyStatus::PathObserved)
+                },
+            };
+            run_with_backend_interval_scoped(
+                &profile_path,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, 3_600),
+                RotationPort {
+                    backend: Some(&mut backend),
+                    state_scope: None,
+                    events_dir: None,
+                    verified_profile: Some(verified),
+                },
+            )
+            .expect("apply against only the verified snapshot")
+        };
+        assert_eq!(
+            results
+                .iter()
+                .map(|r| r.output.as_str())
+                .collect::<Vec<_>>(),
+            vec!["DP-1", "HDMI-A-1"]
+        );
+        assert_eq!(
+            observed
+                .iter()
+                .map(|(output, _)| output.as_str())
+                .collect::<Vec<_>>(),
+            vec!["DP-1", "HDMI-A-1"]
+        );
+        assert!(
+            observed[0].1.ends_with("landscape/a.png")
+                || observed[0].1.ends_with("landscape/b.png")
+        );
+        assert!(
+            observed[1].1.ends_with("portrait/c.png") || observed[1].1.ends_with("portrait/d.png")
+        );
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("saved state")).expect("state JSON");
+        assert!(saved.outputs.contains_key("DP-1"));
+        assert!(saved.outputs.contains_key("HDMI-A-1"));
+        assert!(!saved.outputs.contains_key("UNVERIFIED"));
+    }
+
+    #[test]
     fn niri_preflight_rejects_wrong_backend_before_state_or_ipc() {
         let (_dir, profile, state) = fixture();
         for (apply, choice) in [
@@ -956,6 +1034,7 @@ mod tests {
                 backend: Some(&mut backend),
                 state_scope: Some("wpaperd"),
                 events_dir: None,
+                verified_profile: None,
             },
         )
         .expect("offline scoped apply");
@@ -975,6 +1054,7 @@ mod tests {
                     backend: None,
                     state_scope: None,
                     events_dir: None,
+                    verified_profile: None,
                 },
             )
             .is_err(),
@@ -991,6 +1071,7 @@ mod tests {
                 backend: None,
                 state_scope: Some("wpaperd"),
                 events_dir: None,
+                verified_profile: None,
             },
         )
         .expect("wpaperd offline preview");
@@ -1147,6 +1228,7 @@ mod tests {
                 backend: None,
                 state_scope: None,
                 events_dir: Some(&events),
+                verified_profile: None,
             },
         )
         .expect("preview");
@@ -1173,6 +1255,7 @@ mod tests {
                 backend: Some(&mut backend),
                 state_scope: None,
                 events_dir: Some(&events),
+                verified_profile: None,
             },
         );
         assert!(result.is_err());
@@ -1208,6 +1291,7 @@ mod tests {
                 backend: Some(&mut recovery),
                 state_scope: None,
                 events_dir: Some(&events),
+                verified_profile: None,
             },
         )
         .expect("retry second output");
@@ -1247,7 +1331,8 @@ mod tests {
             RotationPort {
                 backend: Some(&mut backend),
                 state_scope: None,
-                events_dir: Some(&events)
+                events_dir: Some(&events),
+                verified_profile: None,
             },
         )
         .is_err());
