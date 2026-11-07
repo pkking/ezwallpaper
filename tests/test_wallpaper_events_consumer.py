@@ -135,6 +135,25 @@ class EventConsumerTests(unittest.TestCase):
         )
         self.assertEqual((outside / "HDMI-A-1.json").exists(), True)
 
+    def test_concurrent_same_epoch_overwrite_is_not_reported_as_complete(self):
+        # A second output still belongs to epoch 101, but the first file is
+        # replaced after the reader already captured its original content.
+        original_read = reader.read_event
+        changed = False
+
+        def overwrite_after_first(fd, output, epoch):
+            nonlocal changed
+            record = original_read(fd, output, epoch)
+            if output == "HDMI-A-1" and not changed:
+                changed = True
+                self.write_event("DP-1", content_id="sha256:" + "b" * 64)
+            return record
+
+        with mock.patch.object(reader, "read_event", side_effect=overwrite_after_first):
+            with self.assertRaisesRegex(reader.SnapshotError, "event_changed_during_snapshot"):
+                reader.snapshot(self.root, OUTPUTS, 101)
+        self.assertTrue(changed)
+
     def test_symlinks_and_directories_are_not_read(self):
         outside = self.root / "outside.json"
         outside.write_text((self.root / "DP-1.json").read_text())
