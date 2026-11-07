@@ -1,7 +1,7 @@
 # noctalia-live-restore-conflict: The opt-in real niri/Noctalia two-output pixel helper must not overwrite another process's newer wallpaper when it restores its own temporary test fixtures.
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -39,8 +39,8 @@ AGENTS.md, README.md, docs/agents/workflow.md, docs/agents/testing.md, docs/arch
 
 ## Implementation slices
 
-- [ ] Add specific guard in scripts/verify_noctalia_live.py.
-- [ ] Add deterministic regression tests for success and failure/side-effect boundaries.
+- [x] Add specific guard in scripts/verify_noctalia_live.py.
+- [x] Add deterministic regression tests for success and failure/side-effect boundaries.
 - [ ] Run latest-head CI, repair failures and merge only after all checks passed.
 
 ## Verification matrix
@@ -60,7 +60,7 @@ None: this is a fail-closed safety correction within existing approved optional 
 
 - 2026-11-07: inspected scripts/verify_noctalia_live.py from master 07df372; identified a concurrent-writer race. No newly executed tests yet.
 
-## Deviations and discoveries
+- 2026-11-07: implementation/code checkpoint fcbf9ddc5b05deeab3e273a9b5f558e6ff256b47; deterministic regression added, tests not yet run. CI PENDING.\n\n## Deviations and discoveries
 
 None.
 
