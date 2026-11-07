@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 from pathlib import Path
 import re
@@ -220,7 +219,6 @@ def niri_output_geometry(runner, outputs: tuple[str, str]) -> dict[str, dict]:
         scale = logical.get("scale")
         if scale is not None and (
             type(scale) not in (float, int)
-            or not math.isfinite(scale)
             or not 0 < scale <= 16
         ):
             raise VerificationError("invalid_niri_output_scale")
