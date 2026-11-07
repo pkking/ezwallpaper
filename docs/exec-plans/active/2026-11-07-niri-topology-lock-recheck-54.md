@@ -1,7 +1,7 @@
 # niri-topology-lock-recheck: An explicit --require-niri-outputs rotation must revalidate the same verified profile output names after acquiring its state lock, before any desktop apply, so concurrent jobs cannot turn a stale unlocked niri snapshot into an apply.
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -39,8 +39,8 @@ AGENTS.md, README.md, docs/agents/workflow.md, docs/agents/testing.md, docs/arch
 
 ## Implementation slices
 
-- [ ] Add specific guard in src/rotation_cli.rs.
-- [ ] Add deterministic regression tests for success and failure/side-effect boundaries.
+- [x] Add specific guard in src/rotation_cli.rs.
+- [x] Add deterministic regression tests for success and failure/side-effect boundaries.
 - [ ] Run latest-head CI, repair failures and merge only after all checks passed.
 
 ## Verification matrix
@@ -60,7 +60,7 @@ None: this is a fail-closed safety correction within existing approved optional 
 
 - 2026-11-07: inspected src/rotation_cli.rs from master 07df372; identified a concurrent-writer race. No newly executed tests yet.
 
-## Deviations and discoveries
+- 2026-11-07: implementation/code checkpoint 13567cf5b0b1a2fab2eb012d4310e87e0cb51c81; deterministic regression added, tests not yet run. CI PENDING.\n\n## Deviations and discoveries
 
 None.
 
