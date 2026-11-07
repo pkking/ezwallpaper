@@ -1,7 +1,7 @@
 # Reuse verified niri output profile during rotation
 
 Issue: #55
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -28,14 +28,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/
 - Tests use disposable temp files and fake backends only; never execute desktop IPC.
 
 ## Acceptance criteria
-- [ ] Opt-in verified profile reaches controller without second profile read.
-- [ ] Offline race regression changes/removes on-disk profile after snapshot and confirms controller still uses verified output set and pools.
-- [ ] Non-opt-in and preview behavior unchanged; existing tests remain green.
+- [x] Opt-in verified profile reaches controller without second profile read.
+- [x] Offline race regression changes/removes on-disk profile after snapshot and confirms controller still uses verified output set and pools.
+- [ ] Non-opt-in and preview behavior unchanged; existing tests remain green (CI pending).
 - [ ] Final-head CI complete: Agent gates, Rust quality/tests, Windows/macOS and applicable native Sway/Noctalia E2E.
 
 ## Implementation slices
-- [ ] Add optional verified profile to existing rotation port, preserving fallback parse.
-- [ ] Add targeted in-memory adapter regression, no niri runtime dependency.
+- [x] Add optional verified profile to existing rotation port, preserving fallback parse.
+- [x] Add targeted in-memory adapter regression, no niri runtime dependency.
 - [ ] Verify full latest-head PR CI, merge only if all applicable jobs succeed.
 
 ## Verification matrix
@@ -50,13 +50,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/
 None. Same existing opt-in behavior; repair time-of-check/time-of-use inconsistency within approved niri preflight contract. Architecture diagram: unchanged; no ADR or subsystem relationship changes.
 
 ## Evidence log
+- 2026-11-07: implemented optional `RotationPort.verified_profile` and offline mutation regression; tests pending exact-head CI, no claimed local Cargo run.
 - 2026-11-07: inspected `run_rotation` and controller: two independent `load_profile` calls; baseline master workflow successful. Branch created before code.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement profile snapshot routing, submit linked PR, check each latest-head CI job and fix any failures before merge.
+Submit PR linked to #55 and this plan; inspect final-head CI, fix failures before merge.
 
 ## Completion
 Final commit: pending
