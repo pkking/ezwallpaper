@@ -770,7 +770,10 @@ fn run_with_backend_interval_scoped(
             // outputs keep their own durable state on a later disconnect.
             if let Some(recheck) = niri_recheck {
                 recheck(std::slice::from_ref(&output.name)).with_context(|| {
-                    format!("niri output changed before wallpaper apply: {}", output.name)
+                    format!(
+                        "niri output changed before wallpaper apply: {}",
+                        output.name
+                    )
                 })?;
             }
             let selected = backend
@@ -1071,12 +1074,14 @@ mod tests {
                 },
             )
         };
-        assert!(result.is_err(), "disconnected second output must fail closed");
+        assert!(
+            result.is_err(),
+            "disconnected second output must fail closed"
+        );
         assert_eq!(applied, vec!["DP-1"]);
-        let saved: SavedState = serde_json::from_slice(
-            &fs::read(&state).expect("first monitor state committed"),
-        )
-        .expect("valid rotation state");
+        let saved: SavedState =
+            serde_json::from_slice(&fs::read(&state).expect("first monitor state committed"))
+                .expect("valid rotation state");
         assert!(saved.outputs.contains_key("DP-1"));
         assert!(!saved.outputs.contains_key("HDMI-A-1"));
     }
