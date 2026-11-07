@@ -134,10 +134,7 @@ fn noctalia_ipc_command(mut command: Command, timeout: Duration) -> Result<Strin
     });
     let deadline = Instant::now() + timeout;
     let status = loop {
-        if let Some(status) = child
-            .try_wait()
-            .context("failed to poll Noctalia IPC")?
-        {
+        if let Some(status) = child.try_wait().context("failed to poll Noctalia IPC")? {
             break status;
         }
         if Instant::now() >= deadline {
