@@ -119,10 +119,14 @@ class EventConsumerTests(unittest.TestCase):
         original = reader.read_event
         moved = self.root / "original-events"
 
+        moved_once = False
+
         def replace_path_after_first(fd, output, epoch):
-            if output == "HDMI-A-1":
+            nonlocal moved_once
+            if output == "HDMI-A-1" and not moved_once:
                 events.rename(moved)
                 events.symlink_to(outside, target_is_directory=True)
+                moved_once = True
             return original(fd, output, epoch)
 
         if not hasattr(__import__("os"), "symlink"):
@@ -134,6 +138,25 @@ class EventConsumerTests(unittest.TestCase):
             ["/untrusted/user/wallpaper.png"] * 2,
         )
         self.assertEqual((outside / "HDMI-A-1.json").exists(), True)
+
+    def test_concurrent_same_epoch_overwrite_is_not_reported_as_complete(self):
+        # A second output still belongs to epoch 101, but the first file is
+        # replaced after the reader already captured its original content.
+        original_read = reader.read_event
+        changed = False
+
+        def overwrite_after_first(fd, output, epoch):
+            nonlocal changed
+            record = original_read(fd, output, epoch)
+            if output == "HDMI-A-1" and not changed:
+                changed = True
+                self.write_event("DP-1", content_id="sha256:" + "b" * 64)
+            return record
+
+        with mock.patch.object(reader, "read_event", side_effect=overwrite_after_first):
+            with self.assertRaisesRegex(reader.SnapshotError, "event_changed_during_snapshot"):
+                reader.snapshot(self.root, OUTPUTS, 101)
+        self.assertTrue(changed)
 
     def test_symlinks_and_directories_are_not_read(self):
         outside = self.root / "outside.json"
