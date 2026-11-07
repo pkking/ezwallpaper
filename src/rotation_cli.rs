@@ -904,28 +904,31 @@ mod tests {
         .expect("replace on-disk profile");
 
         let mut observed = Vec::new();
-        let mut backend = CallbackBackend {
-            apply_fn: |output: &str, path: &Path| -> Result<ApplyStatus> {
-                observed.push((output.to_owned(), path.to_path_buf()));
-                Ok(ApplyStatus::PathObserved)
-            },
+        let results = {
+            // Keep the fake backend's mutable observation borrow scoped to the
+            // actual operation, without explicit Drop calls or lint overrides.
+            let mut backend = CallbackBackend {
+                apply_fn: |output: &str, path: &Path| -> Result<ApplyStatus> {
+                    observed.push((output.to_owned(), path.to_path_buf()));
+                    Ok(ApplyStatus::PathObserved)
+                },
+            };
+            run_with_backend_interval_scoped(
+                &profile_path,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, 3_600),
+                RotationPort {
+                    backend: Some(&mut backend),
+                    state_scope: None,
+                    events_dir: None,
+                    verified_profile: Some(verified),
+                },
+            )
+            .expect("apply against only the verified snapshot")
         };
-        let results = run_with_backend_interval_scoped(
-            &profile_path,
-            &state,
-            None,
-            false,
-            true,
-            RotationClock::simulated(60, 3_600),
-            RotationPort {
-                backend: Some(&mut backend),
-                state_scope: None,
-                events_dir: None,
-                verified_profile: Some(verified),
-            },
-        )
-        .expect("apply against only the verified snapshot");
-        drop(backend);
         assert_eq!(
             results
                 .iter()
