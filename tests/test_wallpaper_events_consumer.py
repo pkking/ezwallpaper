@@ -119,10 +119,14 @@ class EventConsumerTests(unittest.TestCase):
         original = reader.read_event
         moved = self.root / "original-events"
 
+        moved_once = False
+
         def replace_path_after_first(fd, output, epoch):
-            if output == "HDMI-A-1":
+            nonlocal moved_once
+            if output == "HDMI-A-1" and not moved_once:
                 events.rename(moved)
                 events.symlink_to(outside, target_is_directory=True)
+                moved_once = True
             return original(fd, output, epoch)
 
         if not hasattr(__import__("os"), "symlink"):
