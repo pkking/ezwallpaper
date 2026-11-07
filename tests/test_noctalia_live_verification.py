@@ -19,7 +19,8 @@ def ppm(rgb, width=64, height=40):
 
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
-                 pixel_failure=False, truncated=False, restore_pixel_failure=None):
+                 pixel_failure=False, truncated=False, restore_pixel_failure=None,
+                 concurrent_change=None):
         self.originals = originals
         self.wallpapers = originals.copy()
         self.calls = []
@@ -29,6 +30,10 @@ class FakeDesktop:
         self.truncated = truncated
         self.restore_pixel_failure = restore_pixel_failure
         self.restored_outputs = set()
+        self.concurrent_change = concurrent_change
+        self.concurrent_triggered = False
+        self.fixture_applies = 0
+        self.second_output_reads = 0
 
     def __call__(self, argv, **kwargs):
         self.calls.append(list(argv))
@@ -37,11 +42,21 @@ class FakeDesktop:
         if argv[:4] == ["ezwallpaper", "--setter", "noctalia", "doctor"]:
             stdout = "available: true\nnoctalia_ipc_reachable: true\nverified_desktop_change: false\n"
         elif argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
-            stdout = self.wallpapers[argv[3]] + "\n"
+            out = argv[3]
+            if self.concurrent_change and out == self.concurrent_change[0] and self.fixture_applies >= 2:
+                self.second_output_reads += 1
+                # First GET acknowledges the test fixture. The next GET is
+                # the restore-time ownership check, after an external writer.
+                if self.second_output_reads == 2:
+                    self.wallpapers[out] = self.concurrent_change[1]
+                    self.concurrent_triggered = True
+            stdout = self.wallpapers[out] + "\n"
         elif argv[:4] == ["ezwallpaper", "--setter", "noctalia", "--output"]:
             out, verb, path = argv[4:]
             assert verb == "apply"
             is_fixture = "fixture-" in path
+            if is_fixture:
+                self.fixture_applies += 1
             if out == "HDMI-A-1" and self.partial_failure and is_fixture:
                 self.wallpapers[out] = path  # Failure *after* mutating desktop.
                 status = 5
@@ -120,6 +135,27 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(fake.wallpapers, self.originals)
         self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
         self.assertGreaterEqual(len(fake.writes), 4)
+
+    def test_concurrent_wallpaper_change_is_not_overwritten_during_restore(self):
+        other = self.root / "external-rotation.png"
+        other.write_bytes(verifier.solid_png((5, 50, 90)))
+        fake = FakeDesktop(self.originals, concurrent_change=("HDMI-A-1", str(other)))
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "concurrent_wallpaper_change_detected")
+        self.assertTrue(fake.concurrent_triggered)
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "CONFLICT")
+        self.assertEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+        self.assertEqual(fake.wallpapers["HDMI-A-1"], str(other))
+        self.assertFalse(any(
+            call[4] == "HDMI-A-1" and call[-1] == self.originals["HDMI-A-1"]
+            for call in fake.writes
+        ), "a test must not restore over a newer external wallpaper")
+        recovery = self.root / "proof/recovery.json"
+        self.assertTrue(recovery.exists())
+        self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
 
     def test_restoration_failure_keeps_private_recovery_manifest(self):
         fake = FakeDesktop(self.originals, restore_failure="HDMI-A-1")

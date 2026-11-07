@@ -263,6 +263,7 @@ def verify_dual(
     }
     with tempfile.TemporaryDirectory(prefix="ezwallpaper-noctalia-fixtures-") as temp:
         fixtures = []
+        attempted = {}
         for i, color in enumerate(COLORS):
             image = Path(temp) / f"fixture-{i}.png"
             image.write_bytes(solid_png(color))
@@ -273,6 +274,8 @@ def verify_dual(
                          "visual_result": "UNASSESSED"}
                 record["outputs"].append(entry)
                 # A failed or timed-out setter may still have changed this output.
+                # Track ownership before sending IPC, not after it succeeds.
+                attempted[output] = str(fixtures[i])
                 apply(runner, binary, output, fixtures[i])
                 entry["path_observed"] = True
                 ratio = capture(runner, output, artifact_dir / f"{output}-fixture.ppm", COLORS[i])
@@ -286,11 +289,19 @@ def verify_dual(
         except (KeyboardInterrupt, EOFError):
             record["error"] = "observation_interrupted"
         finally:
-            # Always restore *both* originals even on first-output partial
-            # failure; no intervening assertion may prevent second restore.
+            # Reconcile *both* outputs even after partial failure. A scheduled
+            # wallpaper rotation may have intervened: restoring an old baseline
+            # over an unrelated third path would overwrite the user's work.
             for output in outputs:
                 try:
-                    apply(runner, binary, output, Path(originals[output]))
+                    observed = current_wallpaper(runner, output)
+                    if observed not in (originals[output], attempted.get(output)):
+                        record["restoration"][output] = "CONFLICT"
+                        continue
+                    # An output never changed by this test needs only a fresh
+                    # pixel check; do not reissue a redundant mutating command.
+                    if observed != originals[output]:
+                        apply(runner, binary, output, Path(originals[output]))
                     ratio = verify_restored_frame(
                         runner, output, baselines[output],
                         artifact_dir / f"{output}-restored.ppm",
@@ -307,7 +318,10 @@ def verify_dual(
 
     if not all(v == "PIXEL_VERIFIED" for v in record["restoration"].values()):
         record["status"] = "FAILED"
-        record["error"] = record["error"] or "restoration_failed"
+        if "CONFLICT" in record["restoration"].values():
+            record["error"] = record["error"] or "concurrent_wallpaper_change_detected"
+        else:
+            record["error"] = record["error"] or "restoration_failed"
     (artifact_dir / "result.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     return record, 0 if record["status"] == "PIXEL_VERIFIED" else 1
 
@@ -337,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(json.dumps(result, sort_keys=True))
     if any(v != "PIXEL_VERIFIED" for v in result["restoration"].values()):
-        print("WARNING: restoration failed; consult private recovery.json and restore each output manually.", file=sys.stderr)
+        print("WARNING: incomplete restoration; inspect current wallpaper paths before using private recovery.json. Never overwrite a concurrent change.", file=sys.stderr)
     return status
 
 
