@@ -216,7 +216,7 @@ mod tests {
         let start = Instant::now();
         let error = noctalia_ipc_command(command, Duration::from_millis(200))
             .expect_err("inherited stdout must time out");
-        assert!(error.to_string().contains("stdout timed out"), "{error:#}");
+        assert!(error.to_string().contains("stdout timed out"), "{:#}", error);
         assert!(
             start.elapsed() < Duration::from_secs(2),
             "stdout pipe holder exceeded the bounded deadline"
