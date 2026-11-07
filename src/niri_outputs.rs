@@ -9,6 +9,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io::Read;
 use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -248,22 +249,31 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
 /// Bounded stdout reader prevents an untrusted/stale niri CLI from exhausting
 /// memory; timeout kills the child. No shell, compositor writes or fallback.
 fn query_niri_outputs() -> Result<Vec<u8>> {
-    let mut child = Command::new("niri")
-        .args(["msg", "--json", "outputs"])
+    let mut command = Command::new("niri");
+    command.args(["msg", "--json", "outputs"]);
+    query_niri_outputs_command(command, IPC_TIMEOUT)
+}
+
+/// A descendant can inherit niri's stdout pipe after the direct IPC client
+/// exits. Bound pipe EOF independently; a blocking reader may be detached.
+fn query_niri_outputs_command(mut command: Command, timeout: Duration) -> Result<Vec<u8>> {
+    let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .context("cannot launch niri output inventory IPC")?;
     let stdout = child.stdout.take().context("niri stdout unavailable")?;
-    let reader = thread::spawn(move || {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let _reader = thread::spawn(move || {
         let mut bytes = Vec::new();
-        stdout
+        let result = stdout
             .take(MAX_OUTPUTS_JSON + 1)
             .read_to_end(&mut bytes)
-            .map(|_| bytes)
+            .map(|_| bytes);
+        let _ = sender.send(result);
     });
-    let deadline = Instant::now() + IPC_TIMEOUT;
+    let deadline = Instant::now() + timeout;
     let status = loop {
         if let Some(status) = child.try_wait().context("cannot poll niri IPC")? {
             break status;
@@ -271,14 +281,17 @@ fn query_niri_outputs() -> Result<Vec<u8>> {
         if Instant::now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
-            bail!("niri output inventory IPC timed out after 5 seconds");
+            bail!("niri output inventory IPC timed out after {timeout:?}");
         }
         thread::sleep(Duration::from_millis(20));
     };
-    let bytes = reader
-        .join()
-        .map_err(|_| anyhow!("niri stdout reader panicked"))?
-        .context("cannot read niri IPC output")?;
+    let bytes = match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(result) => result.context("cannot read niri IPC output")?,
+        Err(RecvTimeoutError::Timeout) => {
+            bail!("niri output inventory stdout timed out after {timeout:?}")
+        }
+        Err(RecvTimeoutError::Disconnected) => bail!("niri output inventory reader failed"),
+    };
     if !status.success() {
         bail!("niri output inventory IPC failed with status {status}");
     }
@@ -291,6 +304,39 @@ fn query_niri_outputs() -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn exited_niri_client_with_inherited_stdout_respects_deadline() {
+        // The direct shell exits after printf; background sleep keeps its
+        // inherited stdout pipe open longer than the injected deadline.
+        let mut command = Command::new("sh");
+        command.args(["-c", "sleep 3 & printf '{}\\n'"]);
+        let start = Instant::now();
+        let error = query_niri_outputs_command(command, Duration::from_millis(200))
+            .expect_err("inherited stdout must time out");
+        assert!(
+            error.to_string().contains("stdout timed out"),
+            "{:#}",
+            error
+        );
+        assert!(
+            start.elapsed() < Duration::from_secs(2),
+            "niri preflight exceeded its bounded IPC deadline"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ordinary_niri_ipc_child_closes_stdout_normally() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf '{}\\n'"]);
+        assert_eq!(
+            query_niri_outputs_command(command, Duration::from_secs(2))
+                .expect("normal child closes pipe"),
+            b"{}\n"
+        );
+    }
 
     fn fixture() -> Vec<u8> {
         br#"{
