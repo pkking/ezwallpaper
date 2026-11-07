@@ -134,15 +134,19 @@ The CLI optionally accepts `rotate next --profile FILE --apply --events-dir EXIS
 
 When `rotate next --apply --require-niri-outputs` is explicitly selected
 with the default Noctalia rotation backend, the CLI queries the running
-compositor using `niri msg --json outputs` before creating state/lock
-directories or issuing wallpaper-set commands. Only connectors present,
-enabled (`current_mode`), and mapped (`logical`) in niri's returned
-connector-to-output JSON inventory may proceed. Missing/stale/malformed
-output data, IPC failure and timeout fail closed; the query is read-only.
+compositor using `niri msg --json outputs` **before** creating state/lock
+directories and **again after acquiring the state lock**, before any
+wallpaper-set command. Both checks use the exact same parsed profile
+connector names; a concurrently replaced profile is never silently reloaded.
+Only connectors present, enabled (`current_mode`), and mapped (`logical`)
+in niri's returned connector-to-output JSON inventory may proceed.
+Missing/stale/malformed output data, IPC failure and timeout fail closed;
+a failed second check may leave an empty state/lock directory but cannot
+apply a wallpaper or advance state. Both queries are read-only.
 This is an opt-in guard for niri + Noctalia, not implicit hotplug handling,
 compositor ownership, or pixel verification. A display disconnected after
-the snapshot can still make an apply fail; existing Noctalia readback is
-the final acknowledgement boundary.
+the locked check can still make an apply fail; existing Noctalia readback
+is the final acknowledgement boundary.
 
 Schema/CLI evidence: [niri v26.04 Output struct](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs),
 [niri v26.04 JSON output rendering](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
