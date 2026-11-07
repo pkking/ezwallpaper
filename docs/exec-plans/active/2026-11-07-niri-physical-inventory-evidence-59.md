@@ -1,7 +1,7 @@
 # Require actual niri dual-output inventory in opt-in Noctalia visual verification
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -33,9 +33,9 @@ AGENTS.md, README.md, docs/agents/workflow.md, docs/agents/testing.md, docs/arch
 - [ ] All latest-head CI checks pass, or preserve test evidence and blocker without merging.
 
 ## Implementation slices
-- [ ] Create parser and narrow validated read-only interface in scripts/verify_noctalia_live.py.
-- [ ] Add isolated mock/fixture tests in tests/test_noctalia_live_verification.py.
-- [ ] Document evidence limitation and usage.
+- [x] Create parser and narrow validated read-only interface in scripts/verify_noctalia_live.py.
+- [x] Add isolated mock/fixture tests in tests/test_noctalia_live_verification.py.
+- [x] Document evidence limitation and usage.
 - [ ] Open PR, observe final-head CI, fix failures without weakening the gate.
 
 ## Verification matrix
@@ -49,13 +49,14 @@ AGENTS.md, README.md, docs/agents/workflow.md, docs/agents/testing.md, docs/arch
 None: additive opt-in read-only consumer/evidence probe inside accepted contracts; no new permissions or permanent data decisions. Architecture diagram unchanged: no Core/CLI boundary or desktop integration route changes.
 
 ## Evidence log
+- 2026-11-07: implementation checkpoint 5f7949c383f712a095a64eac868ce76666891eb3, source and offline regression committed. CI not yet run at this exact head; results UNASSESSED.
 - 2026-11-07: inspected master 6dc24fc84038d0d0d884c04fbb1b5a19ab88f4e7; gap identified; no new test claimed.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement and test the read-only utility against published contracts, then create PR and check final-head CI.
+Create PR; review final-head CI checks and logs, correct failures, and merge only after all required gates pass.
 
 ## Completion
 Final commit: pending
