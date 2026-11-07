@@ -1014,7 +1014,10 @@ mod tests {
             },
         );
         assert!(result.is_err());
-        assert!(!state.exists(), "failed locked recheck must not commit state");
+        assert!(
+            !state.exists(),
+            "failed locked recheck must not commit state"
+        );
     }
 
     #[test]
