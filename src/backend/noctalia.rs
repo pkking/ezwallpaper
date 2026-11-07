@@ -5,6 +5,7 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -108,8 +109,16 @@ pub(crate) fn validate_connector(connector: &str) -> Result<()> {
 
 /// Bounded execution; a v5 CLI must be reachable, not merely installed.
 pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
-    let mut child = Command::new("noctalia")
-        .args(args)
+    let mut command = Command::new("noctalia");
+    command.args(args);
+    noctalia_ipc_command(command, Duration::from_secs(5))
+}
+
+/// The timeout covers both process exit and stdout EOF. A detached descendant
+/// may inherit the pipe after the direct Noctalia client exits: never join a
+/// blocked reader without an independent deadline.
+fn noctalia_ipc_command(mut command: Command, timeout: Duration) -> Result<String> {
+    let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -119,30 +128,36 @@ pub(crate) fn noctalia_ipc(args: &[&str]) -> Result<String> {
         .stdout
         .take()
         .context("Noctalia IPC stdout unavailable")?;
-    let reader = thread::spawn(move || read_bounded_ipc_output(stdout));
-    let deadline = Instant::now() + Duration::from_secs(5);
-    loop {
-        if child
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let _reader = thread::spawn(move || {
+        let _ = sender.send(read_bounded_ipc_output(stdout));
+    });
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        if let Some(status) = child
             .try_wait()
             .context("failed to poll Noctalia IPC")?
-            .is_some()
         {
-            let status = child.wait().context("failed to wait for Noctalia IPC")?;
-            let output = reader
-                .join()
-                .map_err(|_| anyhow!("Noctalia IPC reader panicked"))??;
-            if !status.success() {
-                bail!("Noctalia IPC exited with status {status}");
-            }
-            return Ok(output);
+            break status;
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
-            bail!("Noctalia IPC timed out after 5 seconds");
+            bail!("Noctalia IPC timed out after {timeout:?}");
         }
         thread::sleep(Duration::from_millis(20));
+    };
+    let output = match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(result) => result?,
+        Err(RecvTimeoutError::Timeout) => {
+            bail!("Noctalia IPC stdout timed out after {timeout:?}")
+        }
+        Err(RecvTimeoutError::Disconnected) => bail!("Noctalia IPC stdout reader failed"),
+    };
+    if !status.success() {
+        bail!("Noctalia IPC exited with status {status}");
     }
+    Ok(output)
 }
 
 pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
@@ -193,6 +208,35 @@ fn apply_noctalia_with(
 mod tests {
     use super::*;
     use anyhow::anyhow;
+
+    #[cfg(unix)]
+    #[test]
+    fn exited_ipc_client_with_inherited_stdout_respects_deadline() {
+        // sh exits promptly, but its background sleep inherits the stdout
+        // pipe. The previous reader.join() blocked until sleep completed.
+        let mut command = Command::new("sh");
+        command.args(["-c", "sleep 3 & printf 'acknowledged\\n'"]);
+        let start = Instant::now();
+        let error = noctalia_ipc_command(command, Duration::from_millis(200))
+            .expect_err("inherited stdout must time out");
+        assert!(error.to_string().contains("stdout timed out"), "{error:#}");
+        assert!(
+            start.elapsed() < Duration::from_secs(2),
+            "stdout pipe holder exceeded the bounded deadline"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn normal_ipc_subprocess_still_returns_its_output() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf 'acknowledged\\n'"]);
+        assert_eq!(
+            noctalia_ipc_command(command, Duration::from_secs(2))
+                .expect("normal child closes stdout"),
+            "acknowledged\n"
+        );
+    }
 
     #[test]
     fn ipc_stdout_limit_rejects_overflow_without_truncating() {
