@@ -763,6 +763,16 @@ fn run_with_backend_interval_scoped(
             if Some(&current_id) != proposed.content_id.as_ref() {
                 bail!("wallpaper content changed after planning; no state committed");
             }
+            // The initial lock-held inventory check cannot cover hotplug
+            // during hashing or an earlier monitor's wallpaper-set. For the
+            // explicit niri mode, confirm this connector still exists just
+            // before the setter for this output. Earlier acknowledged
+            // outputs keep their own durable state on a later disconnect.
+            if let Some(recheck) = niri_recheck {
+                recheck(std::slice::from_ref(&output.name)).with_context(|| {
+                    format!("niri output changed before wallpaper apply: {}", output.name)
+                })?;
+            }
             let selected = backend
                 .as_deref_mut()
                 .ok_or_else(|| anyhow!("rotation apply requires a wallpaper backend"))?;
@@ -954,7 +964,12 @@ mod tests {
                     events_dir: None,
                     verified_profile: Some(verified),
                     niri_recheck: Some(|names| {
-                        assert_eq!(names, &["DP-1".to_owned(), "HDMI-A-1".to_owned()]);
+                        let allowed = ["DP-1".to_owned(), "HDMI-A-1".to_owned()];
+                        assert!(
+                            names == allowed.as_slice()
+                                || (names.len() == 1 && allowed.contains(&names[0])),
+                            "checked names must match verified profile"
+                        );
                         Ok(())
                     }),
                 },
@@ -1021,6 +1036,49 @@ mod tests {
             !state.exists(),
             "failed locked recheck must not commit state"
         );
+    }
+
+    #[test]
+    fn disconnected_second_niri_output_does_not_receive_wallpaper_or_state() {
+        let (_dir, profile_path, state) = fixture();
+        let verified = load_profile(&profile_path).expect("verified profile");
+        let mut applied = Vec::new();
+        let result = {
+            let mut backend = CallbackBackend {
+                apply_fn: |name: &str, _: &Path| -> Result<ApplyStatus> {
+                    applied.push(name.to_owned());
+                    Ok(ApplyStatus::PathObserved)
+                },
+            };
+            run_with_backend_interval_scoped(
+                &profile_path,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, 3_600),
+                RotationPort {
+                    backend: Some(&mut backend),
+                    state_scope: None,
+                    events_dir: None,
+                    verified_profile: Some(verified),
+                    niri_recheck: Some(|names| {
+                        if names == ["HDMI-A-1".to_owned()] {
+                            bail!("HDMI-A-1 disconnected after initial niri preflight");
+                        }
+                        Ok(())
+                    }),
+                },
+            )
+        };
+        assert!(result.is_err(), "disconnected second output must fail closed");
+        assert_eq!(applied, vec!["DP-1"]);
+        let saved: SavedState = serde_json::from_slice(
+            &fs::read(&state).expect("first monitor state committed"),
+        )
+        .expect("valid rotation state");
+        assert!(saved.outputs.contains_key("DP-1"));
+        assert!(!saved.outputs.contains_key("HDMI-A-1"));
     }
 
     #[test]
