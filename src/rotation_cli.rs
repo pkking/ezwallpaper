@@ -396,6 +396,9 @@ impl RotationClock {
     }
 }
 
+// Read-only live output validation; separate alias keeps the port contract concise.
+type NiriOutputRecheck = fn(&[String]) -> Result<()>;
+
 /// A dry-run never creates the state/lock directory. Real apply holds a lock
 /// across planning, Noctalia readback and atomic per-output acknowledgement.
 pub struct RotationInvocation<'a> {
@@ -441,7 +444,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     };
     // Repeat the preflight once the state lock is held. A second rotation job
     // may wait for the lock while niri outputs are disconnected or remapped.
-    let niri_recheck: Option<fn(&[String]) -> Result<()>> = if require_niri_outputs {
+    let niri_recheck: Option<NiriOutputRecheck> = if require_niri_outputs {
         Some(crate::niri_outputs::verify_running_outputs)
     } else {
         None
@@ -602,7 +605,7 @@ struct RotationPort<'a> {
     state_scope: Option<&'static str>,
     events_dir: Option<&'a Path>,
     verified_profile: Option<Profile>,
-    niri_recheck: Option<fn(&[String]) -> Result<()>>,
+    niri_recheck: Option<NiriOutputRecheck>,
 }
 
 fn run_with_backend_interval_scoped(
