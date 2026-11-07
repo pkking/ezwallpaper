@@ -1,7 +1,7 @@
 # Bound niri output preflight even when stdout survives the child
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-07
 Last checkpoint: 2026-11-07
@@ -28,13 +28,13 @@ AGENTS.md; README.md; docs/architecture.md; docs/agents/workflow.md; docs/agents
 - Test only a new temporary executable with a short deadline and throwaway background stdout holder. No live Wayland/Noctalia/niri session, user files or network.
 
 ## Acceptance criteria
-- [ ] Background descendant holding stdout no longer blocks the parent past injected short deadline.
+- [x] Background descendant holding stdout no longer blocks the parent past injected short deadline.
 - [ ] Normal short output and existing errors unchanged; regression test deterministic on Unix, cross-platform code compiles.
 - [ ] Final HEAD Rust fmt, Clippy, tests; agent gates; Windows/macOS; Sway/Noctalia if selected all pass.
 
 ## Implementation slices
-- [ ] 1. Route stdout-reader result via bounded channel instead of an unconditional JoinHandle.join after command exit.
-- [ ] 2. Offline subprocess regression for child exit + inherited pipe with timeout shorter than descendant lifetime.
+- [x] 1. Route stdout-reader result via bounded channel instead of an unconditional JoinHandle.join after command exit.
+- [x] 2. Offline subprocess regression for child exit + inherited pipe with timeout shorter than descendant lifetime.
 - [ ] 3. Verify final HEAD workflow, fix failures, merge only once green.
 
 ## Verification matrix
@@ -51,11 +51,13 @@ None: enforce the already approved five-second bounded IPC behavior, without cha
 ## Evidence log
 - 2026-11-07: inspected src/niri_outputs.rs; identified reader.join() after direct child exit without stdout EOF deadline. Started from cc5d4602; no claim of passing tests.
 
+- 2026-11-07: implemented nonblocking channel completion and two Unix-only mock subprocess regression cases at 16c6592e192ae6161d04ed369fbc46f06f6652de; CI NOT RUN and outcomes UNASSESSED. Test does not invoke the real compositor.
+
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement the bounded stdout completion and regression in src/niri_outputs.rs, then open a PR and examine each latest-head check.
+Open the PR against master, inspect the latest-head CI jobs, and resolve any failures without weakening strict checks.
 
 ## Completion
 Final commit: pending
