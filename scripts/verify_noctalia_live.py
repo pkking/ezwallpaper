@@ -172,6 +172,66 @@ def doctor_ready(report: str) -> bool:
     return all(seen.get(key) == "true" for key in required)
 
 
+def unique_niri_object(pairs):
+    """Reject duplicate keys even when spelled using escaped JSON aliases."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise VerificationError("duplicate_niri_inventory_field")
+        result[key] = value
+    return result
+
+
+def niri_output_geometry(runner, outputs: tuple[str, str]) -> dict[str, dict]:
+    """Validate only named, active mapped niri outputs; read-only IPC evidence."""
+    raw = call(runner, ["niri", "msg", "--json", "outputs"], "niri_inventory_ipc_failed")
+    if len(raw) > 1024 * 1024:
+        raise VerificationError("oversize_niri_inventory")
+    try:
+        inventory = json.loads(raw, object_pairs_hook=unique_niri_object)
+    except (ValueError, UnicodeError) as exc:
+        raise VerificationError("invalid_niri_inventory") from exc
+    if not isinstance(inventory, dict):
+        raise VerificationError("invalid_niri_inventory")
+    geometry = {}
+    for name in outputs:
+        info = inventory.get(name)
+        if not isinstance(info, dict) or info.get("name") != name:
+            raise VerificationError("niri_output_not_connected_or_mismatched")
+        modes, index, logical = info.get("modes"), info.get("current_mode"), info.get("logical")
+        if (
+            not isinstance(modes, list)
+            or type(index) is not int
+            or not 0 <= index < len(modes)
+            or not isinstance(modes[index], dict)
+            or not isinstance(logical, dict)
+        ):
+            raise VerificationError("niri_output_disabled_or_unmapped")
+        physical = modes[index]
+        for dimension in ("width", "height"):
+            if (
+                type(physical.get(dimension)) is not int
+                or not 1 <= physical[dimension] <= 16384
+                or type(logical.get(dimension)) is not int
+                or not 1 <= logical[dimension] <= 16384
+            ):
+                raise VerificationError("invalid_niri_output_geometry")
+        scale = logical.get("scale")
+        if scale is not None and (
+            type(scale) not in (float, int)
+            or not 0 < scale <= 16
+        ):
+            raise VerificationError("invalid_niri_output_scale")
+        geometry[name] = {
+            "physical_width": physical["width"],
+            "physical_height": physical["height"],
+            "logical_width": logical["width"],
+            "logical_height": logical["height"],
+            "scale": scale,
+        }
+    return geometry
+
+
 def current_wallpaper(runner, output: str) -> str:
     observed = call(runner, ["noctalia", "msg", "wallpaper-get", output], "wallpaper_get_failed")
     if not observed or "\n" in observed or "\r" in observed:
@@ -222,6 +282,10 @@ def verify_dual(
     if not doctor_ready(doctor):
         raise VerificationError("noctalia_ipc_unavailable")
 
+    # A Wayland session label is not output evidence. Query this niri
+    # compositor before asking to mutate the desktop; never infer pixels.
+    geometry = niri_output_geometry(runner, outputs)
+
     # Snapshot every output BEFORE creating a fixture or changing anything.
     originals = {}
     for output in outputs:
@@ -260,6 +324,7 @@ def verify_dual(
         "schema_version": 1, "desktop": "niri + Noctalia v5",
         "status": "FAILED", "pixel_threshold": MATCH_THRESHOLD,
         "outputs": [], "restoration": {}, "error": None,
+        "niri_output_geometry": geometry,
     }
     with tempfile.TemporaryDirectory(prefix="ezwallpaper-noctalia-fixtures-") as temp:
         fixtures = []
@@ -337,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.confirm_live_change or not sys.stdin.isatty() or not sys.stderr.isatty():
         print("refused: explicit_live_change_and_interactive_tty_required", file=sys.stderr)
         return 2
-    if any(shutil.which(cmd) is None for cmd in ("noctalia", "grim", args.binary)):
+    if any(shutil.which(cmd) is None for cmd in ("noctalia", "niri", "grim", args.binary)):
         print("refused: required_executable_missing", file=sys.stderr)
         return 2
     try:
