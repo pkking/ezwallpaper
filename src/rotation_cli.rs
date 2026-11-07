@@ -927,7 +927,10 @@ mod tests {
         .expect("apply against only the verified snapshot");
         drop(backend);
         assert_eq!(
-            results.iter().map(|r| r.output.as_str()).collect::<Vec<_>>(),
+            results
+                .iter()
+                .map(|r| r.output.as_str())
+                .collect::<Vec<_>>(),
             vec!["DP-1", "HDMI-A-1"]
         );
         assert_eq!(
@@ -937,13 +940,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["DP-1", "HDMI-A-1"]
         );
-        assert!(observed[0].1.ends_with("landscape/a.png")
-            || observed[0].1.ends_with("landscape/b.png"));
-        assert!(observed[1].1.ends_with("portrait/c.png")
-            || observed[1].1.ends_with("portrait/d.png"));
+        assert!(
+            observed[0].1.ends_with("landscape/a.png")
+                || observed[0].1.ends_with("landscape/b.png")
+        );
+        assert!(
+            observed[1].1.ends_with("portrait/c.png") || observed[1].1.ends_with("portrait/d.png")
+        );
         let saved: SavedState =
-            serde_json::from_slice(&fs::read(&state).expect("saved state"))
-                .expect("state JSON");
+            serde_json::from_slice(&fs::read(&state).expect("saved state")).expect("state JSON");
         assert!(saved.outputs.contains_key("DP-1"));
         assert!(saved.outputs.contains_key("HDMI-A-1"));
         assert!(!saved.outputs.contains_key("UNVERIFIED"));
