@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -20,7 +21,7 @@ def ppm(rgb, width=64, height=40):
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
                  pixel_failure=False, truncated=False, restore_pixel_failure=None,
-                 concurrent_change=None):
+                 concurrent_change=None, inventory=None):
         self.originals = originals
         self.wallpapers = originals.copy()
         self.calls = []
@@ -31,6 +32,7 @@ class FakeDesktop:
         self.restore_pixel_failure = restore_pixel_failure
         self.restored_outputs = set()
         self.concurrent_change = concurrent_change
+        self.inventory = inventory
         self.concurrent_triggered = False
         self.fixture_applies = 0
         self.second_output_reads = 0
@@ -41,6 +43,17 @@ class FakeDesktop:
         status, stdout = 0, ""
         if argv[:4] == ["ezwallpaper", "--setter", "noctalia", "doctor"]:
             stdout = "available: true\nnoctalia_ipc_reachable: true\nverified_desktop_change: false\n"
+        elif argv == ["niri", "msg", "--json", "outputs"]:
+            stdout = self.inventory if self.inventory is not None else json.dumps({
+                output: {
+                    "name": output, "current_mode": 0,
+                    "modes": [{"width": 3840 if output == "DP-1" else 1080,
+                               "height": 2160 if output == "DP-1" else 1920}],
+                    "logical": {"width": 2560 if output == "DP-1" else 1080,
+                                "height": 1440 if output == "DP-1" else 1920,
+                                "scale": 1.5 if output == "DP-1" else 1.0},
+                } for output in self.originals
+            })
         elif argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
             out = argv[3]
             if self.concurrent_change and out == self.concurrent_change[0] and self.fixture_applies >= 2:
@@ -112,6 +125,9 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         result, status = self.verify(fake)
         self.assertEqual(status, 0)
         self.assertEqual(result["status"], "PIXEL_VERIFIED")
+        self.assertEqual(result["niri_output_geometry"]["DP-1"]["physical_width"], 3840)
+        self.assertEqual(result["niri_output_geometry"]["DP-1"]["scale"], 1.5)
+        self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["physical_height"], 1920)
         self.assertEqual({e["output"] for e in result["outputs"]}, set(self.outputs))
         self.assertTrue(all(e["path_observed"] for e in result["outputs"]))
         self.assertTrue(all(e["pixel_match_ratio"] >= .90 for e in result["outputs"]))
@@ -126,6 +142,48 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertTrue((self.root / "proof/result.json").exists())
         self.assertTrue((self.root / "proof/DP-1-fixture.ppm").exists())
         self.assertNotIn(str(self.root), str(result))
+
+    def test_live_inventory_must_show_two_enabled_mapped_outputs_before_any_apply(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840, "height": 2160}],
+                  "logical": {"width": 2560, "height": 1440, "scale": 1.5}}
+            for out in self.outputs
+        }
+        cases = [
+            {},
+            {self.outputs[0]: good[self.outputs[0]]},
+            {**good, self.outputs[1]: {**good[self.outputs[1]], "current_mode": None}},
+            {**good, self.outputs[1]: {**good[self.outputs[1]], "logical": None}},
+            {**good, self.outputs[1]: {**good[self.outputs[1]], "name": "wrong"}},
+            {**good, self.outputs[1]: {**good[self.outputs[1]], "current_mode": True}},
+            {**good, self.outputs[1]: {**good[self.outputs[1]],
+                                       "logical": {"width": 0, "height": 1440}}},
+            {**good, self.outputs[1]: {**good[self.outputs[1]],
+                                       "logical": {"width": 2560, "height": 1440, "scale": "1.5"}}},
+        ]
+        for inventory in cases:
+            with self.subTest(inventory=inventory):
+                fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+                with self.assertRaises(verifier.VerificationError):
+                    self.verify(fake)
+                self.assertEqual(fake.writes, [])
+                self.assertFalse((self.root / "proof").exists())
+        fake = FakeDesktop(self.originals, inventory="not JSON")
+        with self.assertRaises(verifier.VerificationError):
+            self.verify(fake)
+        self.assertEqual(fake.writes, [])
+
+    def test_duplicate_niri_keys_cannot_spoof_topology(self):
+        desc = ('{"name":"DP-1","current_mode":0,"modes":[{"width":3840,'
+                '"height":2160}],"logical":{"width":2560,"height":1440}}')
+        second = ('{"name":"HDMI-A-1","current_mode":0,"modes":[{"width":1080,'
+                  '"height":1920}],"logical":{"width":1080,"height":1920}}')
+        raw = '{"DP-1":' + desc + ',"\\u0044P-1":' + desc + ',"HDMI-A-1":' + second + '}'
+        fake = FakeDesktop(self.originals, inventory=raw)
+        with self.assertRaisesRegex(verifier.VerificationError, "duplicate_niri_inventory_field"):
+            self.verify(fake)
+        self.assertEqual(fake.writes, [])
 
     def test_second_apply_partially_fails_and_still_restores_both(self):
         fake = FakeDesktop(self.originals, partial_failure=True)
