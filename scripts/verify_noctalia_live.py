@@ -239,7 +239,34 @@ def niri_output_geometry(runner, outputs: tuple[str, ...]) -> dict[str, dict]:
                 )
                 if abs(physical[physical_axis] / scale - logical[dimension]) > 1:
                     raise VerificationError("niri_output_geometry_scale_mismatch")
+        # niri v26.04 Output publishes make/model/serial; LogicalOutput
+        # publishes signed x/y. Two monitors may have *identical* resolution,
+        # scale and transform while a connector now names a different panel.
+        # These fields are used only inside the private live snapshot. Never
+        # write a monitor serial to result.json / screenshot evidence.
+        for field in ("make", "model", "serial"):
+            value = info.get(field)
+            if field in info and (
+                (value is None and field != "serial")
+                or (value is not None and
+                    (type(value) is not str or len(value) > 256))
+            ):
+                raise VerificationError("invalid_niri_output_identity")
+        positions = ("x", "y")
+        if ("x" in logical) != ("y" in logical):
+            raise VerificationError("incomplete_niri_output_position")
+        for position in positions:
+            if position in logical and (
+                type(logical[position]) is not int
+                or not -(2**31) <= logical[position] < 2**31
+            ):
+                raise VerificationError("invalid_niri_output_position")
         geometry[name] = {
+            "identity_make": info.get("make"),
+            "identity_model": info.get("model"),
+            "identity_serial": info.get("serial"),
+            "logical_x": logical.get("x"),
+            "logical_y": logical.get("y"),
             "physical_width": physical["width"],
             "physical_height": physical["height"],
             "logical_width": logical["width"],
@@ -342,7 +369,13 @@ def verify_dual(
         "schema_version": 1, "desktop": "niri + Noctalia v5",
         "status": "FAILED", "pixel_threshold": MATCH_THRESHOLD,
         "outputs": [], "restoration": {}, "error": None,
-        "niri_output_geometry": geometry,
+        # Only retain geometry in a shareable result; the internally checked
+        # make/model/serial can identify a real user's physical monitor.
+        "niri_output_geometry": {
+            name: {key: value for key, value in details.items()
+                   if not key.startswith("identity_")}
+            for name, details in geometry.items()
+        },
     }
     with tempfile.TemporaryDirectory(prefix="ezwallpaper-noctalia-fixtures-") as temp:
         fixtures = []
