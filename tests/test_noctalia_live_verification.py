@@ -18,6 +18,26 @@ def ppm(rgb, width=64, height=40):
     return f"P6\n{width} {height}\n255\n".encode() + bytes(rgb) * width * height
 
 
+def niri_identified_inventory(outputs):
+    """Two independent named panels with explicit niri v26.04 device identity."""
+    return {
+        output: {
+            "name": output, "make": "TestVendor",
+            "model": "TestPanel", "serial": f"private-{index}-serial",
+            "current_mode": 0,
+            "modes": [{"width": 3840 if index == 0 else 1080,
+                       "height": 2160 if index == 0 else 1920}],
+            "logical": {
+                "x": 0 if index == 0 else 2560, "y": 0,
+                "width": 2560 if index == 0 else 1080,
+                "height": 1440 if index == 0 else 1920,
+                "scale": 1.5 if index == 0 else 1.0,
+            },
+        }
+        for index, output in enumerate(outputs)
+    }
+
+
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
                  pixel_failure=False, truncated=False, restore_pixel_failure=None,
@@ -229,6 +249,86 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["transform"], "Flipped270")
         self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["logical_width"], 1920)
         self.assertEqual(fake.wallpapers, self.originals)
+
+    def test_identified_monitor_snapshot_succeeds_without_publishing_serial(self):
+        inventory = niri_identified_inventory(self.outputs)
+        fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+        result, status = self.verify(fake)
+        self.assertEqual(status, 0)
+        self.assertEqual(result["status"], "PIXEL_VERIFIED")
+        self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["logical_x"], 2560)
+        self.assertNotIn("identity_serial", result["niri_output_geometry"]["DP-1"])
+        self.assertNotIn("private-0-serial", json.dumps(result))
+        self.assertNotIn("private-1-serial", (self.root / "proof/result.json").read_text())
+        self.assertFalse((self.root / "proof/recovery.json").exists())
+
+    def test_same_geometry_different_serial_cannot_restore_onto_replaced_panel(self):
+        good = niri_identified_inventory(self.outputs)
+        replaced = json.loads(json.dumps(good))
+        replaced["HDMI-A-1"]["serial"] = "replacement-physical-monitor"
+        fake = FakeDesktop(
+            self.originals, inventories=[json.dumps(good)] * 3 + [json.dumps(replaced)]
+        )
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_topology_changed_before_restore")
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_CHANGED")
+        self.assertEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+        self.assertNotEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        self.assertFalse(any(
+            call[4] == "HDMI-A-1" and call[-1] == self.originals["HDMI-A-1"]
+            for call in fake.writes
+        ))
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+        self.assertNotIn("replacement-physical-monitor", json.dumps(result))
+
+    def test_same_geometry_changed_logical_layout_refuses_fixture_apply(self):
+        good = niri_identified_inventory(self.outputs)
+        moved = json.loads(json.dumps(good))
+        moved["HDMI-A-1"]["logical"]["x"] += 384
+        fake = FakeDesktop(self.originals,
+                           inventories=[json.dumps(good), json.dumps(moved)])
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_topology_changed_before_apply")
+        self.assertEqual(fake.writes, [])
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_CHANGED")
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+
+    def test_malformed_niri_identity_or_partial_position_aborts_before_mutation(self):
+        good = niri_identified_inventory(self.outputs)
+        cases = [
+            ("serial", {"serial": 1}),
+            ("make", {"make": None}),
+            ("model", {"model": ["unexpected"]}),
+            ("serial-too-long", {"serial": "S" * 257}),
+        ]
+        for reason, fields in cases:
+            with self.subTest(case=reason):
+                invalid = json.loads(json.dumps(good))
+                invalid["DP-1"].update(fields)
+                fake = FakeDesktop(self.originals, inventory=json.dumps(invalid))
+                with self.assertRaises(verifier.VerificationError):
+                    self.verify(fake)
+                self.assertFalse(fake.writes)
+                self.assertFalse((self.root / "proof").exists())
+        positions = [
+            {"x": 0}, {"x": 1.5, "y": 0}, {"x": 0, "y": True},
+            {"x": 2**31, "y": 0},
+        ]
+        for fields in positions:
+            with self.subTest(position=fields):
+                invalid = json.loads(json.dumps(good))
+                invalid["DP-1"]["logical"].pop("x")
+                invalid["DP-1"]["logical"].pop("y")
+                invalid["DP-1"]["logical"].update(fields)
+                fake = FakeDesktop(self.originals, inventory=json.dumps(invalid))
+                with self.assertRaises(verifier.VerificationError):
+                    self.verify(fake)
+                self.assertFalse(fake.writes)
+                self.assertFalse((self.root / "proof").exists())
 
     def test_duplicate_niri_keys_cannot_spoof_topology(self):
         desc = ('{"name":"DP-1","current_mode":0,"modes":[{"width":3840,'
