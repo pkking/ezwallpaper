@@ -21,7 +21,7 @@ def ppm(rgb, width=64, height=40):
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
                  pixel_failure=False, truncated=False, restore_pixel_failure=None,
-                 concurrent_change=None, inventory=None):
+                 concurrent_change=None, inventory=None, inventories=None):
         self.originals = originals
         self.wallpapers = originals.copy()
         self.calls = []
@@ -33,6 +33,7 @@ class FakeDesktop:
         self.restored_outputs = set()
         self.concurrent_change = concurrent_change
         self.inventory = inventory
+        self.inventories = iter(inventories) if inventories is not None else None
         self.concurrent_triggered = False
         self.fixture_applies = 0
         self.second_output_reads = 0
@@ -44,7 +45,8 @@ class FakeDesktop:
         if argv[:4] == ["ezwallpaper", "--setter", "noctalia", "doctor"]:
             stdout = "available: true\nnoctalia_ipc_reachable: true\nverified_desktop_change: false\n"
         elif argv == ["niri", "msg", "--json", "outputs"]:
-            stdout = self.inventory if self.inventory is not None else json.dumps({
+            stdout = (next(self.inventories) if self.inventories is not None else
+                      self.inventory if self.inventory is not None else json.dumps({
                 output: {
                     "name": output, "current_mode": 0,
                     "modes": [{"width": 3840 if output == "DP-1" else 1080,
@@ -53,7 +55,7 @@ class FakeDesktop:
                                 "height": 1440 if output == "DP-1" else 1920,
                                 "scale": 1.5 if output == "DP-1" else 1.0},
                 } for output in self.originals
-            })
+            }))
         elif argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
             out = argv[3]
             if self.concurrent_change and out == self.concurrent_change[0] and self.fixture_applies >= 2:
@@ -235,6 +237,52 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(verifier.VerificationError, "duplicate_niri_inventory_field"):
             self.verify(fake)
         self.assertEqual(fake.writes, [])
+
+    def test_topology_change_during_baseline_capture_refuses_both_applies(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840 if out == "DP-1" else 1080,
+                             "height": 2160 if out == "DP-1" else 1920}],
+                  "logical": {"width": 2560 if out == "DP-1" else 1080,
+                              "height": 1440 if out == "DP-1" else 1920,
+                              "scale": 1.5 if out == "DP-1" else 1.0}}
+            for out in self.outputs
+        }
+        changed = json.loads(json.dumps(good))
+        changed["HDMI-A-1"]["modes"][0]["width"] = 1200
+        changed["HDMI-A-1"]["logical"]["width"] = 1200
+        fake = FakeDesktop(
+            self.originals, inventories=[json.dumps(good), json.dumps(changed)]
+        )
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_topology_changed_before_apply")
+        self.assertEqual(fake.writes, [])
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(fake.wallpapers, self.originals)
+
+    def test_second_output_disconnect_after_first_apply_still_restores_first(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840 if out == "DP-1" else 1080,
+                             "height": 2160 if out == "DP-1" else 1920}],
+                  "logical": {"width": 2560 if out == "DP-1" else 1080,
+                              "height": 1440 if out == "DP-1" else 1920,
+                              "scale": 1.5 if out == "DP-1" else 1.0}}
+            for out in self.outputs
+        }
+        disconnected = {"DP-1": good["DP-1"]}
+        fake = FakeDesktop(
+            self.originals, inventories=[
+                json.dumps(good), json.dumps(good), json.dumps(disconnected)
+            ]
+        )
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_output_not_connected_or_mismatched")
+        self.assertEqual(len([c for c in fake.writes if "fixture-" in c[-1]]), 1)
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(fake.wallpapers, self.originals)
 
     def test_second_apply_partially_fails_and_still_restores_both(self):
         fake = FakeDesktop(self.originals, partial_failure=True)
