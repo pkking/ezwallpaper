@@ -161,6 +161,20 @@ pub(crate) fn apply_noctalia(path: &Path, output: Option<&str>) -> Result<()> {
     apply_noctalia_with(path, output, noctalia_ipc, thread::sleep)
 }
 
+/// A single wallpaper-get path, optionally followed by one newline, is an
+/// acknowledgement. Trimming *all* trailing line endings would accept an
+/// extra empty record (or ambiguous multiline response) as a valid path.
+fn exact_path_readback(response: &str, expected: &str) -> bool {
+    let observed = response
+        .strip_suffix("\r\n")
+        .or_else(|| response.strip_suffix('\n'))
+        .unwrap_or(response);
+    !observed
+        .bytes()
+        .any(|byte| matches!(byte, b'\r' | b'\n' | b'\0'))
+        && observed == expected
+}
+
 /// Native Noctalia can publish its wallpaper path asynchronously. Retry only
 /// the independent readback, never wallpaper-set; a command reply alone does
 /// not establish a change. Injecting the IPC and pause keeps tests offline.
@@ -175,8 +189,8 @@ fn apply_noctalia_with(
         .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
     // v5 IPC joins argv tokens into a string; line endings cannot be compared
     // safely against the wallpaper-get single-line response.
-    if path_str.contains('\n') || path_str.contains('\r') {
-        bail!("Noctalia wallpaper paths cannot contain newlines");
+    if path_str.contains('\n') || path_str.contains('\r') || path_str.contains('\0') {
+        bail!("Noctalia wallpaper paths cannot contain newlines or NUL bytes");
     }
     let mut set_args = vec!["msg", "wallpaper-set"];
     let mut get_args = vec!["msg", "wallpaper-get"];
@@ -189,7 +203,7 @@ fn apply_noctalia_with(
     ipc(&set_args)?;
     for attempt in 0..4 {
         let observed = ipc(&get_args)?;
-        if observed.trim_end_matches(&['\r', '\n'][..]) == path_str {
+        if exact_path_readback(&observed, path_str) {
             return Ok(());
         }
         if attempt < 3 {
@@ -338,6 +352,70 @@ mod tests {
                 reason
             );
         }
+    }
+
+    #[test]
+    fn exact_readback_is_a_single_record_not_just_trimmed_text() {
+        let path = "/tmp/landscape with space.png";
+        for response in [
+            "/tmp/landscape with space.png",
+            "/tmp/landscape with space.png\n",
+            "/tmp/landscape with space.png\r\n",
+        ] {
+            assert!(exact_path_readback(response, path), "{:?}", response);
+        }
+        for response in [
+            "/tmp/landscape with space.png\n\n",
+            "/tmp/landscape with space.png\r\n\r\n",
+            "/tmp/landscape with space.png\r",
+            "/tmp/landscape with space.png\nother output",
+            "/tmp/landscape with space.png\0",
+            "/tmp/old.png\n",
+        ] {
+            assert!(!exact_path_readback(response, path), "{:?}", response);
+        }
+    }
+
+    #[test]
+    fn malformed_multiline_readback_never_acknowledges_noctalia_set() {
+        let path = Path::new("/tmp/new image.png");
+        for response in [
+            "/tmp/new image.png\n\n",
+            "/tmp/new image.png\nother output\n",
+            "/tmp/new image.png\r",
+        ] {
+            let mut sets = 0;
+            let mut reads = 0;
+            let result = apply_noctalia_with(
+                path,
+                Some("DP-1"),
+                |argv| {
+                    if argv[1] == "wallpaper-set" {
+                        sets += 1;
+                        Ok("accepted".to_owned())
+                    } else {
+                        reads += 1;
+                        Ok(response.to_owned())
+                    }
+                },
+                |_| {},
+            );
+            assert!(result.is_err(), "ambiguous response: {:?}", response);
+            assert_eq!(sets, 1, "never repeat a mutation");
+            assert_eq!(reads, 4, "only bounded independent readback retries");
+        }
+        let mut calls = 0;
+        let invalid = apply_noctalia_with(
+            Path::new("/tmp/image\0bad.png"),
+            Some("DP-1"),
+            |_| {
+                calls += 1;
+                Ok(String::new())
+            },
+            |_| {},
+        );
+        assert!(invalid.is_err());
+        assert_eq!(calls, 0, "invalid paths must fail before IPC");
     }
 
     #[test]
