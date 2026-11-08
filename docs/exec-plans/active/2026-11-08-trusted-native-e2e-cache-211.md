@@ -1,7 +1,7 @@
 # CI native cache: reduce Noctalia/niri E2E rebuild cost
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -32,14 +32,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 ## Acceptance criteria
 - [ ] Deterministic, offline tests cover manifest/sha validation, cache miss fallback, corrupt/unsafe cache refusal, component/version/recipe mismatch, key changes on ABI inputs.
 - [ ] CI warm cache restores exact verified source version without compiling and re-executes the same visual E2E tests; cold cache builds and validates pinned upstream commits.
-- [ ] Only master push can save shared binary cache; PRs read only; no new tokens or credential exposure.
+- [x] Only master push can save shared binary cache; PRs read only; no new tokens or credential exposure.
 - [ ] Latest-head normal CI including macOS, Windows, Rust, agent, Sway and native Noctalia passes.
 - [ ] Baseline and cold/warm run durations are recorded without asserting target met in absence of measurements.
 
 ## Implementation slices
-- [ ] Add standard-library manifest/key/restore utility with source-pin and checksum validation and offline tests.
-- [ ] Update CI Noctalia and niri native build steps with read-only PR cache, trusted master save, always-on real E2E.
-- [ ] Update documentation and record exact tested SHA / cache-hit evidence.
+- [x] Add standard-library manifest/key/restore utility with source-pin and checksum validation and offline tests.
+- [x] Update CI Noctalia and niri native build steps with read-only PR cache, trusted master save, always-on real E2E.
+- [x] Update documentation and record the source SHA and pending cache-hit evidence (no warm cache measured).
 - [ ] Create PR, repair CI, merge only after final-head required checks pass.
 
 ## Verification matrix
@@ -55,13 +55,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 None: opt-in CI internals only; no user-visible behavior or new permissions. Architecture diagram: unchanged because Core, CLI, provider, desktop-backend, protocol and state responsibilities are untouched.
 
 ## Evidence log
+- 2026-11-08: cached binary and manifest helper committed; tests/test_ci_native_cache.py includes source, schema, symlink and tamper refusal. workflow with only master-push save and PR read-only plus native E2E retained. All final-head CI and warm-cache measurements PENDING.
 - 2026-11-08: baseline #207/#208 duration breakdown via GitHub Actions jobs; Noctalia compile dominates. No verified warm-cache result.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement standard-library utility and negative tests; then edit workflow, create PR and inspect latest-head CI and cache evidence.
+Create PR, inspect latest-head Agent plan, cache safety and selected native E2E. Repair any failures; do not merge until every required check completes.
 
 ## Completion
 Final commit: pending
