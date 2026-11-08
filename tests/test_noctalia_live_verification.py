@@ -261,7 +261,9 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(result["error"], "niri_topology_changed_before_apply")
         self.assertEqual(fake.writes, [])
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_CHANGED")
+        self.assertTrue((self.root / "proof/recovery.json").exists())
         self.assertEqual(fake.wallpapers, self.originals)
 
     def test_second_output_disconnect_after_first_apply_still_restores_first(self):
