@@ -551,6 +551,79 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
         self.assertGreaterEqual(len(fake.writes), 4)
 
+    def test_external_change_during_confirmation_refuses_first_fixture(self):
+        other = self.root / "external-during-confirmation.png"
+        other.write_bytes(verifier.solid_png((5, 50, 90)))
+        fake = FakeDesktop(self.originals)
+
+        def approve(_):
+            fake.wallpapers["DP-1"] = str(other)
+            return "APPLY"
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            fake, approve, confirmed=True,
+        )
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "concurrent_wallpaper_change_before_apply")
+        self.assertEqual(fake.writes, [])
+        self.assertFalse(result["outputs"][0]["path_observed"])
+        self.assertEqual(result["restoration"]["DP-1"], "CONFLICT")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "PIXEL_VERIFIED")
+        self.assertEqual(fake.wallpapers["DP-1"], str(other))
+        self.assertEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        recovery = self.root / "proof/recovery.json"
+        self.assertTrue(recovery.exists())
+        self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn(str(other), (self.root / "proof/result.json").read_text())
+
+    def test_external_change_to_either_output_blocks_second_fixture(self):
+        for changed_output in self.outputs:
+            with self.subTest(changed_output=changed_output):
+                external = self.root / f"{changed_output}-external.png"
+                external.write_bytes(verifier.solid_png((5, 50, 90)))
+                fake = FakeDesktop(self.originals)
+                inventory_reads = 0
+                injected = False
+
+                def runner(argv, **kwargs):
+                    nonlocal inventory_reads, injected
+                    if argv == ["niri", "msg", "--json", "outputs"]:
+                        inventory_reads += 1
+                        if inventory_reads == 3:
+                            # First output was acknowledged. A separate client
+                            # now changes either that output or the next one.
+                            self.assertEqual(fake.fixture_applies, 1)
+                            fake.wallpapers[changed_output] = str(external)
+                            injected = True
+                    return fake(argv, **kwargs)
+
+                artifact_dir = self.root / f"proof-{changed_output}"
+                result, status = verifier.verify_dual(
+                    self.outputs, "ezwallpaper", artifact_dir, self.env,
+                    runner, lambda _: "APPLY", confirmed=True,
+                )
+                self.assertTrue(injected)
+                self.assertEqual(status, 1)
+                self.assertEqual(result["status"], "FAILED")
+                self.assertEqual(result["error"], "concurrent_wallpaper_change_before_apply")
+                self.assertEqual(len([
+                    call for call in fake.writes if "fixture-" in call[-1]
+                ]), 1)
+                self.assertTrue(result["outputs"][0]["path_observed"])
+                self.assertFalse(result["outputs"][1]["path_observed"])
+                self.assertEqual(result["restoration"][changed_output], "CONFLICT")
+                self.assertEqual(fake.wallpapers[changed_output], str(external))
+                self.assertTrue((artifact_dir / "recovery.json").exists())
+                self.assertFalse(any(
+                    call[4] == changed_output and call[-1] == self.originals[changed_output]
+                    for call in fake.writes
+                ), "an unrelated wallpaper must never be overwritten by restoration")
+                untouched = next(out for out in self.outputs if out != changed_output)
+                self.assertEqual(fake.wallpapers[untouched], self.originals[untouched])
+                self.assertEqual(result["restoration"][untouched], "PIXEL_VERIFIED")
+
     def test_concurrent_wallpaper_change_is_not_overwritten_during_restore(self):
         other = self.root / "external-rotation.png"
         other.write_bytes(verifier.solid_png((5, 50, 90)))
