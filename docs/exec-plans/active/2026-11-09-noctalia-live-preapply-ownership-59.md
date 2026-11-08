@@ -1,7 +1,7 @@
 # 2026-11-09: Reject concurrent wallpaper changes before opt-in dual-output verification applies
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -38,15 +38,15 @@ No automatic testing on a real desktop, no new CLI/IPC/backend behavior, no new 
 
 ## Acceptance criteria
 
-- [ ] External path replacement during human confirmation/capture: first fixture is never applied; external wallpaper survives; exit fails with a stable conflict code and private recovery.
-- [ ] External path replacement on either output after first apply but before second: second fixture is never applied; first is restored only if still owned; external path survives; private recovery retained.
+- [x] External path replacement during human confirmation/capture: first fixture is never applied; external wallpaper survives; exit fails with a stable conflict code and private recovery.
+- [x] External path replacement on either output after first apply but before second: second fixture is never applied; first is restored only if still owned; external path survives; private recovery retained.
 - [ ] Unchanged two-output baseline and existing concurrent restore conflict fixtures still pass without weakening safety checks.
 - [ ] Exact final-head Rust/Windows/macOS/Sway/native Noctalia+niri/offline helper/agent plan CI all pass before merge.
 
 ## Implementation slices
 
-- [ ] Add both-output expected-path check before each fixture apply to the existing live helper.
-- [ ] Add isolated fake IPC regression tests at confirmation and between output applies (including both peer directions).
+- [x] Add both-output expected-path check before each fixture apply to the existing live helper.
+- [x] Add isolated fake IPC regression tests at confirmation and between output applies (including both peer directions).
 - [ ] Verify final-head CI; squash merge if all required checks green.
 
 ## Verification matrix
@@ -66,6 +66,7 @@ None: local, consent-gated test helper safety tightening. Architecture diagram: 
 ## Evidence log
 
 - 2026-11-09: inspected verified `master`, Issue #59, helper and offline fake tests; found missing path ownership rechecks during a long-running opt-in interactive verification. No branch tests have run yet.
+- 2026-11-09: implementation `7a8bb333fecd855cae1b5dba0c79e2ac7480f058` checks both path observations against original or previously attempted fixture immediately before each change. Test commit `212e0841a784cb8b4bca03f0e11159ec039c207b` injects third-party changes during APPLY confirmation and between first/second apply (including either connector). Exact-head CI remains PENDING; no local desktop tests executed.
 
 ## Deviations and discoveries
 
@@ -73,7 +74,7 @@ None.
 
 ## Resume from here
 
-Update `scripts/verify_noctalia_live.py` and `tests/test_noctalia_live_verification.py` with before-each-apply ownership checks and both-stage regressions, open a PR linking Issue #59 and this plan, inspect the exact final-head CI before merge.
+Open a PR from `agent/issue-59-noctalia-live-preapply-ownership-20261109` linked to Issue #59 and this plan, then inspect full exact-head CI (especially offline live safety) and repair any failures before merging.
 
 ## Completion
 
