@@ -1,7 +1,7 @@
 # 2026-11-08: Strict Noctalia native IPC wallpaper readback
 
 Issue: #55
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -31,9 +31,9 @@ No CLI/backend default change, no new dependency, no socket/desktop side effects
 - [ ] Record linked PR/head SHA, CI URL/results and any limitations; archive plan only after final revision evidence.
 
 ## Implementation slices
-- [ ] Add regression reproducing the concrete failure mode.
-- [ ] Make one constrained production/script change with fail-closed behavior.
-- [ ] Update safety evidence docs if behavior or recovery instructions change; run CI.
+- [x] Add regression reproducing the concrete failure mode.
+- [x] Make one constrained production/script change with fail-closed behavior.
+- [x] Update plan with source-level readback behavior; no user-facing API or recovery guide change. Final-head CI pending.
 
 ## Verification matrix
 | Check | Command/evidence | Status |
@@ -47,13 +47,14 @@ No CLI/backend default change, no new dependency, no socket/desktop side effects
 None. Small robustness changes inside approved adapter/test boundaries; no new state, authentication, privileged side effects, or CLI defaults. Architecture diagram unchanged because Core/CLI/adapter responsibilities and process/IPC boundaries are unchanged.
 
 ## Evidence log
+- 2026-11-08: implementation complete in src/backend/noctalia.rs. Exact single-record wallpaper-get confirmation (zero/one LF or CRLF); reject double CRLF, embedded newline/CR/NUL, extra output, and invalid NUL wallpaper paths before mutating IPC; retry bound unchanged. cargo test -p ezwallpaper --lib backend::noctalia has not been executed locally; must verify with exact-head GitHub Actions, including native CI E2E.
 - 2026-11-08: inspected master 9141f5a477931a6dbfd0dabce99532a801c7371a, identified source-level risk; no new test execution yet.
 
 ## Deviations and discoveries
 None recorded.
 
 ## Resume from here
-Implement the isolated regression and bounded change in src/backend/noctalia.rs; then open a linked PR and inspect its final-head CI. Merge only after all required checks pass.
+Open the Issue-linked PR from `agent/issue-55-noctalia-strict-readback-20261108`; inspect exact-head required CI and repair any failure before squash merge; then record evidence. No merge while pending.
 
 ## Completion
 Final commit: pending
