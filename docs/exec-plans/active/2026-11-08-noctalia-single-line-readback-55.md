@@ -47,6 +47,7 @@ No CLI/backend default change, no new dependency, no socket/desktop side effects
 None. Small robustness changes inside approved adapter/test boundaries; no new state, authentication, privileged side effects, or CLI defaults. Architecture diagram unchanged because Core/CLI/adapter responsibilities and process/IPC boundaries are unchanged.
 
 ## Evidence log
+- 2026-11-08: initial PR #215 Rust quality CI failed at Clippy `-D non-fmt-panics`: the three new test assertions used Rust 2021-style captures despite this project's Rust 2018 edition. Fixed all three with explicit format arguments in commit 6622e97d1d80fbde78765114ed907645b93927dc. Need final-head CI; previous failed SHA is not passing evidence.
 - 2026-11-08: implementation complete in src/backend/noctalia.rs. Exact single-record wallpaper-get confirmation (zero/one LF or CRLF); reject double CRLF, embedded newline/CR/NUL, extra output, and invalid NUL wallpaper paths before mutating IPC; retry bound unchanged. cargo test -p ezwallpaper --lib backend::noctalia has not been executed locally; must verify with exact-head GitHub Actions, including native CI E2E.
 - 2026-11-08: inspected master 9141f5a477931a6dbfd0dabce99532a801c7371a, identified source-level risk; no new test execution yet.
 
