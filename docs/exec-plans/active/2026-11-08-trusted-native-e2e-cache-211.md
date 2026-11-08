@@ -40,7 +40,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 - [x] Add standard-library manifest/key/restore utility with source-pin and checksum validation and offline tests.
 - [x] Update CI Noctalia and niri native build steps with read-only PR cache, trusted master save, always-on real E2E.
 - [x] Update documentation and record the source SHA and pending cache-hit evidence (no warm cache measured).
-- [x] Create PR #212, repair workflow parser, merge after final-head required checks passed. Follow-up PR for independent niri cache validation and warm-cache measurement remains PENDING.
+- [x] Create PR #212, repair workflow parser, merge after final-head required checks passed. Follow-up PR #213 exists; failed warm Noctalia cache run diagnosed; repaired workflow commit requires latest-head re-validation before merge.
 
 ## Verification matrix
 | Gate | Evidence | Status |
@@ -49,14 +49,15 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 | YAML/cache event gating | CI and script contract assertions | PASS #42438632127 and #42441791452 |
 | Rust/quality/other platforms | latest-head CI | PASS PR #212, master push; follow-up pending |
 | Native Sway/Noctalia/niri E2E | latest-head CI, actual native artifacts | PASS PR #212, master push cold-build; warm PR pending |
-| Warm cache effectiveness | subsequent default-branch-populated PR run | UNASSESSED |
+| Warm cache effectiveness | subsequent default-branch-populated PR run | Noctalia hit proven in #42445472958 but E2E failed due missing assets; repaired warm E2E UNASSESSED |
 
 ## Decision gates
 None: opt-in CI internals only; no user-visible behavior or new permissions. Architecture diagram: unchanged because Core, CLI, provider, desktop-backend, protocol and state responsibilities are untouched.
 
 ## Evidence log
 - 2026-11-08: first trusted master push [#42441791452](https://github.com/pkking/ezwallpaper/actions/runs/42441791452), SHA 55f0c4e: successful E2E; native job 30m23s, native Noctalia 23m14s, niri 4m48s. Log: `Cache not found` then `Cache saved with key: ezw-native-v1-noctalia-24ed21a81ba77d3aa5b890898780d476177c036670098f2f33442df40f174101` and `Cache saved with key: ezw-native-v1-niri-ff81573d2873cf5c85d3fd62aab2e8d8a3c339c4af7a309df6f6bd081dfb450a`. No warm cache data yet.
-- 2026-11-08: follow-up implementation tests separate pinned niri seal/restore and rejects Noctalia SHA on niri cache write. PR will reuse same CI workflow key for warm-hit measurement; actual result pending.
+- 2026-11-08: PR #213 initially ran [CI #42445472958](https://github.com/pkking/ezwallpaper/actions/runs/42445472958) from 04:07:04Z to 04:09:03Z in native E2E; **Noctalia cache HIT** with key `ezw-native-v1-noctalia-24ed21a81ba77d3aa5b890898780d476177c036670098f2f33442df40f174101`, checksum and `--version` valid, but native IPC/pixel E2E **FAILED** (Noctalia exited 1). Failure artifact `native-noctalia-5.2.1-sway-dual-evidence`, Noctalia log: `could not locate a valid asset bundle`, then `CairoGlyphRenderer: failed to load icon font: /usr/local/share/noctalia/assets/fonts/noctalia-tabler.ttf`. No niri cache restore was reached; do not claim a validated warm run or timing improvement from this failure.
+- 2026-11-08: Upstream Noctalia v5.2.1 `src/core/files/resource_paths.cpp` resolves runtime assets relative to executable parent or environment; original `/tmp/noctalia-v5.2.1/assets` is present on cold build but missing on cached binary-only restore. Repair: always checkout exact immutable Noctalia SHA and assert assets/fonts, templates, translations, emoji; only skip Meson compilation on hit. Move both trusted master cache-save steps **after** successful Sway and niri native E2E, so a merely version-valid but nonfunctional executable is not saved. Offline workflow contract test checks asset restoration and E2E-before-save ordering. Because workflow hash enters key, repaired warm-check initially uses a new cold cache; subsequent trusted master run must seed new key.
 - 2026-11-08: cached binary and manifest helper committed; tests/test_ci_native_cache.py includes source, schema, symlink and tamper refusal. Workflow has PR restore-only and master-push save-only steps, both native E2E retained. Initial dynamic cache-mode expression was rejected by GitHub workflow parser (zero jobs, push event workflow failure); removed and confirmed pull_request CI can start. All final-head CI and warm-cache measurements PENDING.
 - 2026-11-08: baseline #207/#208 duration breakdown via GitHub Actions jobs; Noctalia compile dominates. No verified warm-cache result.
 
@@ -64,7 +65,7 @@ None: opt-in CI internals only; no user-visible behavior or new permissions. Arc
 None.
 
 ## Resume from here
-Open follow-up PR linked to Issue #211 and this plan, inspect exact-head full CI and step cache-hit logs. Measure native E2E wall time against cold run #42441791452; if both caches hit and visual E2E is green, record observed duration without claiming P50 target from a single sample.
+Verify latest-head PR #213 CI after asset checkout and E2E-before-cache-save changes. Check independent Noctalia+Sway and niri+Noctalia framebuffer results; do not merge on failure. After trusted new-key master cache save, initiate a later independent warm PR check to measure real hit duration.
 
 ## Completion
 Final commit: implementation PR #212 squash commit 55f0c4e; follow-up pending
