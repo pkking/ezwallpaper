@@ -139,6 +139,8 @@ def inspect(component: str, key: str, directory: Path) -> dict:
                                    "invalid_cache_manifest")
     try:
         meta = json.loads(payload, object_pairs_hook=reject_duplicate_fields)
+    except CacheError:
+        raise
     except (UnicodeError, ValueError) as exc:
         raise CacheError("invalid_cache_manifest_json") from exc
     if (not isinstance(meta, dict)
