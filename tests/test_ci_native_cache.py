@@ -64,6 +64,48 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
             self.restore()
 
+    def test_niri_seal_and_restore_preserves_exact_source_and_executable(self):
+        # A separate pinned Rust toolchain and native IPC binary must never
+        # accidentally inherit Noctalia's manifest/source identity.
+        component = "niri"
+        key = cache.key_for(component, b"debian trixie niri clang rustc-1.99.1")
+        binary = self.root / "niri-native"
+        binary.write_bytes(b"niri experimental pinned native executable")
+        binary.chmod(0o755)
+        observed = self.root / "niri-source-sha"
+        observed.write_text(cache.PINNED[component]["source_sha"] + "\n")
+        directory = self.root / "niri-cache"
+
+        sealed = cache.seal(component, key, binary, observed, directory)
+        self.assertEqual(sealed["component"], "niri")
+        self.assertEqual(sealed["source_sha"], cache.PINNED["niri"]["source_sha"])
+        self.assertNotEqual(sealed["recipe"], cache.PINNED["noctalia"]["recipe"])
+        self.assertEqual(cache.inspect(component, key, directory), sealed)
+        with self.assertRaises(cache.CacheError):
+            cache.inspect("noctalia", self.key, directory)
+
+        target = self.root / "niri-restored/niri"
+        sha_file = self.root / "niri-artifacts/upstream-commit.txt"
+        restored = cache.restore(component, key, directory, target, sha_file)
+        self.assertEqual(restored, sealed)
+        self.assertEqual(target.read_bytes(), binary.read_bytes())
+        self.assertTrue(os.access(target, os.X_OK))
+        self.assertEqual(sha_file.read_text(),
+                         cache.PINNED[component]["source_sha"] + "\n")
+
+    def test_niri_source_mismatch_fails_before_sealing_binary(self):
+        component = "niri"
+        binary = self.root / "niri-native"
+        binary.write_bytes(b"niri native bytes")
+        binary.chmod(0o755)
+        sha_file = self.root / "niri-sha"
+        sha_file.write_text(cache.PINNED["noctalia"]["source_sha"] + "\n")
+        output = self.root / "rejected-niri-cache"
+        with self.assertRaisesRegex(cache.CacheError, "upstream_source_sha_mismatch"):
+            cache.seal(component, cache.key_for(component, b"trixie"), binary,
+                       sha_file, output)
+        self.assertFalse(output.exists())
+
     def test_cache_manifest_or_binary_corruption_never_restores(self):
         for field, invalid in [
             ("component", "niri"),
@@ -152,6 +194,22 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("github.ref == 'refs/heads/master'", job)
         self.assertIn("tests/e2e/sway/noctalia_v5.py", job)
         self.assertIn("tests/e2e/sway/niri_noctalia.py", job)
+        # The native Noctalia executable reads fonts/translations at runtime.
+        # A cache-hit binary without the pinned source assets is NOT valid E2E.
+        checkout = job.index("Checkout exact Noctalia source and runtime assets")
+        build = job.index("Build pinned upstream native Noctalia")
+        self.assertLess(checkout, build)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/fonts/noctalia-tabler.ttf", job)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/translations/en.json", job)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/templates/builtin.toml", job)
+        # Only native E2E-successful binaries may enter trusted master cache.
+        first_pixels = job.index("Test actual native IPC and dual output rendered pixels")
+        second_pixels = job.index("Verify real niri + Noctalia dual-output framebuffer")
+        noctalia_save = job.index("Save verified Noctalia cache from trusted master only")
+        niri_save = job.index("Save verified niri cache from trusted master only")
+        self.assertLess(first_pixels, second_pixels)
+        self.assertLess(second_pixels, noctalia_save)
+        self.assertLess(second_pixels, niri_save)
         self.assertIn("6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4", job)
         self.assertIn("7fd585dd44ed67644977dd9561bb6e8b3837f8f7", job)
 
