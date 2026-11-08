@@ -1,7 +1,7 @@
 # 2026-11-08: Reject ambiguous live Noctalia wallpaper-get replies
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -33,14 +33,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0001-core-c
 
 ## Acceptance criteria
 
-- [ ] Valid path replies (bare, LF, CRLF) accepted, malformed extra blank lines, embedded records, CR or NUL refused.
-- [ ] Offline tests demonstrate no wallpaper mutation on ambiguous initial reply and retained recovery for ambiguous post-apply reply; all existing live helper tests still pass.
+- [x] Valid path replies (bare, LF, CRLF) accepted, malformed extra blank lines, embedded records, CR or NUL refused.
+- [x] Offline fake-runner tests added to demonstrate no wallpaper mutation on ambiguous initial reply and retained recovery for ambiguous post-apply reply; all existing live helper tests still pass.
 - [ ] Final-head PR CI passes all required gates before merge, with exact revision and CI run recorded.
 
 ## Implementation slices
 
-- [ ] Add script single-record readback parser using raw command stdout.
-- [ ] Add focused offline fake IPC positive/negative tests (preflight and post-apply).
+- [x] Add script single-record readback parser using raw command stdout.
+- [x] Add focused offline fake IPC positive/negative tests (preflight and post-apply).
 - [ ] Review latest-head CI; record actual evidence and archive plan separately after completion.
 
 ## Verification matrix
@@ -57,7 +57,7 @@ None. Strict validation inside existing test-only IPC helper; desktop side-effec
 
 ## Evidence log
 
-- 2026-11-08: inspected base script, source `call()` trailing CR/LF stripping and `current_wallpaper()` permissive validation; compared with merged production Rust PR #215. No new tests executed yet.
+- 2026-11-08: implementation committed: 7118e0a (raw stdout + strict single path record); 7e6bbd8 (three focused offline fake runner regressions for valid terminators, ambiguous originals, ambiguous post-apply readbacks). Target test, full GitHub CI and native E2E remain UNASSESSED until executed.\n- 2026-11-08: inspected base script, source `call()` trailing CR/LF stripping and `current_wallpaper()` permissive validation; compared with merged production Rust PR #215. No new tests executed yet.
 
 ## Deviations and discoveries
 
@@ -65,7 +65,7 @@ None.
 
 ## Resume from here
 
-Implement and test strict raw IPC readback in `scripts/verify_noctalia_live.py` with fake-runner regressions, then open an Issue #59-linked PR and inspect exact-head CI before merge.
+Open Issue #59-linked PR from `agent/issue-59-noctalia-live-strict-readback-20261108`; inspect target offline and full final-head CI. Fix failures before squash merge; only report confirmed results.
 
 ## Completion
 
