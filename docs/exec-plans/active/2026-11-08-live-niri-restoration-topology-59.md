@@ -1,7 +1,7 @@
 # 2026-11-08: Fail-closed restoration on niri topology changes
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -31,9 +31,9 @@ No real wallpaper changes, no weakening consent, no new persistent storage/daemo
 - [ ] Record linked PR/head SHA, CI URL/results and any limitations; archive plan only after final revision evidence.
 
 ## Implementation slices
-- [ ] Add regression reproducing the concrete failure mode.
-- [ ] Make one constrained production/script change with fail-closed behavior.
-- [ ] Update safety evidence docs if behavior or recovery instructions change; run CI.
+- [x] Add regression reproducing the concrete failure mode.
+- [x] Make one constrained production/script change with fail-closed behavior.
+- [x] Update safety evidence docs. Final-head CI pending.
 
 ## Verification matrix
 | Check | Command/evidence | Status |
@@ -47,13 +47,14 @@ No real wallpaper changes, no weakening consent, no new persistent storage/daemo
 None. Small robustness changes inside approved adapter/test boundaries; no new state, authentication, privileged side effects, or CLI defaults. Architecture diagram unchanged because Core/CLI/adapter responsibilities and process/IPC boundaries are unchanged.
 
 ## Evidence log
+- 2026-11-08: implementation complete in scripts/verify_noctalia_live.py, tests/test_noctalia_live_verification.py, docs/agents/desktop-integration-evidence.md. Per-output niri IPC geometry recheck before restore: changed or unavailable connectors are not written, unaffected connector retains own pixel restoration. Added fake sequential inventory tests for remap/disconnect and documentation. python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v has not been executed locally; must verify with exact-head GitHub Actions, including native CI E2E.
 - 2026-11-08: inspected master 9141f5a477931a6dbfd0dabce99532a801c7371a, identified source-level risk; no new test execution yet.
 
 ## Deviations and discoveries
 None recorded.
 
 ## Resume from here
-Implement the isolated regression and bounded change in scripts/verify_noctalia_live.py; tests/test_noctalia_live_verification.py; docs/agents/desktop-integration-evidence.md; then open a linked PR and inspect its final-head CI. Merge only after all required checks pass.
+Open the Issue-linked PR from `agent/issue-59-live-restore-topology-20261108`; inspect exact-head required CI and repair any failure before squash merge; then record evidence. No merge while pending.
 
 ## Completion
 Final commit: pending
