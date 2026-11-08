@@ -144,7 +144,9 @@ class PinnedNativeCacheTests(unittest.TestCase):
               ".github/workflows/ci.yml").read_text()
         job = ci.split("  noctalia-sway-visual-e2e:\n", 1)[1].split(
             "\n  platform-tests:", 1)[0]
-        self.assertIn("cache-mode: $" + "{{ github.event_name == 'push'", job)
+        self.assertNotIn("cache-mode: write", job)
+        self.assertNotIn("pull_request_target", ci)
+        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/master'", job)
         self.assertIn("actions/cache/restore@v4", job)
         self.assertIn("actions/cache/save@v4", job)
         self.assertIn("github.ref == 'refs/heads/master'", job)
