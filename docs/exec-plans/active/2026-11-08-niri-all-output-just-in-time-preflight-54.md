@@ -1,7 +1,7 @@
 # 2026-11-08: Recheck the complete pinned niri topology before every dual-output apply
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -37,8 +37,8 @@ Never persist/log physical monitor serial. Avoid extra niri IPC unless the opt-i
 
 ## Implementation slices
 
-- [ ] Pass every verified profile connector name to just-in-time recheck before each selected output apply.
-- [ ] Make injected callback tests verify all connector names every time; simulate changed A on third recheck and assert B is untouched while A state remains.
+- [x] Pass every verified profile connector name to just-in-time recheck before each selected output apply.
+- [x] Make injected callback tests verify all connector names every time; simulate changed A on third recheck and assert B is untouched while A state remains.
 - [ ] Record CI evidence, repair if needed and squash merge only on exact-head success.
 
 ## Verification matrix
@@ -57,6 +57,7 @@ None: an existing fail-closed safety invariant becomes complete for the explicit
 ## Evidence log
 
 - 2026-11-08: inspected verified `master` at `bdea153`; found JIT recheck at `rotation_cli.rs` after asset hash uses `std::slice::from_ref(&output.name)` despite the lock-held full-profile check. No branch code/tests executed yet.
+- 2026-11-08: code commit `bc0e16f2b0e877e182fde175eaca886206a2cd59`: each just-in-time recheck now verifies all original profile connectors with a single existing niri query. Adjusted positive callback test and added both changed-original and changed-pending connector error paths; each preserves earlier acknowledged DP-1 state and refuses HDMI-A-1 apply. No local Rust test run; exact-head CI PENDING.
 
 ## Deviations and discoveries
 
@@ -64,7 +65,7 @@ None.
 
 ## Resume from here
 
-Change the JIT recheck input and its offline regression tests in `src/rotation_cli.rs`, open Issue #54-linked PR and inspect exact-head CI before squash merge.
+Open a PR linking Issue #54 and this plan from `agent/issue-54-full-topology-jit-20261108`; inspect exact-head CI including targeted Rust tests and native Noctalia/niri E2E before squash merge.
 
 ## Completion
 
