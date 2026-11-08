@@ -56,7 +56,8 @@ None: test-only validation within previously consent-gated live verifier, no cha
 
 ## Evidence log
 
-- 2026-11-08: inspected base `verify_dual()`, found each loop checks only the target output; all previous and untouched peer frames go unchecked. No new code or tests executed at plan creation.\n- 2026-11-08: implementation 848d581: after each target fixture pixel proof, capture the other output and compare either untouched baseline or already-applied fixture (bounded retries), record numeric ratios plus independent screenshot. Fake-runner regression a6fc1ac: first or second apply accidentally changes the peer; both must fail and retain recovery. These test assertions were not run locally; final CI is PENDING.
+- 2026-11-08: inspected base `verify_dual()`, found each loop checks only the target output; all previous and untouched peer frames go unchecked. No new code or tests executed at plan creation.
+- 2026-11-08: implementation 848d581: after each target fixture pixel proof, capture the other output and compare either untouched baseline or already-applied fixture (bounded retries), record numeric ratios plus independent screenshot. Fake-runner regression a6fc1ac: first or second apply accidentally changes the peer; both must fail and retain recovery. These test assertions were not run locally; final CI is PENDING.
 
 ## Deviations and discoveries
 
