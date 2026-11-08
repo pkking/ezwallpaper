@@ -182,7 +182,7 @@ def unique_niri_object(pairs):
     return result
 
 
-def niri_output_geometry(runner, outputs: tuple[str, str]) -> dict[str, dict]:
+def niri_output_geometry(runner, outputs: tuple[str, ...]) -> dict[str, dict]:
     """Validate only named, active mapped niri outputs; read-only IPC evidence."""
     raw = call(runner, ["niri", "msg", "--json", "outputs"], "niri_inventory_ipc_failed")
     if len(raw) > 1024 * 1024:
@@ -382,6 +382,17 @@ def verify_dual(
             # wallpaper rotation may have intervened: restoring an old baseline
             # over an unrelated third path would overwrite the user's work.
             for output in outputs:
+                # A connector may be remapped, rotated or disconnected after
+                # the last fixture. Never replay its old wallpaper onto a new
+                # physical/logical output solely because the name survived.
+                try:
+                    fresh_geometry = niri_output_geometry(runner, (output,))
+                except VerificationError:
+                    record["restoration"][output] = "TOPOLOGY_UNVERIFIED"
+                    continue
+                if fresh_geometry[output] != geometry[output]:
+                    record["restoration"][output] = "TOPOLOGY_CHANGED"
+                    continue
                 try:
                     observed = current_wallpaper(runner, output)
                     if observed not in (originals[output], attempted.get(output)):
@@ -407,7 +418,11 @@ def verify_dual(
 
     if not all(v == "PIXEL_VERIFIED" for v in record["restoration"].values()):
         record["status"] = "FAILED"
-        if "CONFLICT" in record["restoration"].values():
+        if "TOPOLOGY_CHANGED" in record["restoration"].values():
+            record["error"] = record["error"] or "niri_topology_changed_before_restore"
+        elif "TOPOLOGY_UNVERIFIED" in record["restoration"].values():
+            record["error"] = record["error"] or "niri_topology_unavailable_before_restore"
+        elif "CONFLICT" in record["restoration"].values():
             record["error"] = record["error"] or "concurrent_wallpaper_change_detected"
         else:
             record["error"] = record["error"] or "restoration_failed"
