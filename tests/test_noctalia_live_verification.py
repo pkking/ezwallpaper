@@ -41,7 +41,8 @@ def niri_identified_inventory(outputs):
 class FakeDesktop:
     def __init__(self, originals, *, partial_failure=False, restore_failure=None,
                  pixel_failure=False, truncated=False, restore_pixel_failure=None,
-                 concurrent_change=None, inventory=None, inventories=None):
+                 concurrent_change=None, inventory=None, inventories=None,
+                 spill_fixture_apply=None):
         self.originals = originals
         self.wallpapers = originals.copy()
         self.calls = []
@@ -57,6 +58,7 @@ class FakeDesktop:
         self.concurrent_triggered = False
         self.fixture_applies = 0
         self.second_output_reads = 0
+        self.spill_fixture_apply = spill_fixture_apply
 
     def __call__(self, argv, **kwargs):
         self.calls.append(list(argv))
@@ -102,6 +104,10 @@ class FakeDesktop:
                 status = 6
             else:
                 self.wallpapers[out] = path
+                if is_fixture and self.spill_fixture_apply == self.fixture_applies:
+                    for peer in self.wallpapers:
+                        if peer != out:
+                            self.wallpapers[peer] = path
                 if not is_fixture:
                     self.restored_outputs.add(out)
         elif argv[:3] == ["grim", "-o", argv[2]]:
@@ -166,7 +172,40 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertTrue((self.root / "proof/DP-1-restored.ppm").exists())
         self.assertTrue((self.root / "proof/result.json").exists())
         self.assertTrue((self.root / "proof/DP-1-fixture.ppm").exists())
+        for entry in result["outputs"]:
+            peer = next(out for out in self.outputs if out != entry["output"])
+            self.assertGreaterEqual(entry["peer_pixel_match_ratios"][peer], .90)
+            self.assertTrue(
+                (self.root / "proof" /
+                 f"{peer}-after-{entry['output']}-apply.ppm").exists()
+            )
         self.assertNotIn(str(self.root), str(result))
+
+    def test_global_wallpaper_leak_never_passes_dual_output_pixel_verification(self):
+        for apply_number, peer in ((1, "HDMI-A-1"), (2, "DP-1")):
+            with self.subTest(apply_number=apply_number):
+                fake = FakeDesktop(self.originals, spill_fixture_apply=apply_number)
+                result, status = self.verify(fake)
+                self.assertEqual(status, 1)
+                self.assertEqual(result["status"], "FAILED")
+                self.assertEqual(result["error"], "peer_output_changed_after_apply")
+                self.assertEqual(
+                    len([call for call in fake.writes if "fixture-" in call[-1]]),
+                    apply_number,
+                )
+                self.assertEqual(result["outputs"][-1]["visual_result"], "FAILED")
+                self.assertLess(
+                    result["outputs"][-1]["peer_pixel_match_ratios"][peer], .90
+                )
+                self.assertTrue((self.root / "proof/recovery.json").exists())
+                self.assertTrue(
+                    (self.root / "proof" /
+                     f"{peer}-after-{result['outputs'][-1]['output']}-apply.ppm").exists()
+                )
+                # A second apply must not mask the first screen's accidental
+                # overwrite; a first apply must not silently alter the peer.
+                self.assertEqual(result["restoration"][peer], "CONFLICT")
+                (self.root / "proof").rename(self.root / f"proof-{apply_number}")
 
     def test_wallpaper_get_accepts_only_one_optional_line_terminator(self):
         for ending in ("", "\n", "\r\n"):
