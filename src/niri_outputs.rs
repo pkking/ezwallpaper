@@ -329,10 +329,15 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn ordinary_niri_ipc_child_closes_stdout_normally() {
+        // This is a functional readback test, not a 2s latency SLA. On busy
+        // macOS CI, the child can exit before the stdout reader thread gets
+        // scheduled. Give the fixture ample scheduling margin; production
+        // IPC_TIMEOUT stays 5s and the separate inherited-pipe test still
+        // proves the 200ms deadline fails closed.
         let mut command = Command::new("sh");
         command.args(["-c", "printf '{}\\n'"]);
         assert_eq!(
-            query_niri_outputs_command(command, Duration::from_secs(2))
+            query_niri_outputs_command(command, Duration::from_secs(10))
                 .expect("normal child closes pipe"),
             b"{}\n"
         );
