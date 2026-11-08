@@ -194,6 +194,22 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("github.ref == 'refs/heads/master'", job)
         self.assertIn("tests/e2e/sway/noctalia_v5.py", job)
         self.assertIn("tests/e2e/sway/niri_noctalia.py", job)
+        # The native Noctalia executable reads fonts/translations at runtime.
+        # A cache-hit binary without the pinned source assets is NOT valid E2E.
+        checkout = job.index("Checkout exact Noctalia source and runtime assets")
+        build = job.index("Build pinned upstream native Noctalia")
+        self.assertLess(checkout, build)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/fonts/noctalia-tabler.ttf", job)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/translations/en.json", job)
+        self.assertIn("test -s /tmp/noctalia-v5.2.1/assets/templates/builtin.toml", job)
+        # Only native E2E-successful binaries may enter trusted master cache.
+        first_pixels = job.index("Test actual native IPC and dual output rendered pixels")
+        second_pixels = job.index("Verify real niri + Noctalia dual-output framebuffer")
+        noctalia_save = job.index("Save verified Noctalia cache from trusted master only")
+        niri_save = job.index("Save verified niri cache from trusted master only")
+        self.assertLess(first_pixels, second_pixels)
+        self.assertLess(second_pixels, noctalia_save)
+        self.assertLess(second_pixels, niri_save)
         self.assertIn("6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4", job)
         self.assertIn("7fd585dd44ed67644977dd9561bb6e8b3837f8f7", job)
 
