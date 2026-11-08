@@ -1,7 +1,7 @@
 # 2026-11-08: niri live output identity + layout attestation
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -34,8 +34,8 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #59; scripts/v
 - [ ] Final-head 10/10 PR CI including native Noctalia/niri pixel tests passes, or report failures and do not merge.
 
 ## Implementation slices
-- [ ] Extend snapshot validation with identity and layout, but sanitize recorded result.
-- [ ] Add deterministic negative and positive fake niri IPC tests; update operator documentation.
+- [x] Extend snapshot validation with identity and layout, but sanitize recorded result.
+- [x] Add deterministic negative and positive fake niri IPC tests; update operator documentation.
 - [ ] Link PR and inspect final-head CI; merge only after all gates pass.
 
 ## Verification matrix
@@ -50,13 +50,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #59; scripts/v
 None. This narrows the existing opt-in test harness, not runtime policy or accepted architecture. Architecture diagram: unchanged - Noctalia backend, niri device API, Core and CLI interfaces unchanged.
 
 ## Evidence log
+- 2026-11-08: implementation complete: scripts/verify_noctalia_live.py now validates optional make/model/serial and x/y and includes them in private live comparisons, but only sanitized geometry in result.json; four fake test cases cover valid serial, serial replacement, logical x remap and malformed identity/position. docs/agents/desktop-integration-evidence.md records scope. Offline and CI gates pending, not claimed passing.
 - 2026-11-08: inspected pinned niri v26.04 niri-ipc/src/lib.rs Output and LogicalOutput. Code and tests not yet executed.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Extend the test-only live snapshot plus negative tests, open Issue-linked PR and inspect exact-head 10 checks before merging.
+Open the linked PR on this branch, inspect exact-head 10 CI checks and test logs, repair failures, squash merge only if all required jobs pass.
 
 ## Completion
 Final commit: pending
