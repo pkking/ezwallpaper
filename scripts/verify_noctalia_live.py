@@ -405,6 +405,15 @@ def verify_dual(
                 # silently invalidate the initial niri topology evidence.
                 if niri_output_geometry(runner, outputs) != geometry:
                     raise VerificationError("niri_topology_changed_before_apply")
+                # A wallpaper scheduler may have changed either output after
+                # the original snapshot, interactive approval or last apply.
+                # Do not replace an external path with a test fixture. Check
+                # both outputs, including the previously applied peer, so an
+                # unexpected change cannot be masked by the next mutation.
+                for peer in outputs:
+                    expected = attempted.get(peer, originals[peer])
+                    if current_wallpaper(runner, peer) != expected:
+                        raise VerificationError("concurrent_wallpaper_change_before_apply")
                 attempted[output] = str(fixtures[i])
                 apply(runner, binary, output, fixtures[i])
                 entry["path_observed"] = True
