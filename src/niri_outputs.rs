@@ -136,14 +136,34 @@ impl<'de> Deserialize<'de> for UniqueInventory {
     }
 }
 
-pub(crate) fn verify_running_outputs(requested: &[String]) -> Result<()> {
+/// Private, invocation-scoped fingerprint only. Never serialize physical
+/// monitor identities into rotation state, logs or shared evidence artifacts.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct NiriSnapshot(BTreeMap<String, Value>);
+
+pub(crate) fn running_output_snapshot(requested: &[String]) -> Result<NiriSnapshot> {
     let bytes = query_niri_outputs()?;
     validate_outputs(&bytes, requested)
 }
 
+pub(crate) fn recheck_output_snapshot(
+    requested: &[String],
+    original: &NiriSnapshot,
+) -> Result<()> {
+    let current = running_output_snapshot(requested)?;
+    for name in requested {
+        if original.0.get(name) != current.0.get(name) {
+            // A monitor serial is private; the error intentionally reports only
+            // the connector, never either output identity or the snapshot.
+            bail!("niri output topology changed before apply: {name}");
+        }
+    }
+    Ok(())
+}
+
 /// niri v26.04 CLI's JSON output is the raw connector->Output map, not the
 /// underlying IPC Reply envelope. Reject missing/disabled/unmapped outputs.
-fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
+fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<NiriSnapshot> {
     if bytes.len() as u64 > MAX_OUTPUTS_JSON {
         bail!("niri output inventory exceeded 1 MiB");
     }
@@ -159,6 +179,7 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
     }
     let UniqueInventory(inventory) =
         serde_json::from_slice(bytes).context("invalid niri outputs JSON")?;
+    let mut snapshot = BTreeMap::new();
     for requested_name in requested {
         let value = inventory
             .get(requested_name)
@@ -241,9 +262,59 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
                     }
                 }
             }
+
+            // The niri IPC contract publishes make/model as strings, serial as
+            // optional string, and signed logical x/y. Legacy fixture reports
+            // may omit these fields; reject malformed supplied values.
+            for field in ["make", "model", "serial"] {
+                if let Some(identity) = output.get(field) {
+                    if field == "serial" && identity.is_null() {
+                        continue;
+                    }
+                    if identity.as_str().is_none_or(|v| v.len() > 256) {
+                        bail!("invalid niri output identity field: {requested_name}");
+                    }
+                }
+            }
+            if logical.contains_key("x") != logical.contains_key("y") {
+                bail!("incomplete niri output logical position: {requested_name}");
+            }
+            for field in ["x", "y"] {
+                if let Some(position) = logical.get(field) {
+                    if position
+                        .as_i64()
+                        .is_none_or(|value| i32::try_from(value).is_err())
+                    {
+                        bail!("invalid niri output logical position: {requested_name}");
+                    }
+                }
+            }
+
+            // Retain only stable physical identity and active layout fields.
+            // Neither other modes nor changing VRR/status flags participate.
+            // Normalize omitted transform to Normal, as above.
+            snapshot.insert(
+                requested_name.clone(),
+                serde_json::json!({
+                    "make": output.get("make"),
+                    "model": output.get("model"),
+                    "serial": output.get("serial"),
+                    "current_mode": current_mode,
+                    "physical_width": mode.get("width"),
+                    "physical_height": mode.get("height"),
+                    "refresh_rate": mode.get("refresh_rate"),
+                    "logical_x": logical.get("x"),
+                    "logical_y": logical.get("y"),
+                    "logical_width": logical.get("width"),
+                    "logical_height": logical.get("height"),
+                    "scale": logical.get("scale"),
+                    "transform": logical.get("transform").cloned()
+                        .unwrap_or_else(|| Value::String("Normal".to_owned())),
+                }),
+            );
         }
     }
-    Ok(())
+    Ok(NiriSnapshot(snapshot))
 }
 
 /// Bounded stdout reader prevents an untrusted/stale niri CLI from exhausting
