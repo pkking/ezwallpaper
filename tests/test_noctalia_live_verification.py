@@ -168,6 +168,64 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertTrue((self.root / "proof/DP-1-fixture.ppm").exists())
         self.assertNotIn(str(self.root), str(result))
 
+    def test_wallpaper_get_accepts_only_one_optional_line_terminator(self):
+        for ending in ("", "\n", "\r\n"):
+            with self.subTest(ending=repr(ending)):
+                fake = FakeDesktop(self.originals)
+
+                def runner(argv, **kwargs):
+                    completed = fake(argv, **kwargs)
+                    if argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
+                        return subprocess.CompletedProcess(
+                            argv, 0, completed.stdout[:-1] + ending, ""
+                        )
+                    return completed
+
+                self.assertEqual(
+                    verifier.current_wallpaper(runner, "DP-1"),
+                    self.originals["DP-1"],
+                )
+
+    def test_ambiguous_original_wallpaper_reply_refuses_before_mutation(self):
+        for ending in ("\n\n", "\r\n\r\n", "\n/another/path\n", "\r", "\x00"):
+            with self.subTest(ending=repr(ending)):
+                fake = FakeDesktop(self.originals)
+
+                def runner(argv, **kwargs):
+                    completed = fake(argv, **kwargs)
+                    if argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
+                        return subprocess.CompletedProcess(
+                            argv, 0, completed.stdout[:-1] + ending, ""
+                        )
+                    return completed
+
+                with self.assertRaisesRegex(
+                    verifier.VerificationError, "unrestorable_original_wallpaper"
+                ):
+                    self.verify(runner)
+                self.assertEqual(fake.writes, [])
+                self.assertFalse((self.root / "proof").exists())
+
+    def test_ambiguous_fixture_acknowledgement_retains_recovery_if_not_restored(self):
+        fake = FakeDesktop(self.originals)
+
+        def runner(argv, **kwargs):
+            completed = fake(argv, **kwargs)
+            if (
+                argv == ["noctalia", "msg", "wallpaper-get", "DP-1"]
+                and fake.fixture_applies >= 1
+            ):
+                return subprocess.CompletedProcess(argv, 0, completed.stdout + "\n", "")
+            return completed
+
+        result, status = self.verify(runner)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "unrestorable_original_wallpaper")
+        self.assertFalse(result["outputs"][0]["path_observed"])
+        self.assertEqual(result["restoration"]["DP-1"], "FAILED")
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+
     def test_live_inventory_must_show_two_enabled_mapped_outputs_before_any_apply(self):
         good = {
             out: {"name": out, "current_mode": 0,
