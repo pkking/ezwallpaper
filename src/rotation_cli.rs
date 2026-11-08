@@ -1093,7 +1093,8 @@ mod tests {
             };
             assert!(
                 result.is_err(),
-                "changed {changed_output} must stop later output mutation"
+                "changed {} must stop later output mutation",
+                changed_output
             );
             assert_eq!(calls.get(), 3, "one locked and two pre-apply checks");
             assert_eq!(applied, vec!["DP-1"]);
