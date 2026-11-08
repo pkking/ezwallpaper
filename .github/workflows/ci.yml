@@ -499,16 +499,26 @@ jobs:
         with:
           path: /tmp/ezw-native-cache/noctalia
           key: ${{ steps.noctalia_key.outputs.noctalia }}
+      - name: Checkout exact Noctalia source and runtime assets on cache hit or miss
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          # Noctalia resolves assets from the executable's parent source dir.
+          # A valid binary cache without fonts/translations exits before IPC.
+          git clone --depth 1 --branch v5.2.1 https://github.com/noctalia-dev/noctalia.git /tmp/noctalia-v5.2.1
+          git -C /tmp/noctalia-v5.2.1 describe --tags --exact-match | grep -Fx v5.2.1
+          git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
+          grep -Fx '6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4' artifacts/noctalia-sway-e2e/upstream-commit.txt
+          test -s /tmp/noctalia-v5.2.1/assets/fonts/noctalia-tabler.ttf
+          test -s /tmp/noctalia-v5.2.1/assets/emoji.json
+          test -s /tmp/noctalia-v5.2.1/assets/templates/builtin.toml
+          test -s /tmp/noctalia-v5.2.1/assets/translations/en.json
       - name: Build pinned upstream native Noctalia v5.2.1
         if: steps.noctalia_cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/noctalia-sway-e2e
-          git clone --depth 1 --branch v5.2.1 https://github.com/noctalia-dev/noctalia.git /tmp/noctalia-v5.2.1
-          git -C /tmp/noctalia-v5.2.1 describe --tags --exact-match | grep -Fx v5.2.1
-          git -C /tmp/noctalia-v5.2.1 rev-parse HEAD | tee artifacts/noctalia-sway-e2e/upstream-commit.txt
-          grep -Fx '6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4' artifacts/noctalia-sway-e2e/upstream-commit.txt
           (cd /tmp/noctalia-v5.2.1 && \
             PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
             meson compile -C build-ci -j 2 noctalia) \
@@ -537,12 +547,6 @@ jobs:
           /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
           grep -Fx 'noctalia v5.2.1 (v5.2.1)' artifacts/noctalia-sway-e2e/upstream-version.txt
           echo "Noctalia binary cache hit: $NATIVE_CACHE_HIT" >> "$GITHUB_STEP_SUMMARY"
-      - name: Save verified Noctalia cache from trusted master only
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.noctalia_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/ezw-native-cache/noctalia
-          key: ${{ steps.noctalia_key.outputs.noctalia }}
       - name: Test actual native IPC and dual output rendered pixels
         shell: bash
         run: |
@@ -642,12 +646,6 @@ jobs:
           /tmp/niri-virtual-3800/target/release/niri --version \
             | tee artifacts/niri-noctalia-e2e/upstream-version.txt
           echo "niri binary cache hit: $NATIVE_CACHE_HIT" >> "$GITHUB_STEP_SUMMARY"
-      - name: Save verified niri cache from trusted master only
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.niri_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/ezw-native-cache/niri
-          key: ${{ steps.niri_key.outputs.niri }}
       - name: Verify real niri + Noctalia dual-output framebuffer
         shell: bash
         run: |
@@ -663,6 +661,20 @@ jobs:
               --binary target/debug/ezwallpaper \
               --artifact-dir artifacts/niri-noctalia-e2e \
             2>&1 | tee artifacts/niri-noctalia-e2e/test.log
+      # Cache fill is permitted only after both native pixel tests have
+      # passed. PRs remain cache/restore-only, including on E2E failure.
+      - name: Save verified Noctalia cache from trusted master only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.noctalia_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ezw-native-cache/noctalia
+          key: ${{ steps.noctalia_key.outputs.noctalia }}
+      - name: Save verified niri cache from trusted master only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.niri_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ezw-native-cache/niri
+          key: ${{ steps.niri_key.outputs.niri }}
       - name: Always preserve niri source, topology, screenshot and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
