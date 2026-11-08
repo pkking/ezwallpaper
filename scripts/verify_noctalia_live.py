@@ -222,12 +222,30 @@ def niri_output_geometry(runner, outputs: tuple[str, str]) -> dict[str, dict]:
             or not 0 < scale <= 16
         ):
             raise VerificationError("invalid_niri_output_scale")
+        # Match the production niri IPC preflight: enum names follow the
+        # niri JSON protocol, not its KDL config spelling. A 90/270 degree
+        # transform exchanges physical axes before applying logical scale.
+        transform = logical.get("transform", "Normal")
+        straight = ("Normal", "180", "Flipped", "Flipped180")
+        transposed = ("90", "270", "Flipped90", "Flipped270")
+        if type(transform) is not str or transform not in (*straight, *transposed):
+            raise VerificationError("invalid_niri_output_transform")
+        if scale is not None:
+            swapped = transform in transposed
+            for dimension in ("width", "height"):
+                physical_axis = (
+                    ("height" if dimension == "width" else "width")
+                    if swapped else dimension
+                )
+                if abs(physical[physical_axis] / scale - logical[dimension]) > 1:
+                    raise VerificationError("niri_output_geometry_scale_mismatch")
         geometry[name] = {
             "physical_width": physical["width"],
             "physical_height": physical["height"],
             "logical_width": logical["width"],
             "logical_height": logical["height"],
             "scale": scale,
+            "transform": transform,
         }
     return geometry
 

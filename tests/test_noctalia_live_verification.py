@@ -174,6 +174,57 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             self.verify(fake)
         self.assertEqual(fake.writes, [])
 
+    def test_live_niri_scale_geometry_mismatch_refuses_all_wallpaper_changes(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840, "height": 2160}],
+                  "logical": {"width": 2560, "height": 1440, "scale": 1.5}}
+            for out in self.outputs
+        }
+        cases = [
+            {"width": 2560, "height": 1600, "scale": 1.5},
+            {"width": 2560, "height": 1440, "scale": 1.25},
+            {"width": 1440, "height": 2560, "scale": 1.5, "transform": "Normal"},
+            {"width": 1440, "height": 2560, "scale": 1.5, "transform": "flipped-90"},
+            {"width": 2560, "height": 1440, "scale": 1.5, "transform": True},
+        ]
+        for logical in cases:
+            with self.subTest(logical=logical):
+                inventory = {**good, "DP-1": {**good["DP-1"], "logical": logical}}
+                fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+                with self.assertRaises(verifier.VerificationError):
+                    self.verify(fake)
+                self.assertEqual(fake.writes, [])
+                self.assertFalse((self.root / "proof").exists())
+
+    def test_rotated_niri_output_geometry_is_checked_and_reported(self):
+        inventory = {
+            "DP-1": {
+                "name": "DP-1", "current_mode": 0,
+                "modes": [{"width": 3840, "height": 2160}],
+                "logical": {
+                    "width": 1440, "height": 2560,
+                    "scale": 1.5, "transform": "90",
+                },
+            },
+            "HDMI-A-1": {
+                "name": "HDMI-A-1", "current_mode": 0,
+                "modes": [{"width": 1080, "height": 1920}],
+                "logical": {
+                    "width": 1920, "height": 1080,
+                    "scale": 1.0, "transform": "Flipped270",
+                },
+            },
+        }
+        fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+        result, status = self.verify(fake)
+        self.assertEqual(status, 0)
+        self.assertEqual(result["niri_output_geometry"]["DP-1"]["transform"], "90")
+        self.assertEqual(result["niri_output_geometry"]["DP-1"]["logical_height"], 2560)
+        self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["transform"], "Flipped270")
+        self.assertEqual(result["niri_output_geometry"]["HDMI-A-1"]["logical_width"], 1920)
+        self.assertEqual(fake.wallpapers, self.originals)
+
     def test_duplicate_niri_keys_cannot_spoof_topology(self):
         desc = ('{"name":"DP-1","current_mode":0,"modes":[{"width":3840,'
                 '"height":2160}],"logical":{"width":2560,"height":1440}}')
