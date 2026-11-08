@@ -141,7 +141,9 @@ def inspect(component: str, key: str, directory: Path) -> dict:
         meta = json.loads(payload, object_pairs_hook=reject_duplicate_fields)
     except (UnicodeError, ValueError) as exc:
         raise CacheError("invalid_cache_manifest_json") from exc
-    if not isinstance(meta, dict) or meta != {
+    if (not isinstance(meta, dict)
+            or type(meta.get("schema_version")) is not int
+            or meta != {
         "schema_version": SCHEMA,
         "component": component,
         "source_sha": PINNED[component]["source_sha"],
