@@ -362,7 +362,7 @@ mod tests {
             "/tmp/landscape with space.png\n",
             "/tmp/landscape with space.png\r\n",
         ] {
-            assert!(exact_path_readback(response, path), "{response:?}");
+            assert!(exact_path_readback(response, path), "{:?}", response);
         }
         for response in [
             "/tmp/landscape with space.png\n\n",
@@ -372,7 +372,7 @@ mod tests {
             "/tmp/landscape with space.png\0",
             "/tmp/old.png\n",
         ] {
-            assert!(!exact_path_readback(response, path), "{response:?}");
+            assert!(!exact_path_readback(response, path), "{:?}", response);
         }
     }
 
@@ -400,7 +400,7 @@ mod tests {
                 },
                 |_| {},
             );
-            assert!(result.is_err(), "ambiguous response: {response:?}");
+            assert!(result.is_err(), "ambiguous response: {:?}", response);
             assert_eq!(sets, 1, "never repeat a mutation");
             assert_eq!(reads, 4, "only bounded independent readback retries");
         }
