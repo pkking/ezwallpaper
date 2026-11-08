@@ -1,7 +1,7 @@
 # 2026-11-08: Verify Noctalia dual-output pixel isolation after each apply
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -31,15 +31,15 @@ No live user desktop in tests, no new CLI or persistent data contract. Keep both
 
 ## Acceptance criteria
 
-- [ ] After the first fixture, an unintended change to the second output fails before the second apply.
-- [ ] After the second fixture, an unintended change to the first output fails, rather than reporting dual-output PIXEL_VERIFIED.
-- [ ] Normal distinct red/blue outputs pass, peer pixel ratios and screenshots are recorded; recovery remains conservative on failure.
+- [x] After the first fixture, an unintended change to the second output fails before the second apply.
+- [x] After the second fixture, an unintended change to the first output fails, rather than reporting dual-output PIXEL_VERIFIED.
+- [x] Normal distinct red/blue outputs pass, peer pixel ratios and screenshots are recorded; recovery remains conservative on failure.
 - [ ] Exact-head required PR CI (Rust/macOS/Windows/Sway/native Noctalia and plan integrity) passes before merge.
 
 ## Implementation slices
 
-- [ ] Add before/after peer framebuffer assertions with existing bounded screenshot retry helpers.
-- [ ] Inject first-apply and second-apply global wallpaper leak into offline fake runner and assert failure + private recovery.
+- [x] Add before/after peer framebuffer assertions with existing bounded screenshot retry helpers.
+- [x] Inject first-apply and second-apply global wallpaper leak into offline fake runner and assert failure + private recovery.
 - [ ] Record final-head CI; squash merge only after verified success.
 
 ## Verification matrix
@@ -56,7 +56,7 @@ None: test-only validation within previously consent-gated live verifier, no cha
 
 ## Evidence log
 
-- 2026-11-08: inspected base `verify_dual()`, found each loop checks only the target output; all previous and untouched peer frames go unchecked. No new code or tests executed at plan creation.
+- 2026-11-08: inspected base `verify_dual()`, found each loop checks only the target output; all previous and untouched peer frames go unchecked. No new code or tests executed at plan creation.\n- 2026-11-08: implementation 848d581: after each target fixture pixel proof, capture the other output and compare either untouched baseline or already-applied fixture (bounded retries), record numeric ratios plus independent screenshot. Fake-runner regression a6fc1ac: first or second apply accidentally changes the peer; both must fail and retain recovery. These test assertions were not run locally; final CI is PENDING.
 
 ## Deviations and discoveries
 
@@ -64,7 +64,7 @@ None.
 
 ## Resume from here
 
-Implement independent peer framebuffer capture after each fixture apply, then add regression tests for both directions and open a PR; check final-head CI before merging.
+Open Issue #59-linked PR from `agent/issue-59-noctalia-cross-output-pixel-20261108`; inspect final-head offline verifier and all required CI jobs; repair failures before squash merge.
 
 ## Completion
 
