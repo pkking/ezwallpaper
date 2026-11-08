@@ -31,6 +31,8 @@ jobs:
           fetch-depth: 0
       - name: Test native wpaperd path selector (no network)
         run: python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
+      - name: Test pinned native binary cache validation (no network)
+        run: python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v
       - name: Detect Noctalia/Niri and wpaperd integration impact
         id: filter
         env:
@@ -105,6 +107,7 @@ jobs:
               "tests/test_noctalia_live_verification.py",
               "tests/test_noctalia_sway_helpers.py",
               "tests/test_niri_noctalia_helpers.py",
+              "tests/test_ci_native_cache.py",
           }
           for path in changed:
               if (
@@ -118,7 +121,7 @@ jobs:
                       "tests/e2e/sway/sway-dual.conf",
                   }
                   or path in noctalia_test_files
-                  or path == "scripts/verify_noctalia_live.py"
+                  or path in {"scripts/verify_noctalia_live.py", "scripts/ci_native_cache.py"}
               ):
                   relevant.append(path)
               elif path == ".github/workflows/ci.yml":
