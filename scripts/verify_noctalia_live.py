@@ -413,6 +413,27 @@ def verify_dual(
                 entry["visual_result"] = "PIXEL_VERIFIED" if ratio >= MATCH_THRESHOLD else "FAILED"
                 if ratio < MATCH_THRESHOLD:
                     raise VerificationError("screen_pixel_mismatch")
+                # The target alone is insufficient: applying to one connector
+                # must not change its peer. Check the untouched baseline after
+                # the first apply, then the earlier fixture after the second.
+                # Keep independent screenshots for diagnosing cross-output leaks.
+                peer_ratios = {}
+                for peer_index, peer in enumerate(outputs):
+                    if peer == output:
+                        continue
+                    evidence = artifact_dir / f"{peer}-after-{output}-apply.ppm"
+                    if peer_index < i:
+                        peer_ratio = capture(runner, peer, evidence, COLORS[peer_index])
+                    else:
+                        peer_ratio = verify_restored_frame(
+                            runner, peer, baselines[peer], evidence,
+                        )
+                    peer_ratios[peer] = round(peer_ratio, 4)
+                    if peer_ratio < MATCH_THRESHOLD:
+                        entry["peer_pixel_match_ratios"] = peer_ratios
+                        entry["visual_result"] = "FAILED"
+                        raise VerificationError("peer_output_changed_after_apply")
+                entry["peer_pixel_match_ratios"] = peer_ratios
             record["status"] = "PIXEL_VERIFIED"
         except VerificationError as exc:
             record["error"] = str(exc)
