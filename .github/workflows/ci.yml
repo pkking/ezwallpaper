@@ -431,8 +431,8 @@ jobs:
     # Trixie provides WirePlumber 0.5 / C++23 and Noctalia's pinned v5.2.1
     # build dependencies; this image is CI-only, not a production dependency.
     container: debian:trixie
-    # PRs cannot write shared executable caches; only trusted master pushes do.
-    cache-mode: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'write' || 'read' }}
+    # PRs only use cache/restore. GitHub scopes PR caches to merge refs;
+    # only a master push executes cache/save, so PRs cannot seed master cache.
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
