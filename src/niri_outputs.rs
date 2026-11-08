@@ -157,7 +157,7 @@ fn compare_snapshots(
     current: &NiriSnapshot,
 ) -> Result<()> {
     for name in requested {
-        if original.0.get(name).is_none() || original.0.get(name) != current.0.get(name) {
+        if !original.0.contains_key(name) || original.0.get(name) != current.0.get(name) {
             // A monitor serial is private; report only the named connector.
             bail!("niri output topology changed before apply: {name}");
         }
