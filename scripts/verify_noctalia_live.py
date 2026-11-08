@@ -153,7 +153,8 @@ def call(runner, argv: list[str], error: str) -> str:
         raise VerificationError(error) from exc
     if proc.returncode != 0:
         raise VerificationError(error)
-    return proc.stdout.rstrip("\r\n")
+    # Preserve raw records; wallpaper-get must reject ambiguous extra lines.
+    return proc.stdout
 
 
 def doctor_ready(report: str) -> bool:
@@ -278,8 +279,15 @@ def niri_output_geometry(runner, outputs: tuple[str, ...]) -> dict[str, dict]:
 
 
 def current_wallpaper(runner, output: str) -> str:
-    observed = call(runner, ["noctalia", "msg", "wallpaper-get", output], "wallpaper_get_failed")
-    if not observed or "\n" in observed or "\r" in observed:
+    response = call(runner, ["noctalia", "msg", "wallpaper-get", output], "wallpaper_get_failed")
+    # Exactly one path record, optionally terminated by ONE LF or CRLF.
+    # rstrip would silently accept a second empty record after the path.
+    observed = (
+        response[:-2] if response.endswith("\r\n")
+        else response[:-1] if response.endswith("\n")
+        else response
+    )
+    if not observed or any(marker in observed for marker in ("\n", "\r", "\x00")):
         raise VerificationError("unrestorable_original_wallpaper")
     return observed
 
