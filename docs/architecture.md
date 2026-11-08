@@ -144,9 +144,12 @@ Missing/stale/malformed output data, IPC failure and timeout fail closed;
 a failed second check may leave an empty state/lock directory but cannot
 apply a wallpaper or advance state. Both queries are read-only.
 This is an opt-in guard for niri + Noctalia, not implicit hotplug handling,
-compositor ownership, or pixel verification. A display disconnected after
-the locked check can still make an apply fail; existing Noctalia readback
-is the final acknowledgement boundary.
+compositor ownership, or pixel verification. Each selected output is checked
+again immediately before its own Noctalia wallpaper-set operation; a target
+disconnected after the lock-held check fails closed without applying to that
+target. Earlier outputs may already have been acknowledged and committed,
+and hotplug may still occur after the last read-only check. Noctalia path
+readback remains the final acknowledgement boundary.
 
 Schema/CLI evidence: [niri v26.04 Output struct](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs),
 [niri v26.04 JSON output rendering](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
