@@ -146,10 +146,7 @@ pub(crate) fn running_output_snapshot(requested: &[String]) -> Result<NiriSnapsh
     validate_outputs(&bytes, requested)
 }
 
-pub(crate) fn recheck_output_snapshot(
-    requested: &[String],
-    original: &NiriSnapshot,
-) -> Result<()> {
+pub(crate) fn recheck_output_snapshot(requested: &[String], original: &NiriSnapshot) -> Result<()> {
     let current = running_output_snapshot(requested)?;
     compare_snapshots(requested, original, &current)
 }
@@ -678,11 +675,7 @@ mod tests {
             .expect("new output descriptor can independently validate");
             let error = compare_snapshots(&["HDMI-A-1".to_owned()], &baseline, &observed)
                 .expect_err("same connector must not hide a new physical panel");
-            assert!(
-                error.to_string().contains("topology changed"),
-                "{}",
-                error
-            );
+            assert!(error.to_string().contains("topology changed"), "{}", error);
             assert!(
                 !error.to_string().contains("replacement-sensitive-identity"),
                 "private serial must never appear in errors"
@@ -691,11 +684,9 @@ mod tests {
 
         let mut moved = initial.clone();
         moved["HDMI-A-1"]["logical"]["x"] = serde_json::json!(2400);
-        let observed = validate_outputs(
-            &serde_json::to_vec(&moved).expect("moved JSON"),
-            &requested,
-        )
-        .expect("new layout alone remains valid");
+        let observed =
+            validate_outputs(&serde_json::to_vec(&moved).expect("moved JSON"), &requested)
+                .expect("new layout alone remains valid");
         compare_snapshots(&requested, &baseline, &observed)
             .expect_err("changed layout must fail in the locked recheck");
 
