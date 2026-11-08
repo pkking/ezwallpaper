@@ -45,8 +45,11 @@ class FakeDesktop:
         if argv[:4] == ["ezwallpaper", "--setter", "noctalia", "doctor"]:
             stdout = "available: true\nnoctalia_ipc_reachable: true\nverified_desktop_change: false\n"
         elif argv == ["niri", "msg", "--json", "outputs"]:
-            stdout = (next(self.inventories) if self.inventories is not None else
-                      self.inventory if self.inventory is not None else json.dumps({
+            # A compositor continues reporting its latest topology. Keep the
+            # last fixture response once the scripted transition is exhausted.
+            if self.inventories is not None:
+                self.inventory = next(self.inventories, self.inventory)
+            stdout = (self.inventory if self.inventory is not None else json.dumps({
                 output: {
                     "name": output, "current_mode": 0,
                     "modes": [{"width": 3840 if output == "DP-1" else 1080,
@@ -258,7 +261,9 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(result["error"], "niri_topology_changed_before_apply")
         self.assertEqual(fake.writes, [])
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_CHANGED")
+        self.assertTrue((self.root / "proof/recovery.json").exists())
         self.assertEqual(fake.wallpapers, self.originals)
 
     def test_second_output_disconnect_after_first_apply_still_restores_first(self):
@@ -281,8 +286,64 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(result["error"], "niri_output_not_connected_or_mismatched")
         self.assertEqual(len([c for c in fake.writes if "fixture-" in c[-1]]), 1)
-        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
-        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_UNVERIFIED")
+        self.assertEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+        self.assertEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+
+    def test_changed_output_mapping_after_both_applies_is_not_restored(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840 if out == "DP-1" else 1080,
+                             "height": 2160 if out == "DP-1" else 1920}],
+                  "logical": {"width": 2560 if out == "DP-1" else 1080,
+                              "height": 1440 if out == "DP-1" else 1920,
+                              "scale": 1.5 if out == "DP-1" else 1.0}}
+            for out in self.outputs
+        }
+        changed = json.loads(json.dumps(good))
+        changed["HDMI-A-1"]["logical"]["transform"] = "180"
+        fake = FakeDesktop(
+            self.originals,
+            inventories=[json.dumps(good)] * 3 + [json.dumps(changed)],
+        )
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_topology_changed_before_restore")
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_CHANGED")
+        self.assertEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+        self.assertNotEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        self.assertEqual(len([call for call in fake.writes
+                              if call[4] == "HDMI-A-1" and
+                              call[-1] == self.originals["HDMI-A-1"]]), 0)
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+
+    def test_disconnected_output_after_both_applies_is_not_rewritten(self):
+        good = {
+            out: {"name": out, "current_mode": 0,
+                  "modes": [{"width": 3840 if out == "DP-1" else 1080,
+                             "height": 2160 if out == "DP-1" else 1920}],
+                  "logical": {"width": 2560 if out == "DP-1" else 1080,
+                              "height": 1440 if out == "DP-1" else 1920,
+                              "scale": 1.5 if out == "DP-1" else 1.0}}
+            for out in self.outputs
+        }
+        fake = FakeDesktop(
+            self.originals,
+            inventories=[json.dumps(good)] * 3
+            + [json.dumps({"DP-1": good["DP-1"]})],
+        )
+        result, status = self.verify(fake)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "niri_topology_unavailable_before_restore")
+        self.assertEqual(result["restoration"]["DP-1"], "PIXEL_VERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "TOPOLOGY_UNVERIFIED")
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+        self.assertEqual(len([call for call in fake.writes
+                              if call[4] == "HDMI-A-1" and
+                              call[-1] == self.originals["HDMI-A-1"]]), 0)
 
     def test_second_apply_partially_fails_and_still_restores_both(self):
         fake = FakeDesktop(self.originals, partial_failure=True)
