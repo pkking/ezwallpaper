@@ -358,6 +358,12 @@ def verify_dual(
                 record["outputs"].append(entry)
                 # A failed or timed-out setter may still have changed this output.
                 # Track ownership before sending IPC, not after it succeeds.
+                # Baseline capture and the interactive approval can take time.
+                # Recheck both outputs immediately before each mutation, so a
+                # disconnected, remapped, rescaled or rotated connector cannot
+                # silently invalidate the initial niri topology evidence.
+                if niri_output_geometry(runner, outputs) != geometry:
+                    raise VerificationError("niri_topology_changed_before_apply")
                 attempted[output] = str(fixtures[i])
                 apply(runner, binary, output, fixtures[i])
                 entry["path_observed"] = True
