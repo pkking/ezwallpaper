@@ -1,7 +1,7 @@
 # noctalia-topology-at-apply: Ensure manual real niri+Noctalia dual-output pixel verification refuses unexpected niri connector/geometry change between baseline capture and each live wallpaper mutation, preserving restoration on any partial result.
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-08
 Last checkpoint: 2026-11-08
@@ -34,14 +34,14 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; docs/arch
 
 ## Acceptance criteria
 
-- [ ] Ensure manual real niri+Noctalia dual-output pixel verification refuses unexpected niri connector/geometry change between baseline capture and each live wallpaper mutation, preserving restoration on any partial result.
+- [x] Ensure manual real niri+Noctalia dual-output pixel verification refuses unexpected niri connector/geometry change between baseline capture and each live wallpaper mutation, preserving restoration on any partial result.
 - [ ] Regression test covers baseline success and the detected failure case with no uncontrolled wallpaper mutation.
 - [ ] Exact-head required CI checks pass, including macOS/Windows/Rust/native E2E as selected.
 
 ## Implementation slices
 
-- [ ] Narrow code/test change in scripts/verify_noctalia_live.py; tests/test_noctalia_live_verification.py.
-- [ ] Update documentation/evidence where contract changed.
+- [x] Narrow code/test change in scripts/verify_noctalia_live.py; tests/test_noctalia_live_verification.py.
+- [x] Update documentation/evidence where contract changed.
 - [ ] Open PR with Issue and plan, resolve CI findings.
 - [ ] Merge only when latest-head selected gates are complete and acceptable.
 
@@ -59,16 +59,17 @@ AGENTS.md; README.md; docs/agents/workflow.md; docs/agents/testing.md; docs/arch
 None: narrow reliability and opt-in validation improvements, no user-visible default or security boundary changes.
 
 ## Evidence log
+- 2026-11-08: verify_noctalia_live.py now compares fresh read-only niri geometry to initial validated snapshot before every fixture apply; two new fake-IPC tests cover mid-baseline geometry change (zero applies) and second-output disconnect after first apply (restores original). Doc updated; physical hotplug after recheck remains possible. Changes committed, exact-head CI not yet observed; all new tests UNASSESSED.
 
 - 2026-11-08: inspected source at e268da92906eaf7d7b85356e87a43fd39da364e1; confirmed previous master macOS test failure and topology timing gap; tests on this branch UNASSESSED.
 
 ## Deviations and discoveries
 
-None.
+Prior master macOS failure was restricted to normal-child stdout test; no deterministic reproduction of a production failure. The new Noctalia check is best-effort and does not atomically prevent compositor hotplug.
 
 ## Resume from here
 
-Implement the focused fix and regression; then open PR, verify latest-head CI and report exact remaining gates.
+Create PR on this branch and inspect latest-head CI. Resolve failures without weakening timeout regression or existing required jobs.
 
 ## Completion
 
