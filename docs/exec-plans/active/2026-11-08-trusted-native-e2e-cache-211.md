@@ -19,11 +19,11 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 - Base master: e268da92906eaf7d7b85356e87a43fd39da364e1. Open development PRs #209/#210 are independent. No native cache restore/save in CI currently.
 - PR #207 E2E 19.7 minutes; Noctalia compile 14.9m; pinned experimental niri compile 3.1m. PR #208 29.5m; Noctalia 22.5m; niri 4.8m.
 - CI job uses Debian Trixie container, fixed Noctalia v5.2.1 SHA 6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4, fixed niri SHA 7fd585dd44ed67644977dd9561bb6e8b3837f8f7. Existing native screenshots/artifacts and error gates are mandatory.
-- GitHub Actions caches from pull_request refs cannot populate default-branch cache; explicit job cache-mode read on PR and write on master push only. Restored binary must be validated.
+- GitHub Actions caches from pull_request refs cannot populate default-branch cache; PR job restore-only and trusted master-push save-only under GitHub's merge-ref/default-branch cache isolation. Restored binary must be validated.
 - No code, CI or performance result for this branch yet.
 
 ## Constraints and invariants
-- All untrusted PRs use job cache-mode read, never write to default-branch executable caches, no pull_request_target, no secrets.
+- All untrusted PRs use cache/restore only; save action runs only on master push. No explicit write-capable cache-mode override, no pull_request_target and no secrets. GitHub merge-ref cache isolation prevents PR caches from poisoning master.
 - Cache keys include immutable upstream SHA, compiler/build recipe, architecture and Debian installed-package/toolchain fingerprint. Version/ABI change means miss; no prefix/restore-key fallback.
 - Restore only a regular non-symlink, hash-matched binary matching explicit component, build recipe, key and source SHA. Malformed hit fails, no silent trust.
 - Never mistake path acknowledgement for pixel proof: real Noctalia+Sway and niri+Noctalia tests always execute for relevant paths, with raw artifacts on failure.
@@ -32,7 +32,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 ## Acceptance criteria
 - [ ] Deterministic, offline tests cover manifest/sha validation, cache miss fallback, corrupt/unsafe cache refusal, component/version/recipe mismatch, key changes on ABI inputs.
 - [ ] CI warm cache restores exact verified source version without compiling and re-executes the same visual E2E tests; cold cache builds and validates pinned upstream commits.
-- [x] Only master push can save shared binary cache; PRs read only; no new tokens or credential exposure.
+- [x] Only master push executes cache/save; PR steps use cache/restore only; no new tokens or credential exposure.
 - [ ] Latest-head normal CI including macOS, Windows, Rust, agent, Sway and native Noctalia passes.
 - [ ] Baseline and cold/warm run durations are recorded without asserting target met in absence of measurements.
 
@@ -55,7 +55,7 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/architecture.md
 None: opt-in CI internals only; no user-visible behavior or new permissions. Architecture diagram: unchanged because Core, CLI, provider, desktop-backend, protocol and state responsibilities are untouched.
 
 ## Evidence log
-- 2026-11-08: cached binary and manifest helper committed; tests/test_ci_native_cache.py includes source, schema, symlink and tamper refusal. workflow with only master-push save and PR read-only plus native E2E retained. All final-head CI and warm-cache measurements PENDING.
+- 2026-11-08: cached binary and manifest helper committed; tests/test_ci_native_cache.py includes source, schema, symlink and tamper refusal. Workflow has PR restore-only and master-push save-only steps, both native E2E retained. Initial dynamic cache-mode expression was rejected by GitHub workflow parser (zero jobs, push event workflow failure); removed and confirmed pull_request CI can start. All final-head CI and warm-cache measurements PENDING.
 - 2026-11-08: baseline #207/#208 duration breakdown via GitHub Actions jobs; Noctalia compile dominates. No verified warm-cache result.
 
 ## Deviations and discoveries
