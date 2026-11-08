@@ -143,16 +143,18 @@ def inspect(component: str, key: str, directory: Path) -> dict:
         raise
     except (UnicodeError, ValueError) as exc:
         raise CacheError("invalid_cache_manifest_json") from exc
-    if (not isinstance(meta, dict)
-            or type(meta.get("schema_version")) is not int
-            or meta != {
-        "schema_version": SCHEMA,
-        "component": component,
-        "source_sha": PINNED[component]["source_sha"],
-        "recipe": PINNED[component]["recipe"],
-        "cache_key": key,
-        "binary_sha256": meta.get("binary_sha256"),
-    }:
+    if (
+        not isinstance(meta, dict)
+        or type(meta.get("schema_version")) is not int
+        or meta != {
+            "schema_version": SCHEMA,
+            "component": component,
+            "source_sha": PINNED[component]["source_sha"],
+            "recipe": PINNED[component]["recipe"],
+            "cache_key": key,
+            "binary_sha256": meta.get("binary_sha256"),
+        }
+    ):
         raise CacheError("cache_manifest_identity_mismatch")
     digest = meta["binary_sha256"]
     if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
