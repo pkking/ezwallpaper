@@ -396,8 +396,9 @@ impl RotationClock {
     }
 }
 
-// Read-only live output validation; separate alias keeps the port contract concise.
-type NiriOutputRecheck = fn(&[String]) -> Result<()>;
+// Owned closure retains the original physical/layout fingerprint for the
+// lock-held and per-output read-only niri IPC checks.
+type NiriOutputRecheck = Box<dyn Fn(&[String]) -> Result<()>>;
 
 /// A dry-run never creates the state/lock directory. Real apply holds a lock
 /// across planning, Noctalia readback and atomic per-output acknowledgement.
@@ -425,30 +426,29 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         events_dir,
         require_niri_outputs,
     } = request;
-    let verified_profile = if require_niri_outputs {
+    let (verified_profile, niri_snapshot) = if require_niri_outputs {
         if !apply || choice != registry::RotationBackend::Noctalia {
             bail!("--require-niri-outputs requires --apply with the Noctalia backend");
         }
-        // Reuse exactly the profile checked by niri. Another process can
-        // otherwise swap the connector set before the controller rereads it.
+        // Reuse exactly the checked profile AND its private physical/layout
+        // fingerprint. Hotplugged hardware can retain the same connector name.
         let profile = load_profile(profile_path)?;
         let outputs = profile
             .outputs
             .iter()
             .map(|output| output.name.clone())
             .collect::<Vec<_>>();
-        crate::niri_outputs::verify_running_outputs(&outputs)?;
-        Some(profile)
+        let snapshot = crate::niri_outputs::running_output_snapshot(&outputs)?;
+        (Some(profile), Some(snapshot))
     } else {
-        None
+        (None, None)
     };
-    // Repeat the preflight once the state lock is held. A second rotation job
-    // may wait for the lock while niri outputs are disconnected or remapped.
-    let niri_recheck: Option<NiriOutputRecheck> = if require_niri_outputs {
-        Some(crate::niri_outputs::verify_running_outputs)
-    } else {
-        None
-    };
+    // Keep the original baseline through the lock and each selected output.
+    let niri_recheck: Option<NiriOutputRecheck> = niri_snapshot.map(|baseline| {
+        Box::new(move |names: &[String]| {
+            crate::niri_outputs::recheck_output_snapshot(names, &baseline)
+        }) as NiriOutputRecheck
+    });
     // Reject an invalid period before creating even a default state directory.
     utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
@@ -709,7 +709,7 @@ fn run_with_backend_interval_scoped(
     // lock: recheck the exact same validated profile connectors before any
     // wallpaper apply. Hardware can still hotplug after this observation.
     if apply {
-        if let Some(recheck) = niri_recheck {
+        if let Some(recheck) = niri_recheck.as_deref() {
             let names = profile
                 .outputs
                 .iter()
@@ -768,7 +768,7 @@ fn run_with_backend_interval_scoped(
             // explicit niri mode, confirm this connector still exists just
             // before the setter for this output. Earlier acknowledged
             // outputs keep their own durable state on a later disconnect.
-            if let Some(recheck) = niri_recheck {
+            if let Some(recheck) = niri_recheck.as_deref() {
                 recheck(std::slice::from_ref(&output.name)).with_context(|| {
                     format!(
                         "niri output changed before wallpaper apply: {}",
@@ -966,7 +966,7 @@ mod tests {
                     state_scope: None,
                     events_dir: None,
                     verified_profile: Some(verified),
-                    niri_recheck: Some(|names| {
+                    niri_recheck: Some(Box::new(|names| {
                         let allowed = ["DP-1".to_owned(), "HDMI-A-1".to_owned()];
                         assert!(
                             names == allowed.as_slice()
@@ -974,7 +974,7 @@ mod tests {
                             "checked names must match verified profile"
                         );
                         Ok(())
-                    }),
+                    })),
                 },
             )
             .expect("apply against only the verified snapshot")
@@ -1028,10 +1028,10 @@ mod tests {
                 state_scope: None,
                 events_dir: None,
                 verified_profile: Some(verified),
-                niri_recheck: Some(|names| {
+                niri_recheck: Some(Box::new(|names| {
                     assert_eq!(names, &["DP-1".to_owned(), "HDMI-A-1".to_owned()]);
                     bail!("niri topology changed while awaiting rotation lock")
-                }),
+                })),
             },
         );
         assert!(result.is_err());
@@ -1065,12 +1065,12 @@ mod tests {
                     state_scope: None,
                     events_dir: None,
                     verified_profile: Some(verified),
-                    niri_recheck: Some(|names| {
+                    niri_recheck: Some(Box::new(|names| {
                         if names == ["HDMI-A-1".to_owned()] {
                             bail!("HDMI-A-1 disconnected after initial niri preflight");
                         }
                         Ok(())
-                    }),
+                    })),
                 },
             )
         };

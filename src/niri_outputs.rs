@@ -136,14 +136,38 @@ impl<'de> Deserialize<'de> for UniqueInventory {
     }
 }
 
-pub(crate) fn verify_running_outputs(requested: &[String]) -> Result<()> {
+/// Private, invocation-scoped fingerprint only. Never serialize physical
+/// monitor identities into rotation state, logs or shared evidence artifacts.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct NiriSnapshot(BTreeMap<String, Value>);
+
+pub(crate) fn running_output_snapshot(requested: &[String]) -> Result<NiriSnapshot> {
     let bytes = query_niri_outputs()?;
     validate_outputs(&bytes, requested)
 }
 
+pub(crate) fn recheck_output_snapshot(requested: &[String], original: &NiriSnapshot) -> Result<()> {
+    let current = running_output_snapshot(requested)?;
+    compare_snapshots(requested, original, &current)
+}
+
+fn compare_snapshots(
+    requested: &[String],
+    original: &NiriSnapshot,
+    current: &NiriSnapshot,
+) -> Result<()> {
+    for name in requested {
+        if !original.0.contains_key(name) || original.0.get(name) != current.0.get(name) {
+            // A monitor serial is private; report only the named connector.
+            bail!("niri output topology changed before apply: {name}");
+        }
+    }
+    Ok(())
+}
+
 /// niri v26.04 CLI's JSON output is the raw connector->Output map, not the
 /// underlying IPC Reply envelope. Reject missing/disabled/unmapped outputs.
-fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
+fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<NiriSnapshot> {
     if bytes.len() as u64 > MAX_OUTPUTS_JSON {
         bail!("niri output inventory exceeded 1 MiB");
     }
@@ -159,6 +183,7 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
     }
     let UniqueInventory(inventory) =
         serde_json::from_slice(bytes).context("invalid niri outputs JSON")?;
+    let mut snapshot = BTreeMap::new();
     for requested_name in requested {
         let value = inventory
             .get(requested_name)
@@ -241,9 +266,59 @@ fn validate_outputs(bytes: &[u8], requested: &[String]) -> Result<()> {
                     }
                 }
             }
+
+            // The niri IPC contract publishes make/model as strings, serial as
+            // optional string, and signed logical x/y. Legacy fixture reports
+            // may omit these fields; reject malformed supplied values.
+            for field in ["make", "model", "serial"] {
+                if let Some(identity) = output.get(field) {
+                    if field == "serial" && identity.is_null() {
+                        continue;
+                    }
+                    if identity.as_str().is_none_or(|v| v.len() > 256) {
+                        bail!("invalid niri output identity field: {requested_name}");
+                    }
+                }
+            }
+            if logical.contains_key("x") != logical.contains_key("y") {
+                bail!("incomplete niri output logical position: {requested_name}");
+            }
+            for field in ["x", "y"] {
+                if let Some(position) = logical.get(field) {
+                    if position
+                        .as_i64()
+                        .is_none_or(|value| i32::try_from(value).is_err())
+                    {
+                        bail!("invalid niri output logical position: {requested_name}");
+                    }
+                }
+            }
+
+            // Retain only stable physical identity and active layout fields.
+            // Neither other modes nor changing VRR/status flags participate.
+            // Normalize omitted transform to Normal, as above.
+            snapshot.insert(
+                requested_name.clone(),
+                serde_json::json!({
+                    "make": output.get("make"),
+                    "model": output.get("model"),
+                    "serial": output.get("serial"),
+                    "current_mode": current_mode,
+                    "physical_width": mode.get("width"),
+                    "physical_height": mode.get("height"),
+                    "refresh_rate": mode.get("refresh_rate"),
+                    "logical_x": logical.get("x"),
+                    "logical_y": logical.get("y"),
+                    "logical_width": logical.get("width"),
+                    "logical_height": logical.get("height"),
+                    "scale": logical.get("scale"),
+                    "transform": logical.get("transform").cloned()
+                        .unwrap_or_else(|| Value::String("Normal".to_owned())),
+                }),
+            );
         }
     }
-    Ok(())
+    Ok(NiriSnapshot(snapshot))
 }
 
 /// Bounded stdout reader prevents an untrusted/stale niri CLI from exhausting
@@ -563,6 +638,139 @@ mod tests {
                 index
             );
         }
+    }
+
+    #[test]
+    fn topology_snapshot_recheck_detects_replaced_panel_and_changed_layout() {
+        let requested = dual();
+        let mut initial: Value = serde_json::from_slice(&fixture()).expect("valid baseline");
+        for (name, x) in [("DP-1", 0), ("HDMI-A-1", 2560)] {
+            initial[name]["make"] = serde_json::json!("Example vendor");
+            initial[name]["model"] = serde_json::json!("Example panel");
+            initial[name]["serial"] = serde_json::json!(format!("private-serial-{name}"));
+            initial[name]["logical"]["x"] = serde_json::json!(x);
+            initial[name]["logical"]["y"] = serde_json::json!(0);
+        }
+        let baseline = validate_outputs(
+            &serde_json::to_vec(&initial).expect("original JSON"),
+            &requested,
+        )
+        .expect("valid identified baseline");
+        let unchanged = validate_outputs(
+            &serde_json::to_vec(&initial).expect("same JSON"),
+            &requested,
+        )
+        .expect("same topology");
+        compare_snapshots(&requested, &baseline, &unchanged).expect("stable dual output");
+        compare_snapshots(&["DP-1".to_owned()], &baseline, &unchanged)
+            .expect("stable single output");
+
+        for field in ["serial", "make", "model"] {
+            let mut changed = initial.clone();
+            changed["HDMI-A-1"][field] = serde_json::json!("replacement-sensitive-identity");
+            let observed = validate_outputs(
+                &serde_json::to_vec(&changed).expect("changed identity JSON"),
+                &requested,
+            )
+            .expect("new output descriptor can independently validate");
+            let error = compare_snapshots(&["HDMI-A-1".to_owned()], &baseline, &observed)
+                .expect_err("same connector must not hide a new physical panel");
+            assert!(error.to_string().contains("topology changed"), "{}", error);
+            assert!(
+                !error.to_string().contains("replacement-sensitive-identity"),
+                "private serial must never appear in errors"
+            );
+        }
+
+        let mut moved = initial.clone();
+        moved["HDMI-A-1"]["logical"]["x"] = serde_json::json!(2400);
+        let observed =
+            validate_outputs(&serde_json::to_vec(&moved).expect("moved JSON"), &requested)
+                .expect("new layout alone remains valid");
+        compare_snapshots(&requested, &baseline, &observed)
+            .expect_err("changed layout must fail in the locked recheck");
+
+        let mut scaled = initial.clone();
+        scaled["DP-1"]["logical"]["width"] = serde_json::json!(1920);
+        scaled["DP-1"]["logical"]["height"] = serde_json::json!(1080);
+        scaled["DP-1"]["logical"]["scale"] = serde_json::json!(2.0);
+        let observed = validate_outputs(
+            &serde_json::to_vec(&scaled).expect("scaled JSON"),
+            &requested,
+        )
+        .expect("different but internally consistent scale");
+        compare_snapshots(&["DP-1".to_owned()], &baseline, &observed)
+            .expect_err("rescale must not pass original snapshot");
+
+        let mut rotated = initial.clone();
+        rotated["DP-1"]["logical"]["transform"] = serde_json::json!("180");
+        let observed = validate_outputs(
+            &serde_json::to_vec(&rotated).expect("transform JSON"),
+            &requested,
+        )
+        .expect("different valid transform");
+        compare_snapshots(&["DP-1".to_owned()], &baseline, &observed)
+            .expect_err("transformation must invalidate snapshot");
+
+        let mut changed_mode = initial.clone();
+        let original_mode = changed_mode["DP-1"]["modes"][0].clone();
+        changed_mode["DP-1"]["modes"]
+            .as_array_mut()
+            .expect("mode list")
+            .push(original_mode);
+        changed_mode["DP-1"]["current_mode"] = serde_json::json!(1);
+        let observed = validate_outputs(
+            &serde_json::to_vec(&changed_mode).expect("new active index"),
+            &requested,
+        )
+        .expect("new active mode is valid");
+        compare_snapshots(&["DP-1".to_owned()], &baseline, &observed)
+            .expect_err("active mode index changed even with same dimensions");
+    }
+
+    #[test]
+    fn invalid_published_niri_identity_and_position_are_rejected() {
+        let requested = ["DP-1".to_owned()];
+        let baseline: Value = serde_json::from_slice(&fixture()).expect("legacy JSON");
+        for (field, invalid) in [
+            ("make", serde_json::json!(null)),
+            ("model", serde_json::json!(123)),
+            ("serial", serde_json::json!(false)),
+            ("serial", serde_json::json!("x".repeat(257))),
+        ] {
+            let mut changed = baseline.clone();
+            changed["DP-1"][field] = invalid;
+            assert!(
+                validate_outputs(
+                    &serde_json::to_vec(&changed).expect("invalid identity JSON"),
+                    &requested,
+                )
+                .is_err(),
+                "invalid identity field {} must fail",
+                field
+            );
+        }
+        for (x, y) in [
+            (serde_json::json!(0), None),
+            (serde_json::json!(2_i64.pow(32)), Some(serde_json::json!(0))),
+            (serde_json::json!(0), Some(serde_json::json!(true))),
+            (serde_json::json!(0.5), Some(serde_json::json!(0))),
+        ] {
+            let mut changed = baseline.clone();
+            changed["DP-1"]["logical"]["x"] = x;
+            if let Some(y) = y {
+                changed["DP-1"]["logical"]["y"] = y;
+            }
+            assert!(
+                validate_outputs(
+                    &serde_json::to_vec(&changed).expect("invalid position JSON"),
+                    &requested,
+                )
+                .is_err(),
+                "invalid published niri position must fail"
+            );
+        }
+        validate_outputs(&fixture(), &requested).expect("legacy fields can be absent");
     }
 
     #[test]
