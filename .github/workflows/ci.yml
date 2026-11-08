@@ -31,6 +31,8 @@ jobs:
           fetch-depth: 0
       - name: Test native wpaperd path selector (no network)
         run: python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
+      - name: Test pinned native binary cache validation (no network)
+        run: python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v
       - name: Detect Noctalia/Niri and wpaperd integration impact
         id: filter
         env:
@@ -105,6 +107,7 @@ jobs:
               "tests/test_noctalia_live_verification.py",
               "tests/test_noctalia_sway_helpers.py",
               "tests/test_niri_noctalia_helpers.py",
+              "tests/test_ci_native_cache.py",
           }
           for path in changed:
               if (
@@ -118,7 +121,7 @@ jobs:
                       "tests/e2e/sway/sway-dual.conf",
                   }
                   or path in noctalia_test_files
-                  or path == "scripts/verify_noctalia_live.py"
+                  or path in {"scripts/verify_noctalia_live.py", "scripts/ci_native_cache.py"}
               ):
                   relevant.append(path)
               elif path == ".github/workflows/ci.yml":
@@ -428,6 +431,8 @@ jobs:
     # Trixie provides WirePlumber 0.5 / C++23 and Noctalia's pinned v5.2.1
     # build dependencies; this image is CI-only, not a production dependency.
     container: debian:trixie
+    # PRs only use cache/restore. GitHub scopes PR caches to merge refs;
+    # only a master push executes cache/save, so PRs cannot seed master cache.
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
@@ -438,7 +443,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            ca-certificates git curl python3 pkg-config build-essential meson ninja-build passwd libssl-dev \
+            ca-certificates git curl python3 pkg-config build-essential meson ninja-build passwd libssl-dev zstd \
             dbus dbus-user-session sway grim \
             libwayland-dev wayland-protocols libegl-dev libgles-dev \
             libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev \
@@ -472,7 +477,30 @@ jobs:
           toolchain: nightly
       - name: Compile real ezwallpaper CLI
         run: cargo build --bin ezwallpaper
+      - name: Fingerprint pinned Noctalia build and ABI
+        id: noctalia_key
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort
+            dpkg --print-architecture
+            c++ --version
+            meson --version
+            PKG_CONFIG_PATH=/usr/local/share/pkgconfig pkg-config --modversion wayland-protocols
+            sha256sum .github/workflows/ci.yml
+          } > /tmp/ezw-noctalia-build-fingerprint
+          key="$(python3 scripts/ci_native_cache.py key --component noctalia --fingerprint /tmp/ezw-noctalia-build-fingerprint)"
+          echo "noctalia=$key" >> "$GITHUB_OUTPUT"
+          echo "Noctalia upstream binary cache key: $key"
+      - name: Restore trusted Noctalia executable cache
+        id: noctalia_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/ezw-native-cache/noctalia
+          key: ${{ steps.noctalia_key.outputs.noctalia }}
       - name: Build pinned upstream native Noctalia v5.2.1
+        if: steps.noctalia_cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -485,8 +513,36 @@ jobs:
             PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build-ci --buildtype=release -Dtests=disabled -Djemalloc=disabled -Dnative_optimizations=false && \
             meson compile -C build-ci -j 2 noctalia) \
             2>&1 | tee artifacts/noctalia-sway-e2e/upstream-build.log
+      - name: Verify and prepare pinned Noctalia binary
+        shell: bash
+        env:
+          NATIVE_CACHE_KEY: ${{ steps.noctalia_key.outputs.noctalia }}
+          NATIVE_CACHE_HIT: ${{ steps.noctalia_cache.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/noctalia-sway-e2e
+          if [[ "$NATIVE_CACHE_HIT" == "true" ]]; then
+            python3 scripts/ci_native_cache.py restore --component noctalia \
+              --key "$NATIVE_CACHE_KEY" --cache-dir /tmp/ezw-native-cache/noctalia \
+              --target /tmp/noctalia-v5.2.1/build-ci/noctalia \
+              --sha-file artifacts/noctalia-sway-e2e/upstream-commit.txt
+            echo "Noctalia native cache HIT; skipping upstream compilation"
+          else
+            python3 scripts/ci_native_cache.py seal --component noctalia \
+              --key "$NATIVE_CACHE_KEY" --binary /tmp/noctalia-v5.2.1/build-ci/noctalia \
+              --observed-sha-file artifacts/noctalia-sway-e2e/upstream-commit.txt \
+              --cache-dir /tmp/ezw-native-cache/noctalia
+            echo "Noctalia native cache MISS; compiled pinned source"
+          fi
           /tmp/noctalia-v5.2.1/build-ci/noctalia --version | tee artifacts/noctalia-sway-e2e/upstream-version.txt
           grep -Fx 'noctalia v5.2.1 (v5.2.1)' artifacts/noctalia-sway-e2e/upstream-version.txt
+          echo "Noctalia binary cache hit: $NATIVE_CACHE_HIT" >> "$GITHUB_STEP_SUMMARY"
+      - name: Save verified Noctalia cache from trusted master only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.noctalia_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ezw-native-cache/noctalia
+          key: ${{ steps.noctalia_key.outputs.noctalia }}
       - name: Test actual native IPC and dual output rendered pixels
         shell: bash
         run: |
@@ -515,15 +571,42 @@ jobs:
           # Avoid nightly async-drop query regression (E0391 in zbus 5.19.0).
           # Keep ezwallpaper's separate nightly quality/test gates unchanged.
           toolchain: 1.99.1
-      - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
+      - name: Install pinned niri build prerequisites
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/niri-noctalia-e2e
           export DEBIAN_FRONTEND=noninteractive
           apt-get install -y --no-install-recommends \
             clang libclang-dev libudev-dev libgbm-dev libinput-dev \
             libdbus-1-dev libsystemd-dev libseat-dev libdisplay-info-dev
+      - name: Fingerprint pinned niri build and ABI
+        id: niri_key
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort
+            dpkg --print-architecture
+            c++ --version
+            rustc +1.99.1 --version
+            cargo +1.99.1 --version
+            sha256sum .github/workflows/ci.yml
+          } > /tmp/ezw-niri-build-fingerprint
+          key="$(python3 scripts/ci_native_cache.py key --component niri --fingerprint /tmp/ezw-niri-build-fingerprint)"
+          echo "niri=$key" >> "$GITHUB_OUTPUT"
+          echo "niri upstream binary cache key: $key"
+      - name: Restore trusted niri executable cache
+        id: niri_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/ezw-native-cache/niri
+          key: ${{ steps.niri_key.outputs.niri }}
+      - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
+        if: steps.niri_cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/niri-noctalia-e2e
           git clone --depth 1 --branch wip/virtual-outputs \
             https://github.com/willybarret/niri.git /tmp/niri-virtual-3800
           git -C /tmp/niri-virtual-3800 rev-parse HEAD | tee artifacts/niri-noctalia-e2e/upstream-commit.txt
@@ -534,8 +617,37 @@ jobs:
             NIRI_BUILD_COMMIT=7fd585dd44ed67644977dd9561bb6e8b3837f8f7 \
               cargo +1.99.1 build --locked --release --no-default-features --features dbus) \
             2>&1 | tee artifacts/niri-noctalia-e2e/upstream-build.log
+      - name: Verify and prepare pinned niri binary
+        shell: bash
+        env:
+          NATIVE_CACHE_KEY: ${{ steps.niri_key.outputs.niri }}
+          NATIVE_CACHE_HIT: ${{ steps.niri_cache.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/niri-noctalia-e2e
+          if [[ "$NATIVE_CACHE_HIT" == "true" ]]; then
+            python3 scripts/ci_native_cache.py restore --component niri \
+              --key "$NATIVE_CACHE_KEY" --cache-dir /tmp/ezw-native-cache/niri \
+              --target /tmp/niri-virtual-3800/target/release/niri \
+              --sha-file artifacts/niri-noctalia-e2e/upstream-commit.txt
+            echo "niri native cache HIT; skipping upstream compilation"
+          else
+            python3 scripts/ci_native_cache.py seal --component niri \
+              --key "$NATIVE_CACHE_KEY" --binary /tmp/niri-virtual-3800/target/release/niri \
+              --observed-sha-file artifacts/niri-noctalia-e2e/upstream-commit.txt \
+              --cache-dir /tmp/ezw-native-cache/niri
+            echo "niri native cache MISS; compiled pinned source"
+          fi
+          rustc +1.99.1 --version | tee artifacts/niri-noctalia-e2e/build-toolchain.txt
           /tmp/niri-virtual-3800/target/release/niri --version \
             | tee artifacts/niri-noctalia-e2e/upstream-version.txt
+          echo "niri binary cache hit: $NATIVE_CACHE_HIT" >> "$GITHUB_STEP_SUMMARY"
+      - name: Save verified niri cache from trusted master only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.niri_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/ezw-native-cache/niri
+          key: ${{ steps.niri_key.outputs.niri }}
       - name: Verify real niri + Noctalia dual-output framebuffer
         shell: bash
         run: |
