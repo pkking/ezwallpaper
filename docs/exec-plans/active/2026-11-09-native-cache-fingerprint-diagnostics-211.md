@@ -1,7 +1,7 @@
 # 2026-11-09: Diagnose native binary cache key drift without weakening trust
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -35,16 +35,16 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci
 
 ## Acceptance criteria
 
-- [ ] Both Noctalia and niri CI fingerprint builders split package and nonpackage portions into reusable evidence files and concatenate them in the same order as before.
-- [ ] Retain stable per-component full-fingerprint SHA256 and package/tool SHA256 with the existing native artifacts on hit/miss/failure; do not include secrets.
+- [x] Both Noctalia and niri CI fingerprint builders split package and nonpackage portions into reusable evidence files and concatenate them in the same order as before.
+- [x] Retain stable per-component full-fingerprint SHA256 and package/tool SHA256 with the existing native artifacts on hit/miss/failure; do not include secrets.
 - [ ] Offline regression verifies order, full-package inventory, unchanged cache helper invocation, and native pixel gates.
 - [ ] Final exact-head CI all required checks pass.
 
 ## Implementation slices
 
 - [x] Establish exact GitHub run evidence for hit/miss and key drift.
-- [ ] Split fingerprint inputs and persist comparative digests in CI-only artifacts.
-- [ ] Add deterministic workflow contract regression and documentation.
+- [x] Split fingerprint inputs and persist comparative digests in CI-only artifacts.
+- [x] Add deterministic workflow contract regression and documentation.
 - [ ] Verify exact-head CI and squash merge only when all required gates pass.
 
 ## Verification matrix
@@ -66,11 +66,17 @@ None: additive CI evidence only, within existing source-pinned cache and trust d
 
 ## Deviations and discoveries
 
-The cold miss for #222 cannot be attributed to a single dependency package from current logs. Do not treat package drift as proven without the proposed per-input evidence.
+The cold miss for #222 cannot be attributed to a single dependency package from current logs. Do not treat package drift as proven without the proposed per-input evidence. The workflow itself is part of the SHA-based key, so this instrumentation deliberately invalidates the old key once; it does not change the key builder, source verification or trusted-save boundary.
+
+## Implementation evidence
+
+- `8ca9942`: the Noctalia and niri fingerprint steps save the identical original sorted package list and original nonpackage inputs separately and concatenate them without adding separators, then upload SHA256 evidence through existing artifact paths.
+- `a2b3f9e`: offline source-contract regression checks both component input layouts, source pins, exact-key helper invocation, full-package inventory and intact compositor gates.
+- `59a5607`: documentation for comparing trusted CI package/tool manifests. These edits have not yet passed exact-head GitHub CI.
 
 ## Resume from here
 
-Implement the source-preserving fingerprint split in the two existing CI key steps, add offline contract tests, and create Issue #211-linked PR; require exact-head CI before merge.
+Open the Issue #211-linked PR for this branch and inspect its exact-head CI; fix any test or native E2E failures before squash merge.
 
 ## Completion
 
