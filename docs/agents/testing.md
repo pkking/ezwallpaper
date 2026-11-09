@@ -74,6 +74,20 @@ CI step summaries report binary cache hits/misses; measure exact-head job/step P
 
 **Diagnosing exact-key misses (Issue #211):** The existing Noctalia/niri build jobs now preserve `cache-fingerprint/installed-packages.txt`, `cache-fingerprint/toolchain-and-workflow.txt` and `cache-fingerprint/sha256.txt` inside their respective native E2E artifacts, whether a cache hit or a miss. The original full key input remains the byte-for-byte concatenation of these first two files, including **every installed package version**, compiler/toolchain details, architecture and workflow SHA; no ABI guard is removed. Compare the two text files or their SHA256 lines across runs to pinpoint what changed. These are ephemeral CI-container package inventories, not data from user desktops or credentials. A workflow edit itself changes the key and therefore can produce a deliberate cold rebuild. Historical Noctalia native E2E baseline was about 19.7–29.5 minutes across three observed successful PR runs, mostly Noctalia recompilation (14.9–22.5m); the ≤8-minute warm-cache P50 goal and ≥60% improvement are **UNASSESSED** until multiple actual hits are measured. Cache hits are not cross-platform evidence; current isolated CI uses Debian Trixie, and physical niri GPU/hotplug remains unassessed.
 
+### Compare two native cache fingerprints offline
+
+Download the native E2E artifact from each run and extract the same component's `cache-fingerprint/` folder. The comparison accepts only the retained `installed-packages.txt`, `toolchain-and-workflow.txt` and `sha256.txt`, verifies all three SHA256 records against their exact original bytes, and refuses symlinks, malformed packages, inconsistent evidence and cross-component comparisons.
+
+```sh
+python3 scripts/compare_native_cache_fingerprints.py \
+  /path/to/earlier/cache-fingerprint \
+  /path/to/later/cache-fingerprint > native-cache-diff.json
+
+python3 -m unittest discover -s tests -p 'test_cache_fingerprint_diff.py' -v
+```
+
+The deterministic JSON distinguishes packages added/removed/version-changed from toolchain or workflow-hash drift. Checksum consistency does **not** authenticate the downloaded artifacts; matching inputs do **not** guarantee an Actions cache hit (cache scope and pinned source/recipe also matter). This is an investigation aid, not a relaxed key policy, build result or native IPC/pixel validation.
+
 ## Evidence vocabulary
 
 Record command, revision SHA, status code, relevant output, artifact path and CI run URL. Mark not executed as UNASSESSED, not PASS. For external APIs, separate simulated fixture coverage from live diagnostic observations.
