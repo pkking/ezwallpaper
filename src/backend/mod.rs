@@ -53,6 +53,13 @@ pub trait WallpaperBackend {
         Ok(())
     }
     fn apply(&mut self, output: &str, path: &Path) -> Result<ApplyStatus>;
+
+    /// Independently compare the current backend path without changing any
+    /// wallpaper. Used only to repair an event missing after a durable state
+    /// acknowledgement; unsupported adapters must not fabricate confirmation.
+    fn current_path_matches(&self, _output: &str, _path: &Path) -> Result<bool> {
+        Ok(false)
+    }
 }
 
 /// Validate all outputs before creating state/lock dirs or invoking any setter.

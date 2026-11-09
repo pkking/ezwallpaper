@@ -37,12 +37,12 @@ impl WallpaperChange {
 }
 
 use anyhow::{bail, Context, Result};
-use std::fs;
-#[cfg(unix)]
-use std::fs::File;
-use std::io::Write;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::Path;
 use tempfile::NamedTempFile;
+
+const MAX_EVENT_BYTES: u64 = 64 * 1024;
 
 /// Caller-supplied user directory must exist; never create an implicit
 /// publication destination or follow a symlink at the directory entry.
@@ -121,6 +121,32 @@ fn check_target(path: &Path) -> Result<()> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error.into()),
     }
+}
+
+/// Exact event equality is required for a retry to skip publication. A stale,
+/// partial or invalid event is not a durable acknowledgement. The bounded
+/// reader never interprets event contents as privileged instructions.
+pub fn already_published(directory: &Path, change: &WallpaperChange) -> Result<bool> {
+    validate_change(change)?;
+    let canonical = prepare_directory(directory, [&change.output[..]])?;
+    let target = event_path(&canonical, &change.output);
+    let meta = match fs::symlink_metadata(&target) {
+        Ok(meta) => meta,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+    if meta.len() > MAX_EVENT_BYTES {
+        bail!("existing wallpaper event exceeds 64 KiB");
+    }
+    let mut raw = Vec::new();
+    File::open(&target)?
+        .take(MAX_EVENT_BYTES + 1)
+        .read_to_end(&mut raw)
+        .context("cannot read prior wallpaper event")?;
+    if raw.len() as u64 > MAX_EVENT_BYTES {
+        bail!("existing wallpaper event exceeds 64 KiB");
+    }
+    Ok(serde_json::from_slice::<WallpaperChange>(&raw).is_ok_and(|existing| existing == *change))
 }
 
 /// Atomic replacement of only one acknowledged output, under the caller's
@@ -215,6 +241,33 @@ mod tests {
             assert!(publish(root, &change).is_err());
             assert_eq!(fs::read(&target).expect("unchanged event"), baseline);
         }
+    }
+
+    #[test]
+    fn lost_or_stale_event_is_distinguished_from_an_exact_acknowledgement() {
+        let temp = tempfile::tempdir().expect("isolated event directory");
+        let root = temp.path();
+        let current = WallpaperChange::acknowledged(
+            "DP-1".to_owned(),
+            42,
+            format!("sha256:{}", "a".repeat(64)),
+            root.join("image.png"),
+        );
+        assert!(!already_published(root, &current).expect("missing event"));
+        publish(root, &current).expect("known event");
+        assert!(already_published(root, &current).expect("same event"));
+        let mut different_epoch = current.clone();
+        different_epoch.epoch = 43;
+        assert!(!already_published(root, &different_epoch).expect("stale epoch"));
+        fs::write(root.join("DP-1.json"), b"{\"schema_version\":1}")
+            .expect("simulate partial corrupt event");
+        assert!(!already_published(root, &current).expect("malformed prior event"));
+        fs::write(
+            root.join("DP-1.json"),
+            vec![b'x'; MAX_EVENT_BYTES as usize + 1],
+        )
+        .expect("simulate over-limit event");
+        assert!(already_published(root, &current).is_err());
     }
 
     #[test]

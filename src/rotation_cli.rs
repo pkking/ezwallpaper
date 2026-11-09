@@ -809,6 +809,57 @@ fn run_with_backend_interval_scoped(
             }
         }
 
+        // The acknowledged state is persisted before its separately atomic
+        // event. A crash in that gap makes this same-epoch plan AlreadyApplied,
+        // but its event may be absent/stale. Reconcile only the *current*
+        // acknowledged epoch, without reissuing wallpaper-set or changing
+        // state. An independent backend readback and fresh content hash must
+        // both agree before restoring a missing event.
+        if apply && proposed.decision == RotationDecision::AlreadyApplied {
+            if let Some(directory) = events_root.as_deref() {
+                let acknowledged_epoch = saved
+                    .outputs
+                    .get(&output.name)
+                    .and_then(|state| state.last_epoch);
+                if acknowledged_epoch == Some(epoch) {
+                    let content_id = proposed
+                        .content_id
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("acknowledged event has no content identity"))?;
+                    let path = by_id.get(content_id).ok_or_else(|| {
+                        anyhow!("cannot recover event: previously acknowledged asset is missing")
+                    })?;
+                    let change = crate::rotation_event::WallpaperChange::acknowledged(
+                        output.name.clone(),
+                        epoch,
+                        content_id.clone(),
+                        path.clone(),
+                    );
+                    if !crate::rotation_event::already_published(directory, &change)? {
+                        let asset = WallpaperManager.open_local(path)?;
+                        if WallpaperManager.content_id(&asset)? != *content_id {
+                            bail!("cannot recover event: acknowledged wallpaper bytes changed");
+                        }
+                        if let Some(recheck) = niri_recheck.as_deref() {
+                            let names = profile
+                                .outputs
+                                .iter()
+                                .map(|candidate| candidate.name.clone())
+                                .collect::<Vec<_>>();
+                            recheck(&names)?;
+                        }
+                        let selected = backend.as_deref_mut().ok_or_else(|| {
+                            anyhow!("event recovery requires an observable wallpaper backend")
+                        })?;
+                        if !selected.current_path_matches(&output.name, path)? {
+                            bail!("cannot recover event: current backend wallpaper path differs");
+                        }
+                        crate::rotation_event::publish(directory, &change)?;
+                    }
+                }
+            }
+        }
+
         let reason = match proposed.decision {
             RotationDecision::Select if apply => "path_observed_pixels_unverified",
             RotationDecision::Select => "preview_not_applied",
@@ -1462,6 +1513,230 @@ mod tests {
             first
         );
         assert!(events.join("HDMI-A-1.json").exists());
+    }
+
+    struct ObservedOnlyBackend {
+        expected: BTreeMap<String, PathBuf>,
+        reads: std::cell::Cell<usize>,
+    }
+
+    impl WallpaperBackend for ObservedOnlyBackend {
+        fn id(&self) -> &'static str {
+            "readback-only-test"
+        }
+
+        fn capabilities(&self) -> crate::backend::BackendCapabilities {
+            crate::backend::BackendCapabilities {
+                scope: crate::backend::OutputScope::PerOutput,
+                acknowledgement: crate::backend::Acknowledgement::ExactPathReadback,
+            }
+        }
+
+        fn apply(&mut self, _: &str, _: &Path) -> Result<ApplyStatus> {
+            panic!("event recovery must not reapply a wallpaper");
+        }
+
+        fn current_path_matches(&self, output: &str, path: &Path) -> Result<bool> {
+            self.reads.set(self.reads.get() + 1);
+            Ok(self
+                .expected
+                .get(output)
+                .is_some_and(|current| current == path))
+        }
+    }
+
+    #[test]
+    fn lost_acknowledged_event_is_recovered_without_second_wallpaper_apply() {
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("event root");
+        let mut initial = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| Ok(ApplyStatus::PathObserved),
+        };
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut initial),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        )
+        .expect("both acknowledged");
+        let before_state = fs::read(&state).expect("saved state");
+        let first = fs::read(events.join("DP-1.json")).expect("first event");
+        let change: crate::rotation_event::WallpaperChange =
+            serde_json::from_slice(&first).expect("versioned event");
+        fs::remove_file(events.join("DP-1.json")).expect("simulate crash before event publish");
+
+        let mut observer = ObservedOnlyBackend {
+            expected: BTreeMap::from([("DP-1".to_owned(), change.image_path.clone())]),
+            reads: std::cell::Cell::new(0),
+        };
+        let retried = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut observer),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        )
+        .expect("restore only the missing previously acknowledged event");
+        assert!(retried
+            .iter()
+            .all(|value| value.decision == RotationDecision::AlreadyApplied));
+        assert_eq!(
+            observer.reads.get(),
+            1,
+            "only the missing event needs live readback"
+        );
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("recovered event"),
+            first
+        );
+        assert_eq!(
+            fs::read(&state).expect("unchanged rotation state"),
+            before_state
+        );
+
+        // A correct existing event must not cause any new IPC even when the
+        // current observed-path adapter would otherwise report a mismatch.
+        observer.expected.clear();
+        observer.reads.set(0);
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut observer),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        )
+        .expect("already-valid events are unchanged without desktop IPC");
+        assert_eq!(observer.reads.get(), 0);
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("still same event"),
+            first
+        );
+    }
+
+    #[test]
+    fn stale_backend_or_changed_bytes_cannot_fabricate_a_lost_event() {
+        let (root, profile, state) = fixture();
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("event root");
+        let mut initial = CallbackBackend {
+            apply_fn: |_: &str, _: &Path| Ok(ApplyStatus::PathObserved),
+        };
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut initial),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        )
+        .expect("original acknowledged output");
+        let before_state = fs::read(&state).expect("authoritative original state");
+        let change: crate::rotation_event::WallpaperChange =
+            serde_json::from_slice(&fs::read(events.join("DP-1.json")).expect("old event"))
+                .expect("event v1");
+        fs::remove_file(events.join("DP-1.json")).expect("simulate event gap");
+
+        let mut observer = ObservedOnlyBackend {
+            expected: BTreeMap::new(),
+            reads: std::cell::Cell::new(0),
+        };
+        let attempt = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut observer),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        );
+        assert!(attempt.is_err(), "external wallpaper overrides stale event");
+        assert_eq!(observer.reads.get(), 1);
+        assert!(!events.join("DP-1.json").exists());
+        assert_eq!(fs::read(&state).expect("state preserved"), before_state);
+
+        // A rollback epoch cannot republish old events or perform readback.
+        observer.reads.set(0);
+        run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 0),
+            RotationPort {
+                backend: Some(&mut observer),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        )
+        .expect("backward clock is read-only for already acknowledged epoch");
+        assert_eq!(observer.reads.get(), 0);
+        assert!(!events.join("DP-1.json").exists());
+
+        fs::write(&change.image_path, b"tampered-file").expect("simulate asset modification");
+        let mut matching = ObservedOnlyBackend {
+            expected: BTreeMap::from([("DP-1".to_owned(), change.image_path)]),
+            reads: std::cell::Cell::new(0),
+        };
+        let tamper = run_with_backend_interval_scoped(
+            &profile,
+            &state,
+            None,
+            false,
+            true,
+            RotationClock::simulated(60, 3600),
+            RotationPort {
+                backend: Some(&mut matching),
+                state_scope: None,
+                events_dir: Some(&events),
+                verified_profile: None,
+                niri_recheck: None,
+            },
+        );
+        assert!(tamper.is_err(), "mutated asset must never restore an event");
+        assert!(!events.join("DP-1.json").exists());
+        assert_eq!(fs::read(&state).expect("unchanged state"), before_state);
     }
 
     #[cfg(unix)]

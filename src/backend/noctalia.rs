@@ -91,6 +91,10 @@ impl WallpaperBackend for NoctaliaBackend {
         }
         self.apply_one_shot(path, Some(output))
     }
+
+    fn current_path_matches(&self, output: &str, path: &Path) -> Result<bool> {
+        readback_noctalia_matches(output, path, noctalia_ipc)
+    }
 }
 
 /// Output identifiers must be a single IPC token, not arbitrary command fragments.
@@ -173,6 +177,24 @@ fn exact_path_readback(response: &str, expected: &str) -> bool {
         .bytes()
         .any(|byte| matches!(byte, b'\r' | b'\n' | b'\0'))
         && observed == expected
+}
+
+/// A recovery read must not issue wallpaper-set; validate exactly one
+/// independently observed Noctalia path record before republishing an event.
+fn readback_noctalia_matches(
+    output: &str,
+    path: &Path,
+    mut ipc: impl FnMut(&[&str]) -> Result<String>,
+) -> Result<bool> {
+    validate_connector(output)?;
+    let expected = path
+        .to_str()
+        .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
+    if expected.contains('\n') || expected.contains('\r') || expected.contains('\0') {
+        bail!("Noctalia wallpaper paths cannot contain newlines or NUL bytes");
+    }
+    let reply = ipc(&["msg", "wallpaper-get", output])?;
+    Ok(exact_path_readback(&reply, expected))
 }
 
 /// Native Noctalia can publish its wallpaper path asynchronously. Retry only
@@ -374,6 +396,33 @@ mod tests {
         ] {
             assert!(!exact_path_readback(response, path), "{:?}", response);
         }
+    }
+
+    #[test]
+    fn read_only_event_recovery_never_sends_noctalia_wallpaper_set() {
+        let expected = Path::new("/tmp/wallpaper with spaces.png");
+        for response in [
+            "/tmp/wallpaper with spaces.png\n",
+            "/tmp/other.png\n",
+            "/tmp/wallpaper with spaces.png\n\n",
+        ] {
+            let mut reads = 0;
+            let confirmed = readback_noctalia_matches("DP-1", expected, |argv| {
+                assert_eq!(argv, ["msg", "wallpaper-get", "DP-1"]);
+                reads += 1;
+                Ok(response.to_owned())
+            })
+            .expect("read-only query");
+            assert_eq!(confirmed, response == "/tmp/wallpaper with spaces.png\n");
+            assert_eq!(reads, 1);
+        }
+        let mut invoked = false;
+        assert!(readback_noctalia_matches("DP/1", expected, |_| {
+            invoked = true;
+            Ok(String::new())
+        })
+        .is_err());
+        assert!(!invoked);
     }
 
     #[test]
