@@ -228,6 +228,19 @@ impl WallpaperBackend for WpaperdBackend {
             thread::sleep(READBACK_INTERVAL);
         }
     }
+
+    fn current_path_matches(&self, output: &str, path: &Path) -> Result<bool> {
+        self.validate_output(output)?;
+        let expected = path
+            .canonicalize()
+            .context("cannot canonicalize wallpaper for recovery readback")?;
+        match self.request(&Request::CurrentWallpaper {
+            monitor: output.to_owned(),
+        })? {
+            Response::CurrentWallpaper { path: current } => Ok(current == expected),
+            _ => bail!("wpaperd did not return a per-output current wallpaper path"),
+        }
+    }
 }
 
 #[cfg(test)]
