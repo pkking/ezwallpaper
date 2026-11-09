@@ -78,7 +78,7 @@ Continue the broader Issue #56 in a separate focused execution plan for the rema
 
 Final implementation PR: https://github.com/pkking/ezwallpaper/pull/222
 Final PR head: `5d291ec37441ca7f5de937d13ec10267059b7610`
-Squash merge commit: `7c5799cc6274bc2a7038c5959fba1e2e941d4d01`
+Final commit: `7c5799cc6274bc2a7038c5959fba1e2e941d4d01`
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/42542545726 — all 10/10 jobs completed successfully at this exact PR head.
 E2E artifacts: [native Noctalia/Sway dual-output](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13643345424), [experimental niri/Noctalia dual-output](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13643200901), [native wpaperd](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13642196624), [Sway compositor](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13641504749).
-Remaining unassessed: physical niri/GPU/4K, lockscreen integration, external event consumer and privileged SDDM/Plymouth. Issue #56 stays open for its broader scope.
+Remaining unassessed items: physical niri/GPU/4K, lockscreen integration, external event consumer and privileged SDDM/Plymouth. Issue #56 stays open for its broader scope.
