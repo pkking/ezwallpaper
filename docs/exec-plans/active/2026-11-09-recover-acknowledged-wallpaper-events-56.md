@@ -1,7 +1,7 @@
 # 2026-11-09: Recover a lost output event after acknowledged state commit
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -42,9 +42,9 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0009-locked
 
 ## Implementation slices
 
-- [ ] Add read-only adapter path comparison with Noctalia & wpaperd implementations.
-- [ ] Add bounded strict event equality probe in `src/rotation_event.rs`.
-- [ ] Implement per-output `AlreadyApplied` reconciliation in rotation loop, with retry/failure tests.
+- [x] Add read-only adapter path comparison with Noctalia & wpaperd implementations.
+- [x] Add bounded strict event equality probe in `src/rotation_event.rs`.
+- [x] Implement per-output `AlreadyApplied` reconciliation in rotation loop, with retry/failure tests.
 - [ ] Verify exact-head PR CI, merge squash only when all required gates pass.
 
 ## Verification matrix
@@ -64,6 +64,7 @@ None: resilience correction to existing opt-in event publication; no new user co
 ## Evidence log
 
 - 2026-11-09: inspected current master, confirmed state commit precedes event publication and same-epoch retry currently skips recovery; reviewed pure planner, published event schema, Noctalia and wpaperd actual readback. No branch tests run.
+- 2026-11-09: implementation commits 9db1d65, 868480c, 309095a, 14cdcb0, e6b04b6 add optional read-only adapter path check, bounded event equality and same-epoch recovery under state lock. Offline Rust regression 5784c03 injects lost event, external backend mismatch, changed asset and rollback epoch; 39fc180 and 769f3f2 add Noctalia/wpaperd fake IPC path readback checks. README and architecture updated. All newly changed code CI tests are PENDING; no local Cargo run.
 
 ## Deviations and discoveries
 
@@ -71,7 +72,7 @@ None.
 
 ## Resume from here
 
-Implement the three code slices in `src/backend/mod.rs`, `src/backend/noctalia.rs`, `src/backend/wpaperd.rs`, `src/rotation_event.rs` and `src/rotation_cli.rs`, add deterministic offline tests, open Issue #56-linked PR, and review exact-head CI.
+Open Issue #56-linked PR from `agent/issue-56-recover-acknowledged-events-20261109` and review the exact-head 10-job CI run. Fix any Rust/Windows/macOS/Noctalia/niri E2E failure before squash merge.
 
 ## Completion
 
