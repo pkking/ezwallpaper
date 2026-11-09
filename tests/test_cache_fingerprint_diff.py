@@ -160,6 +160,23 @@ class NativeCacheFingerprintDiffTests(unittest.TestCase):
                                     "invalid_toolchain_encoding"):
             diff.load_evidence(self.before)
 
+    def test_cross_component_artifacts_are_not_compared(self):
+        make_evidence(self.before, self.packages, self.toolchain,
+                      component="noctalia")
+        make_evidence(self.after, self.packages, self.toolchain,
+                      component="niri")
+        with self.assertRaisesRegex(diff.FingerprintError,
+                                    "mixed_cache_components"):
+            diff.compare(diff.load_evidence(self.before),
+                         diff.load_evidence(self.after))
+
+    def test_checksum_consistent_but_invalid_workflow_record_is_rejected(self):
+        invalid = b"amd64\\nc++ 12\\n" + b"b" * 64 + b"  wrong.yml\\n"
+        make_evidence(self.before, self.packages, invalid)
+        with self.assertRaisesRegex(diff.FingerprintError,
+                                    "invalid_toolchain_or_workflow_records"):
+            diff.load_evidence(self.before)
+
     def test_cli_refusal_does_not_print_success_json(self):
         make_evidence(self.before, self.packages, self.toolchain)
         out, err = io.StringIO(), io.StringIO()
