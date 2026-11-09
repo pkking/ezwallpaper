@@ -320,5 +320,11 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("7fd585dd44ed67644977dd9561bb6e8b3837f8f7", job)
 
 
+# Existing CI runs this named cache-safety module. Include the new read-only
+# artifact comparison regressions here without editing ci.yml: changing the
+# workflow hash would invalidate all source-pinned native executable caches.
+from test_cache_fingerprint_diff import NativeCacheFingerprintDiffTests  # noqa: E402,F401
+
+
 if __name__ == "__main__":
     unittest.main()
