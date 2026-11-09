@@ -1,7 +1,7 @@
 # 2026-11-09: Fail closed on invalid native IPC output encoding during opt-in Noctalia verification
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -42,8 +42,8 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; scripts/verify_nocta
 
 ## Implementation slices
 
-- [ ] Catch `UnicodeError` at the native command boundary without altering successful command semantics.
-- [ ] Add deterministic fake subprocess regressions for pre-apply and post-apply decode failures.
+- [x] Catch `UnicodeError` at the native command boundary without altering successful command semantics.
+- [x] Add deterministic fake subprocess regressions for pre-apply and post-apply decode failures.
 - [ ] Inspect exact-head CI, repair any failures, and merge only if all mandatory gates pass.
 
 ## Verification matrix
@@ -63,6 +63,7 @@ None. This is a test-helper exception-handling fix within existing opt-in safety
 ## Evidence log
 
 - 2026-11-09: inspected `call` and `verify_dual` at base `27a66cd`; identified missing `UnicodeError` normalization. Master CI run 42637690794 passed. This does not establish local or new-PR test results.
+- 2026-11-09: `c37914ca` adds `UnicodeError` normalization; `77c16405` and `4fd63b5e` add pre-mutation and post-mutation invalid UTF-8 fake-runner regressions. No local commands were run; exact-head PR CI is pending.
 
 ## Deviations and discoveries
 
@@ -70,7 +71,7 @@ None yet.
 
 ## Resume from here
 
-Update `scripts/verify_noctalia_live.py::call` and the offline fake-runner tests, then run targeted verification and publish one Issue #59-linked PR.
+Open the Issue #59-linked PR from `agent/issue-59-noctalia-live-utf8-recovery-20261109`, inspect exact-head CI including the offline live safety test, and fix failures before merge.
 
 ## Completion
 
