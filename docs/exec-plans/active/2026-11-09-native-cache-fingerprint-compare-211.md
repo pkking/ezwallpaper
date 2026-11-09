@@ -1,7 +1,7 @@
 # 2026-11-09: Offline comparison of pinned native CI cache fingerprints
 
 Issue: #211
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -42,9 +42,10 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md (Issue #211); scripts
 
 ## Implementation slices
 
-- [ ] Implement read-only `scripts/compare_native_cache_fingerprints.py` parser/comparator.
-- [ ] Add deterministic `tests/test_cache_fingerprint_diff.py` including deliberate malformed checksums.
-- [ ] Document commands and evidence scope; inspect exact-head CI and merge only if green.
+- [x] Implement read-only `scripts/compare_native_cache_fingerprints.py` parser/comparator.
+- [x] Add deterministic `tests/test_cache_fingerprint_diff.py` including deliberate malformed checksums.
+- [x] Document commands and evidence scope.
+- [ ] Inspect exact-head CI and merge only if green.
 
 ## Verification matrix
 
@@ -62,7 +63,8 @@ None. CI diagnostic only, with no user-facing wallpaper behavior, accepted ADR o
 
 ## Evidence log
 
-- 2026-11-09: inspected CI fingerprint source; three inputs already retained after PR #226. Measured native E2E run durations from GitHub Jobs API and recorded the finding in Issue #211. No new code/tests yet.
+- 2026-11-09: inspected CI fingerprint source; three inputs already retained after PR #226. Measured native E2E run durations from GitHub Jobs API and recorded the finding in Issue #211.
+- 2026-11-09: implemented bounded, checksum-verified, same-component offline input comparison and malformed-evidence regression fixtures. Linked new tests into the existing `test_ci_native_cache.py` CI gate without editing the workflow or invalidating native cache keys. No local test execution; PR CI PENDING.
 
 ## Deviations and discoveries
 
@@ -70,7 +72,7 @@ None.
 
 ## Resume from here
 
-Implement the read-only artifact comparator and offline tests on this branch, then open one Issue #211-linked PR and verify its final-head CI.
+Open the Issue #211-linked PR from `agent/issue-211-compare-native-cache-drift-20261109`, inspect exact-head CI and repair any offline fixture, Rust, platform or native E2E failures before merge.
 
 ## Completion
 
