@@ -30,6 +30,10 @@ PINNED = {
         "source_sha": "7fd585dd44ed67644977dd9561bb6e8b3837f8f7",
         "recipe": "debian-trixie|rust-1.99.1|cargo-locked-release-no-default-features-dbus|NIRI_BUILD_COMMIT-pinned",
     },
+    "wpaperd": {
+        "source_sha": "9e71fdd10e1f2d94532edaf0f54402aac3c0b01c",
+        "recipe": "ubuntu-24.04|wpaperd-1.3.0|cargo-locked-release-p-wpaperd|nightly-toolchain|native-sway-dual-output",
+    },
 }
 
 

@@ -49,6 +49,16 @@ The selector is conservative: changed `src/`, `crates/`, Cargo workspace manifes
 
 **Evidence semantics:** a skipped native step is **NOT** a newly passing wpaperd compositor test. For docs-only PRs, report native wpaperd as `NOT SELECTED`/skipped and retain the source-and-revision-specific evidence from the latest independently executed native workflow (e.g. [source PR #113 CI #41134580160](https://github.com/pkking/ezwallpaper/actions/runs/41134580160)); the normal Sway/swaybg framebuffer and Rust quality checks still run. For production/CI changes, obtain a new native log, exact upstream SHA, `CurrentWallpaper`, rendered pixels and artifact on that PR's **latest HEAD** before claiming native verification. Physical monitors/GPU/4K/hotplug remain UNASSESSED.
 
+## Pinned wpaperd native binary cache (Issue #223)
+
+The optional native wpaperd 1.3.0 source build in the always-running `Sway headless visual E2E` job reuses the same `scripts/ci_native_cache.py` validator as Noctalia/niri. An exact hit uses a checksum-checked, regular executable bound to pinned upstream commit `9e71fdd10e1f2d94532edaf0f54402aac3c0b01c`, the fixed Cargo release recipe, installed Ubuntu 24.04 package versions, CPU architecture, Rust toolchain, and hashes of the workflow and validator. Even on a hit, CI re-checks the upstream tagged source SHA and executable version, then performs the **real native wpaperd IPC and dual-output Sway framebuffer test**. Neither the ordinary Sway/swaybg test nor any native pixel assertion is skipped because of a cached binary.
+
+Pull requests use `actions/cache/restore@v4` only; only successful `master` pushes with the native wpaperd test selected may save an exact-key cache **after** the test passes. A corrupt or mismatched hit fails closed, rather than silently executing an untrusted cached binary or bypassing the renderer gate. Source/IPC/framebuffer artifacts continue to be uploaded even when the cache hits. The default-branch cache must first be seeded by a successful master run; current CI evidence is not proof of a warm-cache speed improvement. Confirm actual native-job P50/P90 before claiming an improvement. Warm-cache tests and source integrity can be run offline with:
+
+    python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v
+
+This cache covers **only** the pinned virtual Sway/wpaperd CI combination. It is not physical GPU/4K, niri hardware or lockscreen evidence, and does not change user runtime caching or product compatibility.
+
 ## Pinned Noctalia/niri native binary cache (Issue #211)
 
 The expensive pinned upstream Noctalia v5.2.1 Meson build and experimental niri #3800 Rust build in `.github/workflows/ci.yml` may reuse binaries **only** from exact-key GitHub Actions caches. The cache is a CI optimization, never a test outcome. PRs only execute `actions/cache/restore@v4`, and GitHub scopes `pull_request` caches to their merge refs; only trusted `master` pushes run `actions/cache/save@v4`. No write-capable cache-mode override is used on untrusted triggers. No `pull_request_target`, privileged token, prefix key, or restore-key fallback is used.

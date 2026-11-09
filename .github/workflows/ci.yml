@@ -389,9 +389,38 @@ jobs:
           if-no-files-found: warn
       - name: Verify native wpaperd IPC helper contracts offline
         run: python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v
-      - name: Build exact upstream wpaperd 1.3.0 for isolated CI only
+      - name: Fingerprint pinned wpaperd source build and ABI
+        if: needs.change-scope.outputs.wpaperd == 'true'
+        id: wpaperd_key
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '%s\n' 'ubuntu-24.04|wpaperd-1.3.0|cargo-locked-release-p-wpaperd'
+            uname -sm
+            rustc -vV
+            cargo --version
+            dpkg-query -W -f='${Package}=${Version}\n' \
+              libwayland-dev libegl-dev libgles-dev libxkbcommon-dev libssl-dev \
+              libgbm1 libgl1-mesa-dri | LC_ALL=C sort
+            sha256sum .github/workflows/ci.yml scripts/ci_native_cache.py
+          } > /tmp/ezw-wpaperd-build-fingerprint
+          key="$(python3 scripts/ci_native_cache.py key --component wpaperd --fingerprint /tmp/ezw-wpaperd-build-fingerprint)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "wpaperd native cache key: $key"
+      - name: Restore trusted wpaperd executable cache
+        if: needs.change-scope.outputs.wpaperd == 'true'
+        id: wpaperd_cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.wpaperd_key.outputs.key }}
+          path: /tmp/ezw-native-cache/wpaperd
+      - name: Build or validate exact upstream wpaperd 1.3.0
         if: needs.change-scope.outputs.wpaperd == 'true'
         shell: bash
+        env:
+          NATIVE_CACHE_KEY: ${{ steps.wpaperd_key.outputs.key }}
+          NATIVE_CACHE_HIT: ${{ steps.wpaperd_cache.outputs.cache-hit }}
         run: |
           set -euo pipefail
           mkdir -p artifacts/wpaperd-native-e2e
@@ -399,10 +428,24 @@ jobs:
           git -C /tmp/ezw-wpaperd-1.3.0 describe --tags --exact-match | grep -Fx 1.3.0
           git -C /tmp/ezw-wpaperd-1.3.0 rev-parse HEAD | tee artifacts/wpaperd-native-e2e/upstream-sha.txt
           grep -Fx '9e71fdd10e1f2d94532edaf0f54402aac3c0b01c' artifacts/wpaperd-native-e2e/upstream-sha.txt
-          (cd /tmp/ezw-wpaperd-1.3.0 && cargo build --locked --release -p wpaperd) \
-            2>&1 | tee artifacts/wpaperd-native-e2e/upstream-build.log
+          if [ "$NATIVE_CACHE_HIT" = 'true' ]; then
+            python3 scripts/ci_native_cache.py restore --component wpaperd \
+              --key "$NATIVE_CACHE_KEY" --cache-dir /tmp/ezw-native-cache/wpaperd \
+              --target /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd \
+              --sha-file /tmp/ezw-wpaperd-restored-upstream-sha.txt
+            cmp /tmp/ezw-wpaperd-restored-upstream-sha.txt artifacts/wpaperd-native-e2e/upstream-sha.txt
+            printf 'Pinned wpaperd binary cache hit; source build skipped\n' | tee artifacts/wpaperd-native-e2e/upstream-build.log
+          else
+            (cd /tmp/ezw-wpaperd-1.3.0 && cargo build --locked --release -p wpaperd) \
+              2>&1 | tee artifacts/wpaperd-native-e2e/upstream-build.log
+            python3 scripts/ci_native_cache.py seal --component wpaperd \
+              --key "$NATIVE_CACHE_KEY" --binary /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd \
+              --observed-sha-file artifacts/wpaperd-native-e2e/upstream-sha.txt \
+              --cache-dir /tmp/ezw-native-cache/wpaperd
+          fi
           /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd --version | tee artifacts/wpaperd-native-e2e/upstream-version.txt
           grep -F '1.3.0' artifacts/wpaperd-native-e2e/upstream-version.txt
+          echo "wpaperd binary cache hit: $NATIVE_CACHE_HIT" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify real wpaperd native IPC and two-output rendered pixels
         if: needs.change-scope.outputs.wpaperd == 'true'
         shell: bash
@@ -414,6 +457,14 @@ jobs:
             --upstream-sha-file artifacts/wpaperd-native-e2e/upstream-sha.txt \
             --artifact-dir artifacts/wpaperd-native-e2e \
             2>&1 | tee artifacts/wpaperd-native-e2e/test.log
+      # Never seed a shared cache from untrusted PR code. Only verified
+      # native dual-output IPC/framebuffer success on trusted master may save.
+      - name: Save verified wpaperd cache from trusted master only
+        if: success() && needs.change-scope.outputs.wpaperd == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.wpaperd_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.wpaperd_key.outputs.key }}
+          path: /tmp/ezw-native-cache/wpaperd
       - name: Always preserve native wpaperd source, IPC and framebuffer evidence
         if: always() && needs.change-scope.outputs.wpaperd == 'true'
         uses: actions/upload-artifact@v4
