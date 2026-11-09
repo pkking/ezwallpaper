@@ -181,6 +181,64 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), "")
         self.assertIn("refused:", stderr.getvalue())
 
+    def test_wpaperd_cache_is_source_pinned_and_never_accepts_wrong_abi(self):
+        component = "wpaperd"
+        pinned = cache.PINNED[component]["source_sha"]
+        self.assertEqual(pinned, "9e71fdd10e1f2d94532edaf0f54402aac3c0b01c")
+        fingerprint = b"ubuntu-24.04 rustc+wayland runtime package versions"
+        key = cache.key_for(component, fingerprint)
+        self.assertNotEqual(key, cache.key_for(component, fingerprint + b"new-ABI"))
+        self.assertNotEqual(key, self.key)
+        binary = self.root / "wpaperd-binary"
+        binary.write_bytes(b"pinned wpaperd executable fixture")
+        binary.chmod(0o755)
+        sha_file = self.root / "wpaperd-source"
+        sha_file.write_text(pinned + "\n", encoding="ascii")
+        cache_dir = self.root / "wpaperd-cache"
+        sealed = cache.seal(component, key, binary, sha_file, cache_dir)
+        self.assertEqual(sealed["component"], "wpaperd")
+        self.assertEqual(sealed["source_sha"], pinned)
+        self.assertEqual(cache.inspect(component, key, cache_dir), sealed)
+
+        target = self.root / "wpaperd-native/wpaperd"
+        sha_target = self.root / "wpaperd-artifacts/source.txt"
+        cache.restore(component, key, cache_dir, target, sha_target)
+        self.assertEqual(target.read_bytes(), binary.read_bytes())
+        self.assertEqual(sha_target.read_text(), pinned + "\n")
+
+        with self.assertRaises(cache.CacheError):
+            cache.inspect(component, cache.key_for(component, b"different-ABI"), cache_dir)
+        with self.assertRaises(cache.CacheError):
+            cache.inspect("noctalia", self.key, cache_dir)
+        (cache_dir / "binary").write_bytes(b"corrupted executable")
+        with self.assertRaises(cache.CacheError):
+            cache.inspect(component, key, cache_dir)
+
+    def test_wpaperd_workflow_only_saves_after_real_pixel_e2e_on_master(self):
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  sway-visual-e2e:\n", 1)[1].split(
+            "\n  noctalia-sway-visual-e2e:", 1)[0]
+        self.assertNotIn("pull_request_target", ci)
+        self.assertNotIn("restore-keys:", job)
+        self.assertNotIn("cache-mode: write", job)
+        self.assertIn("actions/cache/restore@v4", job)
+        self.assertIn("actions/cache/save@v4", job)
+        self.assertIn("if: success() && needs.change-scope.outputs.wpaperd == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/master'", job)
+        source_check = job.index("grep -Fx '9e71fdd10e1f2d94532edaf0f54402aac3c0b01c'")
+        cache_restore = job.index("python3 scripts/ci_native_cache.py restore --component wpaperd")
+        native_pixels = job.index("Verify real wpaperd native IPC and two-output rendered pixels")
+        master_save = job.index("Save verified wpaperd cache from trusted master only")
+        self.assertLess(source_check, cache_restore)
+        self.assertLess(cache_restore, native_pixels)
+        self.assertLess(native_pixels, master_save)
+        self.assertIn("scripts/ci_native_cache.py seal --component wpaperd", job)
+        self.assertIn("sha256sum .github/workflows/ci.yml scripts/ci_native_cache.py", job)
+        self.assertIn("tests/e2e/sway/wpaperd_native.py", job)
+        self.assertIn("Observe actual composited Sway wallpaper", job)
+        self.assertIn("Observe isolated two-output Sway framebuffer separation", job)
+        self.assertIn("Always preserve native wpaperd source, IPC and framebuffer evidence", job)
+
     def test_workflow_has_read_only_pr_and_master_only_save_and_pixel_e2e(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
