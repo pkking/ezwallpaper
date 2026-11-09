@@ -809,6 +809,57 @@ fn run_with_backend_interval_scoped(
             }
         }
 
+        // The acknowledged state is persisted before its separately atomic
+        // event. A crash in that gap makes this same-epoch plan AlreadyApplied,
+        // but its event may be absent/stale. Reconcile only the *current*
+        // acknowledged epoch, without reissuing wallpaper-set or changing
+        // state. An independent backend readback and fresh content hash must
+        // both agree before restoring a missing event.
+        if apply && proposed.decision == RotationDecision::AlreadyApplied {
+            if let Some(directory) = events_root.as_deref() {
+                let acknowledged_epoch = saved
+                    .outputs
+                    .get(&output.name)
+                    .and_then(|state| state.last_epoch);
+                if acknowledged_epoch == Some(epoch) {
+                    let content_id = proposed
+                        .content_id
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("acknowledged event has no content identity"))?;
+                    let path = by_id.get(content_id).ok_or_else(|| {
+                        anyhow!("cannot recover event: previously acknowledged asset is missing")
+                    })?;
+                    let change = crate::rotation_event::WallpaperChange::acknowledged(
+                        output.name.clone(),
+                        epoch,
+                        content_id.clone(),
+                        path.clone(),
+                    );
+                    if !crate::rotation_event::already_published(directory, &change)? {
+                        let asset = WallpaperManager.open_local(path)?;
+                        if WallpaperManager.content_id(&asset)? != *content_id {
+                            bail!("cannot recover event: acknowledged wallpaper bytes changed");
+                        }
+                        if let Some(recheck) = niri_recheck.as_deref() {
+                            let names = profile
+                                .outputs
+                                .iter()
+                                .map(|candidate| candidate.name.clone())
+                                .collect::<Vec<_>>();
+                            recheck(&names)?;
+                        }
+                        let selected = backend.as_deref_mut().ok_or_else(|| {
+                            anyhow!("event recovery requires an observable wallpaper backend")
+                        })?;
+                        if !selected.current_path_matches(&output.name, path)? {
+                            bail!("cannot recover event: current backend wallpaper path differs");
+                        }
+                        crate::rotation_event::publish(directory, &change)?;
+                    }
+                }
+            }
+        }
+
         let reason = match proposed.decision {
             RotationDecision::Select if apply => "path_observed_pixels_unverified",
             RotationDecision::Select => "preview_not_applied",
