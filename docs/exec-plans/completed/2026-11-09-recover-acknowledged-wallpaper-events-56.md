@@ -1,7 +1,7 @@
 # 2026-11-09: Recover a lost output event after acknowledged state commit
 
 Issue: #56
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -35,27 +35,27 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; docs/adr/0009-locked
 
 ## Acceptance criteria
 
-- [ ] Missing event after durable current-epoch state commit is restored on retry without a second wallpaper-set, with exact content/path and event v1 metadata.
-- [ ] Mismatched current backend path or mutated file fails recovery, publishes no event and preserves saved state; unsupported backend cannot fabricate a recovery.
-- [ ] Already-valid event unchanged on retry; rollback epoch cannot republish an older event.
-- [ ] Noctalia/wpaperd read-only path check has deterministic offline coverage; final exact-head CI all green.
+- [x] Missing event after durable current-epoch state commit is restored on retry without a second wallpaper-set, with exact content/path and event v1 metadata.
+- [x] Mismatched current backend path or mutated file fails recovery, publishes no event and preserves saved state; unsupported backend cannot fabricate a recovery.
+- [x] Already-valid event unchanged on retry; rollback epoch cannot republish an older event.
+- [x] Noctalia/wpaperd read-only path check has deterministic offline coverage; final exact-head CI all green.
 
 ## Implementation slices
 
 - [x] Add read-only adapter path comparison with Noctalia & wpaperd implementations.
 - [x] Add bounded strict event equality probe in `src/rotation_event.rs`.
 - [x] Implement per-output `AlreadyApplied` reconciliation in rotation loop, with retry/failure tests.
-- [ ] Verify exact-head PR CI, merge squash only when all required gates pass.
+- [x] Verify exact-head PR CI, merge squash only when all required gates pass.
 
 ## Verification matrix
 
 | Scope | Required evidence | Status |
 |---|---|---|
-| Rust fmt, Clippy, tests | CI exact-head quality and smoke | PENDING |
-| Python consumer tests | CI contract and native safety jobs | PENDING |
-| Windows/macOS headless | CI platform jobs | PENDING |
-| Sway and native Noctalia/niri | CI isolated compositor E2E | PENDING |
-| Agent plan integrity | CI PR workflow | PENDING |
+| Rust fmt, Clippy, tests | PR #222, head `5d291ec`, CI run `42542545726` | PASS |
+| Python consumer tests | PR #222 contract/safety jobs, run `42542545726` | PASS |
+| Windows/macOS headless | Both platform jobs in run `42542545726` | PASS (headless only) |
+| Sway and native Noctalia/niri | Sway visual and native Noctalia v5.2.1 + experimental niri jobs, run `42542545726` | PASS (isolated virtual outputs) |
+| Agent plan integrity | Run `42542545726`, all 10/10 jobs successful | PASS |
 
 ## Decision gates
 
@@ -68,15 +68,17 @@ None: resilience correction to existing opt-in event publication; no new user co
 
 ## Deviations and discoveries
 
-None.
+No source implementation deviations. Verification uses GitHub Actions; no local Cargo result is claimed. Source assets and backend readback can change after the non-atomic check, so this feature remains conservative best-effort reconciliation rather than a transactional event guarantee.
 
 ## Resume from here
 
-Open Issue #56-linked PR from `agent/issue-56-recover-acknowledged-events-20261109` and review the exact-head 10-job CI run. Fix any Rust/Windows/macOS/Noctalia/niri E2E failure before squash merge.
+Continue the broader Issue #56 in a separate focused execution plan for the remaining unimplemented external consumers/privileged integration; do not treat the merged unprivileged event-recovery slice as their validation.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed: physical niri/GPU/4K, lockscreen integration, external event consumer and privileged SDDM/Plymouth.
+Final implementation PR: https://github.com/pkking/ezwallpaper/pull/222
+Final PR head: `5d291ec37441ca7f5de937d13ec10267059b7610`
+Final commit: `7c5799cc6274bc2a7038c5959fba1e2e941d4d01`
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42542545726 — all 10/10 jobs completed successfully at this exact PR head.
+E2E artifacts: [native Noctalia/Sway dual-output](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13643345424), [experimental niri/Noctalia dual-output](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13643200901), [native wpaperd](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13642196624), [Sway compositor](https://github.com/pkking/ezwallpaper/actions/runs/42542545726/artifacts/13641504749).
+Remaining unassessed items: physical niri/GPU/4K, lockscreen integration, external event consumer and privileged SDDM/Plymouth. Issue #56 stays open for its broader scope.
