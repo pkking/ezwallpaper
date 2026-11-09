@@ -1,7 +1,7 @@
 # 2026-11-09: Offline comparison of pinned native CI cache fingerprints
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -35,27 +35,27 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md (Issue #211); scripts
 
 ## Acceptance criteria
 
-- [ ] An unchanged input pair reports no drift; package additions/removals/version changes and toolchain changes report separately and deterministically.
-- [ ] Missing, malformed, inconsistent or symlinked evidence fails closed; never silently fall back to a partial comparison.
-- [ ] Offline fixture tests exercise positive, negative and boundary evidence; CI compiles/tests unchanged.
-- [ ] Exact-head CI including native pixels and platform jobs passes before merge; document usage and limits.
+- [x] An unchanged input pair reports no drift; package additions/removals/version changes and toolchain changes report separately and deterministically.
+- [x] Missing, malformed, inconsistent or symlinked evidence fails closed; never silently fall back to a partial comparison.
+- [x] Offline fixture tests exercise positive, negative and boundary evidence; CI compiles/tests unchanged.
+- [x] Exact-head CI including native pixels and platform jobs passes before merge; document usage and limits.
 
 ## Implementation slices
 
 - [x] Implement read-only `scripts/compare_native_cache_fingerprints.py` parser/comparator.
 - [x] Add deterministic `tests/test_cache_fingerprint_diff.py` including deliberate malformed checksums.
 - [x] Document commands and evidence scope.
-- [ ] Inspect exact-head CI and merge only if green.
+- [x] Inspect exact-head CI and merge only if green.
 
 ## Verification matrix
 
 | Scope | Command / gate | Evidence | Status |
 |---|---|---|---|
-| Offline fingerprint diff | `python3 -m unittest discover -s tests -p test_cache_fingerprint_diff.py -v` | deterministic fixtures | PENDING |
-| Existing cache trust | `python3 -m unittest discover -s tests -p test_ci_native_cache.py -v` | no cache key regression | PENDING |
-| Native pixel E2E | Noctalia/niri, Sway, wpaperd when selected | exact-head CI | PENDING |
-| Rust/platform | Rust quality, Windows/macOS, CLI smoke | exact-head CI | PENDING |
-| Plan governance | Agent plan integrity | Issue/Plan linkage | PENDING |
+| Offline fingerprint diff | `python3 -m unittest discover -s tests -p test_cache_fingerprint_diff.py -v` | deterministic fixtures | PASS - PR #229 CI 42661181763 |
+| Existing cache trust | `python3 -m unittest discover -s tests -p test_ci_native_cache.py -v` | no cache key regression | PASS - PR #229 CI 42661181763 |
+| Native pixel E2E | Noctalia/niri, Sway, wpaperd when selected | exact-head CI | PASS - PR #229 CI 42661181763 |
+| Rust/platform | Rust quality, Windows/macOS, CLI smoke | exact-head CI | PASS - PR #229 CI 42661181763 |
+| Plan governance | Agent plan integrity | Issue/Plan linkage | PASS - PR #229 CI 42661181763 |
 
 ## Decision gates
 
@@ -64,19 +64,19 @@ None. CI diagnostic only, with no user-facing wallpaper behavior, accepted ADR o
 ## Evidence log
 
 - 2026-11-09: inspected CI fingerprint source; three inputs already retained after PR #226. Measured native E2E run durations from GitHub Jobs API and recorded the finding in Issue #211.
-- 2026-11-09: implemented bounded, checksum-verified, same-component offline input comparison and malformed-evidence regression fixtures. Linked new tests into the existing `test_ci_native_cache.py` CI gate without editing the workflow or invalidating native cache keys. No local test execution; PR CI PENDING.
+- 2026-11-09: implemented bounded, checksum-verified, same-component offline input comparison and malformed-evidence regression fixtures. Linked new tests into the existing `test_ci_native_cache.py` CI gate without editing the workflow or invalidating native cache keys. No local test execution; exact-head PR CI subsequently passed all 10 required checks.
 
 ## Deviations and discoveries
 
-None.
+PR #229 tested at head `bf73a396904127c71d98fcec73a5d1ef970b42b2`; [run 42661181763](https://github.com/pkking/ezwallpaper/actions/runs/42661181763) completed 10/10 required checks successfully. The CI's existing named `test_ci_native_cache.py` suite ran 23 tests including 10 new drift-comparator fixtures. Native Noctalia/niri source builds were safely skipped after exact cache hits, but real native IPC and dual-output framebuffer tests ran successfully. Squash-merged master commit `4a6f2b5262b04c5f1bd22c00357d2027ed3419a1`.
 
 ## Resume from here
 
-Open the Issue #211-linked PR from `agent/issue-211-compare-native-cache-drift-20261109`, inspect exact-head CI and repair any offline fixture, Rust, platform or native E2E failures before merge.
+Compare two downloaded real per-component `cache-fingerprint` artifacts with `python3 scripts/compare_native_cache_fingerprints.py BEFORE AFTER` when the next exact-key miss occurs; record measured cause and keep P50/P90 unassessed until multiple runs.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed: long-run warm-cache P50/P90, exact cause of historical key drift and physical GPU/hotplug verification.
+Final commit: `4a6f2b5262b04c5f1bd22c00357d2027ed3419a1` (PR #229; exact tested head `bf73a396904127c71d98fcec73a5d1ef970b42b2`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42661181763 (10/10 success)
+E2E artifact: native niri/Noctalia virtual dual-output evidence in run 42661181763
+Remaining unassessed items: long-run warm-cache P50/P90, exact cause of historical key drift and physical GPU/hotplug verification.
