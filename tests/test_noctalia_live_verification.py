@@ -230,7 +230,7 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
 
         def runner(argv, **kwargs):
             if argv == ["noctalia", "msg", "wallpaper-get", "DP-1"]:
-                raise UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid start byte")
+                raise UnicodeDecodeError("utf-8", bytes([0xff]), 0, 1, "invalid start byte")
             return fake(argv, **kwargs)
 
         with self.assertRaisesRegex(verifier.VerificationError, "wallpaper_get_failed"):
@@ -247,7 +247,7 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             if (argv == ["noctalia", "msg", "wallpaper-get", "DP-1"]
                     and fake.fixture_applies == 1 and not injected):
                 injected = True
-                raise UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid start byte")
+                raise UnicodeDecodeError("utf-8", bytes([0xff]), 0, 1, "invalid start byte")
             return fake(argv, **kwargs)
 
         result, status = self.verify(runner)
