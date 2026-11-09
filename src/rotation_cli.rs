@@ -1538,7 +1538,10 @@ mod tests {
 
         fn current_path_matches(&self, output: &str, path: &Path) -> Result<bool> {
             self.reads.set(self.reads.get() + 1);
-            Ok(self.expected.get(output).is_some_and(|current| current == path))
+            Ok(self
+                .expected
+                .get(output)
+                .is_some_and(|current| current == path))
         }
     }
 
@@ -1592,10 +1595,22 @@ mod tests {
             },
         )
         .expect("restore only the missing previously acknowledged event");
-        assert!(retried.iter().all(|value| value.decision == RotationDecision::AlreadyApplied));
-        assert_eq!(observer.reads.get(), 1, "only the missing event needs live readback");
-        assert_eq!(fs::read(events.join("DP-1.json")).expect("recovered event"), first);
-        assert_eq!(fs::read(&state).expect("unchanged rotation state"), before_state);
+        assert!(retried
+            .iter()
+            .all(|value| value.decision == RotationDecision::AlreadyApplied));
+        assert_eq!(
+            observer.reads.get(),
+            1,
+            "only the missing event needs live readback"
+        );
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("recovered event"),
+            first
+        );
+        assert_eq!(
+            fs::read(&state).expect("unchanged rotation state"),
+            before_state
+        );
 
         // A correct existing event must not cause any new IPC even when the
         // current observed-path adapter would otherwise report a mismatch.
@@ -1618,7 +1633,10 @@ mod tests {
         )
         .expect("already-valid events are unchanged without desktop IPC");
         assert_eq!(observer.reads.get(), 0);
-        assert_eq!(fs::read(events.join("DP-1.json")).expect("still same event"), first);
+        assert_eq!(
+            fs::read(events.join("DP-1.json")).expect("still same event"),
+            first
+        );
     }
 
     #[test]
@@ -1646,10 +1664,9 @@ mod tests {
         )
         .expect("original acknowledged output");
         let before_state = fs::read(&state).expect("authoritative original state");
-        let change: crate::rotation_event::WallpaperChange = serde_json::from_slice(
-            &fs::read(events.join("DP-1.json")).expect("old event"),
-        )
-        .expect("event v1");
+        let change: crate::rotation_event::WallpaperChange =
+            serde_json::from_slice(&fs::read(events.join("DP-1.json")).expect("old event"))
+                .expect("event v1");
         fs::remove_file(events.join("DP-1.json")).expect("simulate event gap");
 
         let mut observer = ObservedOnlyBackend {
