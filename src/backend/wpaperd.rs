@@ -334,7 +334,7 @@ mod tests {
         fs::write(&file, b"fake image is not decoded by the mock").expect("fixture");
         let canonical = file.canonicalize().expect("canonical image");
         let server = thread::spawn(move || {
-            for index in 0..4 {
+            for index in 0..6 {
                 let (mut conn, _) = listener.accept().expect("accept fake IPC");
                 let mut buf = [0; 4096];
                 let n = conn.read(&mut buf).expect("request");
@@ -357,9 +357,13 @@ mod tests {
                         assert_eq!(request, json!({"CurrentWallpaper":{"monitor":"DP-1"}}));
                         json!({"Ok":{"CurrentWallpaper":{"path":"/tmp/stale.png"}}})
                     }
-                    3 => {
+                    3 | 4 => {
                         assert_eq!(request, json!({"CurrentWallpaper":{"monitor":"DP-1"}}));
                         json!({"Ok":{"CurrentWallpaper":{"path":canonical}}})
+                    }
+                    5 => {
+                        assert_eq!(request, json!({"CurrentWallpaper":{"monitor":"DP-1"}}));
+                        json!({"Ok":{"CurrentWallpaper":{"path":"/tmp/external-wallpaper.png"}}})
                     }
                     _ => unreachable!(),
                 };
@@ -375,6 +379,16 @@ mod tests {
                 .apply("DP-1", &file)
                 .expect("independent path readback"),
             ApplyStatus::PathObserved
+        );
+        assert!(
+            backend
+                .current_path_matches("DP-1", &file)
+                .expect("read-only current path")
+        );
+        assert!(
+            !backend
+                .current_path_matches("DP-1", &file)
+                .expect("external wallpaper differs")
         );
         server.join().expect("fake daemon join");
     }
