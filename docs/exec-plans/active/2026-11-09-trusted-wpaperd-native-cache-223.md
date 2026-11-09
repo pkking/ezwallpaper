@@ -1,7 +1,7 @@
 # 2026-11-09: Trusted, pinned wpaperd native executable cache
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -44,9 +44,9 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci
 
 ## Implementation slices
 
-- [ ] Reuse cache helper for pinned wpaperd component.
-- [ ] Add stable ABI fingerprint, restore-or-build-and-seal flow in Sway CI, trusted save after native pixel tests.
-- [ ] Add offline key/manifest/workflow trust-order tests.
+- [x] Reuse cache helper for pinned wpaperd component.
+- [x] Add stable ABI fingerprint, restore-or-build-and-seal flow in Sway CI, trusted save after native pixel tests.
+- [x] Add offline key/manifest/workflow trust-order tests.
 - [ ] Inspect final CI and merge only on success; record cold/warm timings later using actual runs.
 
 ## Verification matrix
@@ -65,6 +65,7 @@ None: CI-only performance optimization reusing existing reviewed native cache va
 ## Evidence log
 
 - 2026-11-09: read current master Sway/native workflow and existing cache validator/tests; confirmed repeated release compilation and selected-gate structure. No branch tests executed yet.
+- 2026-11-09: `211f634` extends pinned component validation; `da14083` adds wpaperd ABI fingerprint, exact-key cache restore and source verification before execution, cache seal on cold compile and post-pixel-success master-only save; `274e396` adds isolation/poisoning/CI ordering contract tests; `b1f6212` documents cache behavior. No local CI tests executed, exact-head GitHub CI PENDING.
 
 ## Deviations and discoveries
 
@@ -72,7 +73,7 @@ None.
 
 ## Resume from here
 
-Add pinned wpaperd component in `scripts/ci_native_cache.py`, update `.github/workflows/ci.yml` Sway-only native build to support trusted cache restore/build/seal and post-pixel master save, add offline workflow tests, open PR linked to Issue #223 and inspect exact-head CI.
+Open PR from `agent/issue-223-trusted-wpaperd-native-cache-20261109` linking Issue #223 and this plan. Inspect 10/10 exact-head CI, debug cold build/cached flow, and merge squash only when green.
 
 ## Completion
 
