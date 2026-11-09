@@ -149,7 +149,9 @@ def preconditions(outputs: tuple[str, str], env: dict[str, str], confirmed: bool
 def call(runner, argv: list[str], error: str) -> str:
     try:
         proc = runner(argv, capture_output=True, text=True, timeout=12, check=False)
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as exc:
+        # text=True decodes stdout/stderr before returning CompletedProcess.
+        # A malformed native IPC response must not bypass restoration.
         raise VerificationError(error) from exc
     if proc.returncode != 0:
         raise VerificationError(error)
