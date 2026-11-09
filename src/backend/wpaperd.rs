@@ -380,16 +380,12 @@ mod tests {
                 .expect("independent path readback"),
             ApplyStatus::PathObserved
         );
-        assert!(
-            backend
-                .current_path_matches("DP-1", &file)
-                .expect("read-only current path")
-        );
-        assert!(
-            !backend
-                .current_path_matches("DP-1", &file)
-                .expect("external wallpaper differs")
-        );
+        assert!(backend
+            .current_path_matches("DP-1", &file)
+            .expect("read-only current path"));
+        assert!(!backend
+            .current_path_matches("DP-1", &file)
+            .expect("external wallpaper differs"));
         server.join().expect("fake daemon join");
     }
 }
