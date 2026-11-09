@@ -40,7 +40,7 @@ No automatic testing on a real desktop, no new CLI/IPC/backend behavior, no new 
 
 - [x] External path replacement during human confirmation/capture: first fixture is never applied; external wallpaper survives; exit fails with a stable conflict code and private recovery.
 - [x] External path replacement on either output after first apply but before second: second fixture is never applied; first is restored only if still owned; external path survives; private recovery retained.
-- [ ] Unchanged two-output baseline and existing concurrent restore conflict fixtures still pass without weakening safety checks.
+- [x] Unchanged two-output baseline and existing concurrent restore conflict fixtures pass in PR #231 CI run 42691201991 (Noctalia live-verification safety tests: SUCCESS).
 - [ ] Exact final-head Rust/Windows/macOS/Sway/native Noctalia+niri/offline helper/agent plan CI all pass before merge.
 
 ## Implementation slices
@@ -53,11 +53,11 @@ No automatic testing on a real desktop, no new CLI/IPC/backend behavior, no new 
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PENDING |
-| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PENDING |
-| Windows/macOS/Sway | GitHub Actions native/headless jobs | PENDING |
-| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PENDING |
-| Agent governance | GitHub Actions PR plan integrity | PENDING |
+| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PASS run 42691201991 |
+| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PASS run 42691201991 |
+| Windows/macOS/Sway | GitHub Actions native/headless jobs | PASS run 42691201991; wpaperd conditional steps SKIPPED |
+| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PASS run 42691201991; pinned binary cache hits |
+| Agent governance | GitHub Actions PR plan integrity | FAIL run 42691201991: linked plan was not changed against master; update plan in this PR and rerun |
 
 ## Decision gates
 
@@ -66,6 +66,7 @@ None: local, consent-gated test helper safety tightening. Architecture diagram: 
 ## Evidence log
 
 - 2026-11-09: inspected verified `master`, Issue #59, helper and offline fake tests; found missing path ownership rechecks during a long-running opt-in interactive verification. No branch tests have run yet.
+- 2026-11-09: PR #231 exact head `9dbdbdebcc4113bc71fd182b15b6ccdf98ccb709` run 42691201991: 9/10 jobs passed, including offline live safety, Rust quality/tests, Windows/macOS, Sway, Noctalia/Sway and niri/Noctalia virtual framebuffer. Agent plan integrity failed: `PR must update its own linked execution plan` because this active plan already existed on master. This checkpoint changes the linked plan in the PR; recheck new exact-head CI before merge. Physical tests remain unassessed.
 - 2026-11-09: implementation `7a8bb333fecd855cae1b5dba0c79e2ac7480f058` checks both path observations against original or previously attempted fixture immediately before each change. Test commit `212e0841a784cb8b4bca03f0e11159ec039c207b` injects third-party changes during APPLY confirmation and between first/second apply (including either connector). Exact-head CI remains PENDING; no local desktop tests executed.
 
 ## Deviations and discoveries
@@ -74,7 +75,7 @@ None.
 
 ## Resume from here
 
-Open a PR from `agent/issue-59-noctalia-live-preapply-ownership-20261109` linked to Issue #59 and this plan, then inspect full exact-head CI (especially offline live safety) and repair any failures before merging.
+Inspect PR #231 latest head CI after this plan checkpoint; if all required checks and reviews pass, squash merge; then archive this plan in a separate completion PR. Do not claim physical display verification.
 
 ## Completion
 
