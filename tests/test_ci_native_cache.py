@@ -239,6 +239,54 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("Observe isolated two-output Sway framebuffer separation", job)
         self.assertIn("Always preserve native wpaperd source, IPC and framebuffer evidence", job)
 
+    def test_native_cache_fingerprint_evidence_preserves_full_key_inputs(self):
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  noctalia-sway-visual-e2e:\n", 1)[1].split(
+            "\n  platform-tests:", 1)[0]
+        for component, pretty in (("noctalia", "Noctalia"), ("niri", "niri")):
+            block = job.split(
+                f"- name: Fingerprint pinned {pretty} build and ABI", 1
+            )[1].split("- name: Restore trusted", 1)[0]
+            evidence = f"artifacts/{'noctalia-sway-e2e' if component == 'noctalia' else 'niri-noctalia-e2e'}/cache-fingerprint"
+            fingerprint = f"/tmp/ezw-{component}-build-fingerprint"
+            self.assertIn(f"diagnostics={evidence}", block)
+            self.assertIn("dpkg-query -W -f=", block)
+            self.assertIn("LC_ALL=C sort > \"$diagnostics/installed-packages.txt\"", block)
+            self.assertIn('} > "$diagnostics/toolchain-and-workflow.txt"', block)
+            self.assertIn("dpkg --print-architecture", block)
+            self.assertIn("c++ --version", block)
+            self.assertIn("sha256sum .github/workflows/ci.yml", block)
+            self.assertIn(
+                'cat "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" > '
+                + fingerprint, block,
+            )
+            self.assertIn(
+                f'sha256sum "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" {fingerprint}',
+                block,
+            )
+            self.assertIn(
+                f"scripts/ci_native_cache.py key --component {component} --fingerprint {fingerprint}",
+                block,
+            )
+            self.assertLess(
+                block.index("dpkg-query -W"), block.index('cat "$diagnostics/installed-packages.txt"')
+            )
+            self.assertLess(
+                block.index('cat "$diagnostics/installed-packages.txt"'),
+                block.index("scripts/ci_native_cache.py key"),
+            )
+            self.assertNotIn("restore-keys:", job)
+            self.assertNotIn("pull_request_target", ci)
+        self.assertIn("meson --version", job)
+        self.assertIn("pkg-config --modversion wayland-protocols", job)
+        self.assertIn("rustc +1.99.1 --version", job)
+        self.assertIn("cargo +1.99.1 --version", job)
+        self.assertIn("path: artifacts/noctalia-sway-e2e/", job)
+        self.assertIn("path: artifacts/niri-noctalia-e2e/", job)
+        self.assertIn("Test actual native IPC and dual output rendered pixels", job)
+        self.assertIn("Verify real niri + Noctalia dual-output framebuffer", job)
+
     def test_workflow_has_read_only_pr_and_master_only_save_and_pixel_e2e(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
