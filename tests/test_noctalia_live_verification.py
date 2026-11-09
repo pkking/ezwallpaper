@@ -225,6 +225,43 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
                     self.originals["DP-1"],
                 )
 
+    def test_undecodable_initial_wallpaper_ipc_refuses_without_mutation(self):
+        fake = FakeDesktop(self.originals)
+
+        def runner(argv, **kwargs):
+            if argv == ["noctalia", "msg", "wallpaper-get", "DP-1"]:
+                raise UnicodeDecodeError("utf-8", bytes([0xff]), 0, 1, "invalid start byte")
+            return fake(argv, **kwargs)
+
+        with self.assertRaisesRegex(verifier.VerificationError, "wallpaper_get_failed"):
+            self.verify(runner)
+        self.assertEqual(fake.writes, [])
+        self.assertFalse((self.root / "proof").exists())
+
+    def test_undecodable_post_apply_ipc_still_restores_both_outputs(self):
+        fake = FakeDesktop(self.originals)
+        injected = False
+
+        def runner(argv, **kwargs):
+            nonlocal injected
+            if (argv == ["noctalia", "msg", "wallpaper-get", "DP-1"]
+                    and fake.fixture_applies == 1 and not injected):
+                injected = True
+                raise UnicodeDecodeError("utf-8", bytes([0xff]), 0, 1, "invalid start byte")
+            return fake(argv, **kwargs)
+
+        result, status = self.verify(runner)
+        self.assertTrue(injected)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "wallpaper_get_failed")
+        self.assertFalse(result["outputs"][0]["path_observed"])
+        self.assertEqual(result["restoration"], dict.fromkeys(
+            self.outputs, "PIXEL_VERIFIED"
+        ))
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertFalse((self.root / "proof/recovery.json").exists())
+
     def test_ambiguous_original_wallpaper_reply_refuses_before_mutation(self):
         for ending in ("\n\n", "\r\n\r\n", "\n/another/path\n", "\r", "\x00"):
             with self.subTest(ending=repr(ending)):
