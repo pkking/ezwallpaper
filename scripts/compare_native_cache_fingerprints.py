@@ -68,10 +68,17 @@ def parse_toolchain(data: bytes) -> list[str]:
         raise FingerprintError("invalid_toolchain_encoding") from exc
     if not text.endswith("\n"):
         raise FingerprintError("unterminated_toolchain_inventory")
-    return text.splitlines()
+    lines = text.splitlines()
+    if (len(lines) < 3
+            or not re.fullmatch(r"[a-z0-9_-]{2,32}", lines[0])
+            or not re.fullmatch(
+                r"[0-9a-f]{64}  \.github/workflows/ci\.yml", lines[-1]
+            )):
+        raise FingerprintError("invalid_toolchain_or_workflow_records")
+    return lines
 
 
-def check_sha256_evidence(data: bytes, packages: bytes, toolchain: bytes) -> str:
+def check_sha256_evidence(data: bytes, packages: bytes, toolchain: bytes) -> tuple[str, str]:
     try:
         lines = data.decode("ascii").splitlines()
     except UnicodeError as exc:
@@ -94,7 +101,11 @@ def check_sha256_evidence(data: bytes, packages: bytes, toolchain: bytes) -> str
         elif not (path.startswith("/tmp/ezw-")
                   and path.endswith("-build-fingerprint")):
             raise FingerprintError("invalid_checksum_path")
-    return expected_hashes[2]
+    source_path = lines[-1].partition("  ")[2]
+    component = source_path[len("/tmp/ezw-"):-len("-build-fingerprint")]
+    if component not in ("noctalia", "niri"):
+        raise FingerprintError("unknown_cache_component")
+    return expected_hashes[2], component
 
 
 def load_evidence(directory: Path) -> dict:
@@ -105,8 +116,9 @@ def load_evidence(directory: Path) -> dict:
     except OSError as exc:
         raise FingerprintError("missing_evidence_directory") from exc
     packages, toolchain, checksums = (read_regular(directory, name) for name in FILES)
-    fingerprint = check_sha256_evidence(checksums, packages, toolchain)
+    fingerprint, component = check_sha256_evidence(checksums, packages, toolchain)
     return {
+        "component": component,
         "packages": parse_packages(packages),
         "toolchain": parse_toolchain(toolchain),
         "fingerprint_sha256": fingerprint,
@@ -114,9 +126,12 @@ def load_evidence(directory: Path) -> dict:
 
 
 def compare(before: dict, after: dict) -> dict:
+    if before["component"] != after["component"]:
+        raise FingerprintError("mixed_cache_components")
     a, b = before["packages"], after["packages"]
     old, new = before["toolchain"], after["toolchain"]
     return {
+        "component": before["component"],
         "fingerprint_changed": (
             before["fingerprint_sha256"] != after["fingerprint_sha256"]
         ),
