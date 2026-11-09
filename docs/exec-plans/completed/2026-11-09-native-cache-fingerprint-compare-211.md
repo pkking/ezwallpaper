@@ -79,4 +79,4 @@ Compare two downloaded real per-component `cache-fingerprint` artifacts with `py
 Final commit: `4a6f2b5262b04c5f1bd22c00357d2027ed3419a1` (PR #229; exact tested head `bf73a396904127c71d98fcec73a5d1ef970b42b2`)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/42661181763 (10/10 success)
 E2E artifact: native niri/Noctalia virtual dual-output evidence in run 42661181763
-Remaining unassessed: long-run warm-cache P50/P90, exact cause of historical key drift and physical GPU/hotplug verification.
+Remaining unassessed items: long-run warm-cache P50/P90, exact cause of historical key drift and physical GPU/hotplug verification.
