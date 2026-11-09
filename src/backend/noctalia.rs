@@ -91,6 +91,18 @@ impl WallpaperBackend for NoctaliaBackend {
         }
         self.apply_one_shot(path, Some(output))
     }
+
+    fn current_path_matches(&self, output: &str, path: &Path) -> Result<bool> {
+        validate_connector(output)?;
+        let expected = path
+            .to_str()
+            .ok_or_else(|| anyhow!("Noctalia wallpaper path must be UTF-8"))?;
+        if expected.contains('\n') || expected.contains('\r') || expected.contains('\0') {
+            bail!("Noctalia wallpaper paths cannot contain newlines or NUL bytes");
+        }
+        let reply = noctalia_ipc(&["msg", "wallpaper-get", output])?;
+        Ok(exact_path_readback(&reply, expected))
+    }
 }
 
 /// Output identifiers must be a single IPC token, not arbitrary command fragments.
