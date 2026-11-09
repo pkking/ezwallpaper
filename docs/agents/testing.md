@@ -70,7 +70,9 @@ The PR-only run cannot seed a reusable default-branch cache; after the first tru
     python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v
     python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
 
-CI step summaries report binary cache hits/misses; measure exact-head job/step P50/P90 with GitHub Actions runs. Historical Noctalia native E2E baseline was about 19.7–29.5 minutes across three observed successful PR runs, mostly Noctalia recompilation (14.9–22.5m); the ≤8-minute warm-cache P50 goal and ≥60% improvement are **UNASSESSED** until multiple actual hits are measured. Cache hits are not cross-platform evidence; current isolated CI uses Debian Trixie, and physical niri GPU/hotplug remains unassessed.
+CI step summaries report binary cache hits/misses; measure exact-head job/step P50/P90 with GitHub Actions runs.
+
+**Diagnosing exact-key misses (Issue #211):** The existing Noctalia/niri build jobs now preserve `cache-fingerprint/installed-packages.txt`, `cache-fingerprint/toolchain-and-workflow.txt` and `cache-fingerprint/sha256.txt` inside their respective native E2E artifacts, whether a cache hit or a miss. The original full key input remains the byte-for-byte concatenation of these first two files, including **every installed package version**, compiler/toolchain details, architecture and workflow SHA; no ABI guard is removed. Compare the two text files or their SHA256 lines across runs to pinpoint what changed. These are ephemeral CI-container package inventories, not data from user desktops or credentials. A workflow edit itself changes the key and therefore can produce a deliberate cold rebuild. Historical Noctalia native E2E baseline was about 19.7–29.5 minutes across three observed successful PR runs, mostly Noctalia recompilation (14.9–22.5m); the ≤8-minute warm-cache P50 goal and ≥60% improvement are **UNASSESSED** until multiple actual hits are measured. Cache hits are not cross-platform evidence; current isolated CI uses Debian Trixie, and physical niri GPU/hotplug remains unassessed.
 
 ## Evidence vocabulary
 
