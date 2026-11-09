@@ -171,7 +171,7 @@ class NativeCacheFingerprintDiffTests(unittest.TestCase):
                          diff.load_evidence(self.after))
 
     def test_checksum_consistent_but_invalid_workflow_record_is_rejected(self):
-        invalid = b"amd64\\nc++ 12\\n" + b"b" * 64 + b"  wrong.yml\\n"
+        invalid = b"amd64\nc++ 12\n" + b"b" * 64 + b"  wrong.yml\n"
         make_evidence(self.before, self.packages, invalid)
         with self.assertRaisesRegex(diff.FingerprintError,
                                     "invalid_toolchain_or_workflow_records"):
