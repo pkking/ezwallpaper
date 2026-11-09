@@ -533,14 +533,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Keep exact-key provenance unchanged, but preserve each input for
+          # forensic comparison when Debian Trixie or runner tooling drifts.
+          diagnostics=artifacts/noctalia-sway-e2e/cache-fingerprint
+          mkdir -p "$diagnostics"
+          dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort > "$diagnostics/installed-packages.txt"
           {
-            dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort
             dpkg --print-architecture
             c++ --version
             meson --version
             PKG_CONFIG_PATH=/usr/local/share/pkgconfig pkg-config --modversion wayland-protocols
             sha256sum .github/workflows/ci.yml
-          } > /tmp/ezw-noctalia-build-fingerprint
+          } > "$diagnostics/toolchain-and-workflow.txt"
+          cat "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" > /tmp/ezw-noctalia-build-fingerprint
+          sha256sum "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" /tmp/ezw-noctalia-build-fingerprint | tee "$diagnostics/sha256.txt"
           key="$(python3 scripts/ci_native_cache.py key --component noctalia --fingerprint /tmp/ezw-noctalia-build-fingerprint)"
           echo "noctalia=$key" >> "$GITHUB_OUTPUT"
           echo "Noctalia upstream binary cache key: $key"
@@ -639,14 +645,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Preserve the full existing ABI/key input, plus its component
+          # inventories for diagnosis. Never replace this with a weak prefix key.
+          diagnostics=artifacts/niri-noctalia-e2e/cache-fingerprint
+          mkdir -p "$diagnostics"
+          dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort > "$diagnostics/installed-packages.txt"
           {
-            dpkg-query -W -f='${Package}=${Version}\n' | LC_ALL=C sort
             dpkg --print-architecture
             c++ --version
             rustc +1.99.1 --version
             cargo +1.99.1 --version
             sha256sum .github/workflows/ci.yml
-          } > /tmp/ezw-niri-build-fingerprint
+          } > "$diagnostics/toolchain-and-workflow.txt"
+          cat "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" > /tmp/ezw-niri-build-fingerprint
+          sha256sum "$diagnostics/installed-packages.txt" "$diagnostics/toolchain-and-workflow.txt" /tmp/ezw-niri-build-fingerprint | tee "$diagnostics/sha256.txt"
           key="$(python3 scripts/ci_native_cache.py key --component niri --fingerprint /tmp/ezw-niri-build-fingerprint)"
           echo "niri=$key" >> "$GITHUB_OUTPUT"
           echo "niri upstream binary cache key: $key"
