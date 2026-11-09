@@ -146,8 +146,7 @@ pub fn already_published(directory: &Path, change: &WallpaperChange) -> Result<b
     if raw.len() as u64 > MAX_EVENT_BYTES {
         bail!("existing wallpaper event exceeds 64 KiB");
     }
-    Ok(serde_json::from_slice::<WallpaperChange>(&raw)
-        .is_ok_and(|existing| existing == *change))
+    Ok(serde_json::from_slice::<WallpaperChange>(&raw).is_ok_and(|existing| existing == *change))
 }
 
 /// Atomic replacement of only one acknowledged output, under the caller's
@@ -263,8 +262,11 @@ mod tests {
         fs::write(root.join("DP-1.json"), b"{\"schema_version\":1}")
             .expect("simulate partial corrupt event");
         assert!(!already_published(root, &current).expect("malformed prior event"));
-        fs::write(root.join("DP-1.json"), vec![b'x'; MAX_EVENT_BYTES as usize + 1])
-            .expect("simulate over-limit event");
+        fs::write(
+            root.join("DP-1.json"),
+            vec![b'x'; MAX_EVENT_BYTES as usize + 1],
+        )
+        .expect("simulate over-limit event");
         assert!(already_published(root, &current).is_err());
     }
 
