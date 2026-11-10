@@ -1,7 +1,7 @@
 # 2026-11-10: Stop rolling Rust nightly from invalidating pinned wpaperd executable caches
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -36,17 +36,17 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #223 and its 2
 
 ## Acceptance criteria
 
-- [ ] Sway/wpaperd job installs the dated nightly rather than rolling `nightly`, while other jobs remain unchanged.
-- [ ] Deterministic workflow-contract regression checks pin, full ABI inputs, cache scope and mandatory native pixels; no relaxed key or skipped source checks.
+- [x] Sway/wpaperd job installs the dated nightly rather than rolling `nightly`, while other jobs remain unchanged.
+- [x] Deterministic workflow-contract regression checks pin, full ABI inputs, cache scope and mandatory native pixels; no relaxed key or skipped source checks.
 - [ ] Full final-head PR CI passes with selected native wpaperd IPC and pixel E2E; record actual hit/miss and toolchain identity.
-- [ ] When a subsequent *independently selected* run really hits, record exact key, restore result, skipped native build, real IPC/pixels and job timings; if not hit, report MISS and root cause rather than fabricate.
+- [ ] Report the actual exact-key hit/miss and native pixels for the final PR head; keep multi-run warm-hit P50/P90 unassessed for #223 until independently selected comparable runs exist.
 
 ## Implementation slices
 
-- [ ] Pin only Sway native toolchain to `nightly-2026-11-09`, retaining all existing key inputs.
-- [ ] Add offline regression for dated toolchain and original native E2E/cache trust.
+- [x] Pin only Sway native toolchain to `nightly-2026-11-09`, retaining all existing key inputs.
+- [x] Add offline regression for dated toolchain and original native E2E/cache trust.
 - [ ] Observe exact-head GitHub PR CI and selected native pixels, then squash merge only after green; archive this implementation slice separately.
-- [ ] Record further warm-run measurement when naturally available; leave parent Issue #223 OPEN for population-level results.
+- [ ] Record true hit/miss outcome on the final PR head, then leave Issue #223 OPEN for future statistically meaningful warm-hit performance evidence.
 
 ## Verification matrix
 
@@ -63,7 +63,7 @@ None. Narrow CI reproducibility fix for existing nightly, not a project-wide com
 
 ## Evidence log
 
-- 2026-11-10: examined master, open PR/Issues and plans; compared real job logs from 42637690794 and 42739971585. Rust nightly compiler changed, matching an exact-cache-key mismatch. Existing full ABI key cannot safely be relaxed. No new source edits or CI verification yet.
+- 2026-11-10: examined master, open PR/Issues and plans; compared real job logs from 42637690794 and 42739971585. Rust nightly compiler changed, matching an exact-cache-key mismatch. Existing full ABI key cannot safely be relaxed. Plan created in commit `efd20a3`; Sway pin edited in `df3a771`; strict offline contract added in `792ce45`. GitHub Actions and native pixels PENDING.
 
 ## Deviations and discoveries
 
@@ -71,7 +71,7 @@ Local GitHub DNS from the container failed in earlier attempts; do not claim loc
 
 ## Resume from here
 
-Change only the Sway job's toolchain and add a matching offline selector regression; submit one PR for #223 linking this active plan and inspect its exact-head CI, no merge until every applicable gate passes.
+Open a single-scope PR from `agent/issue-223-pin-wpaperd-nightly-20261110` linking #223 and this plan; inspect exact-head Actions and native pixels, repair failures, merge only once all applicable gates pass.
 
 ## Completion
 
