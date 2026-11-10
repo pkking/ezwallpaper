@@ -1,7 +1,7 @@
 # 2026-11-10: Bound PPM header digit counts to preserve interrupted two-output restoration
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -42,8 +42,8 @@ AGENTS.md, README.md, Cargo.toml, docs/agents/workflow.md, docs/agents/testing.m
 
 ## Implementation slices
 
-- [ ] Bound each width/height/maxval decimal token during P6 header parse.
-- [ ] Add wholly offline fake IPC regression tests for fixture and restoration corruption, plus long header rejection.
+- [x] Bound each width/height/maxval decimal token during P6 header parse.
+- [x] Add wholly offline fake IPC regression tests for fixture and restoration corruption, plus long header rejection.
 - [ ] Run full exact-head CI, squash merge on full success, then archive this plan separately.
 
 ## Verification matrix
@@ -62,6 +62,7 @@ None: a malformed-capture defensive parser fix inside consent-gated helper, no a
 ## Evidence log
 
 - 2026-11-10: inspected the current master helper and offline suite; independently reproduced Python `int(b"9"*5000)` raising `ValueError` on local Python without involving a desktop. No code branch test or physical session run yet.
+- 2026-11-10: code commit `8fa1e3c` caps PPM numeric fields at five decimal digits; test commit `ddaf29e` adds valid zero padding, 5000-digit rejection in all three fields, post-apply fixture corrupt capture recovery and restore-time invalid first screenshot peer recovery. Exact-head GitHub CI PENDING; no live desktop executed.
 
 ## Deviations and discoveries
 
@@ -69,7 +70,7 @@ None.
 
 ## Resume from here
 
-Implement bounded P6 integer tokens and post-apply/restore-time offline fake screenshot regressions; open Issue #59-linked PR, then inspect its exact-head CI before any merge. Avoid physical wallpaper mutation.
+Open Issue #59-linked PR for this branch, inspect all exact-head CI and review feedback, fix failures and merge only on full success; keep physical display tests unassessed.
 
 ## Completion
 
