@@ -53,11 +53,11 @@ No automatic testing on a real desktop, no new CLI/IPC/backend behavior, no new 
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PASS: verified master push 42836230370; plan archive PR final-head CI pending |
-| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PASS: verified master push 42836230370; plan archive PR final-head CI pending |
-| Windows/macOS/Sway | GitHub Actions native/headless jobs | PASS: verified master push 42836230370; plan archive PR final-head CI pending |
-| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PASS: verified master push 42836230370; plan archive PR final-head CI pending |
-| Agent governance | GitHub Actions PR plan integrity | PASS: verified master push 42836230370; plan archive PR final-head CI pending |
+| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Windows/macOS/Sway | GitHub Actions native/headless jobs | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Agent governance | GitHub Actions PR plan integrity | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
 
 ## Decision gates
 
@@ -68,7 +68,7 @@ None: local, consent-gated test helper safety tightening. Architecture diagram: 
 - 2026-11-09: inspected verified `master`, Issue #59, helper and offline fake tests; found missing path ownership rechecks during a long-running opt-in interactive verification. No branch tests have run yet.
 - 2026-11-09: implementation `7a8bb333fecd855cae1b5dba0c79e2ac7480f058` checks both path observations against original or previously attempted fixture immediately before each change. Test commit `212e0841a784cb8b4bca03f0e11159ec039c207b` injects third-party changes during APPLY confirmation and between first/second apply (including either connector). Exact-head CI remains PENDING; no local desktop tests executed.
 
-- 2026-11-10: source audit of master `795fc8eda970b24813dab8d34782747a4d28213b` confirms `verify_dual` checks both outputs for expected original/previous fixture paths immediately before each setter, and fake regressions `test_external_change_during_confirmation_refuses_first_fixture` and `test_external_change_to_either_output_blocks_second_fixture` are present. Full master push [run 42836230370](https://github.com/pkking/ezwallpaper/actions/runs/42836230370) SUCCESS. Later [PR #231](https://github.com/pkking/ezwallpaper/pull/231) was closed **without merge** because its change duplicated existing master and omitted newer #227 UTF-8 safety handling. Archival closes stale governance bookkeeping; it does not claim #231 was merged. No real physical display tested.
+- 2026-11-10: source audit of master `795fc8eda970b24813dab8d34782747a4d28213b` confirms `verify_dual` checks both outputs for expected original/previous fixture paths immediately before each setter, and fake regressions `test_external_change_during_confirmation_refuses_first_fixture` and `test_external_change_to_either_output_blocks_second_fixture` are present. Source-affecting [PR #242 run 42825404579](https://github.com/pkking/ezwallpaper/actions/runs/42825404579) and ensuing [master run 42825868278](https://github.com/pkking/ezwallpaper/actions/runs/42825868278) both SUCCESS with native Noctalia safety and virtual pixel checks selected; latest docs-only [master 42836230370](https://github.com/pkking/ezwallpaper/actions/runs/42836230370) SUCCESS but Noctalia/niri was correctly NOT SELECTED. Later [PR #231](https://github.com/pkking/ezwallpaper/pull/231) was closed **without merge** because its change duplicated existing master and omitted newer #227 UTF-8 safety handling. Archival closes stale governance bookkeeping; it does not claim #231 was merged. No real physical display tested.
 
 ## Deviations and discoveries
 
@@ -81,6 +81,6 @@ Archive this already-implemented preapply ownership plan; continue Issue #59 wit
 ## Completion
 
 Existing implementation: source and regressions verified in master `795fc8eda970b24813dab8d34782747a4d28213b`; this plan is governance reconciliation only.
-CI run: https://github.com/pkking/ezwallpaper/actions/runs/42836230370 (master, SUCCESS; archive PR needs its own final-head check)
-E2E artifact: native Noctalia/Sway + experimental niri virtual framebuffer from tested master run (not physical).
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42825404579 (source-affecting PR, all required gates SUCCESS) and https://github.com/pkking/ezwallpaper/actions/runs/42825868278 (master push, SUCCESS); new archival PR needs its own final-head check.
+E2E artifact: native Noctalia/Sway + experimental niri virtual framebuffer from source-affecting run 42825404579 (not physical).
 Remaining unassessed items: physical niri/GPU/4K/hotplug/lockscreen and IPC race after final readback.
