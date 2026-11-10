@@ -89,6 +89,13 @@ def ipc_request(sock: Path, message: object) -> object:
     return decode_ok(b"".join(chunks))
 
 
+def initial_paths_match(inventory: dict[str, str], readback: dict[str, str],
+                        expected: dict[str, Path]) -> bool:
+    """Require both independent native IPC snapshots to agree per output."""
+    expected_paths = {name: str(expected[name]) for name in OUTPUTS}
+    return inventory == expected_paths and readback == expected_paths
+
+
 def wait_native(proc: subprocess.Popen, sock: Path, expected: dict[str, Path], artifacts: Path) -> None:
     deadline = time.monotonic() + 25
     last = "native daemon not yet listening"
@@ -100,13 +107,13 @@ def wait_native(proc: subprocess.Popen, sock: Path, expected: dict[str, Path], a
                 inventory = parse_inventory(ipc_request(sock, "AllWallpapers"))
                 paths = {name: parse_current(ipc_request(sock, {"CurrentWallpaper": {"monitor": name}}))
                          for name in OUTPUTS}
-                if all(paths[name] == str(expected[name]) for name in OUTPUTS):
+                if initial_paths_match(inventory, paths, expected):
                     (artifacts / "native-initial-inventory.json").write_text(
                         json.dumps({"inventory": inventory, "readback": paths}, indent=2) + "\n",
                         encoding="utf-8",
                     )
                     return
-                last = f"waiting for initial path readback: {paths}"
+                last = f"waiting for matching initial inventory/readback: {inventory}, {paths}"
             except (OSError, E2EFailure, socket.timeout) as exc:
                 last = str(exc)
         time.sleep(0.25)
