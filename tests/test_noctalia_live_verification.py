@@ -991,6 +991,73 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(verifier.VerificationError, "confirmation_required"):
             verifier.preconditions(self.outputs, self.env, False)
 
+    def test_extreme_ppm_header_is_stable_error_not_python_integer_failure(self):
+        # Five leading zeroes are still accepted where the value is valid.
+        width, height, _ = verifier.parse_ppm(
+            b"P6\n00001 00001\n255\n" + bytes((1, 2, 3))
+        )
+        self.assertEqual((width, height), (1, 1))
+        for field in (0, 1, 2):
+            with self.subTest(field=field):
+                digits = [b"1", b"1", b"255"]
+                digits[field] = b"9" * 5000
+                data = b"P6\n" + digits[0] + b" " + digits[1] + b"\n" + digits[2] + b"\n"
+                with self.assertRaisesRegex(verifier.VerificationError, "invalid_ppm_header"):
+                    verifier.parse_ppm(data)
+
+    def test_invalid_large_fixture_header_still_restores_both_outputs(self):
+        fake = FakeDesktop(self.originals)
+        injected = False
+
+        def runner(argv, **kwargs):
+            nonlocal injected
+            response = fake(argv, **kwargs)
+            if argv[:3] == ["grim", "-o", "DP-1"] and argv[-1].endswith("DP-1-fixture.ppm"):
+                Path(argv[-1]).write_bytes(b"P6\n" + b"9" * 5000 + b" 40\n255\n")
+                injected = True
+            return response
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            runner, lambda _: "APPLY", confirmed=True,
+        )
+        self.assertTrue(injected)
+        self.assertEqual(fake.fixture_applies, 1)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "invalid_ppm_header")
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertTrue((self.root / "proof/result.json").exists())
+
+    def test_invalid_large_first_restore_header_still_attempts_peer_restore(self):
+        fake = FakeDesktop(self.originals)
+        injected = False
+
+        def runner(argv, **kwargs):
+            nonlocal injected
+            response = fake(argv, **kwargs)
+            if argv[:3] == ["grim", "-o", "DP-1"] and argv[-1].endswith("DP-1-restored.ppm"):
+                Path(argv[-1]).write_bytes(b"P6\n" + b"9" * 5000 + b" 40\n255\n")
+                injected = True
+            return response
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            runner, lambda _: "APPLY", confirmed=True,
+        )
+        self.assertTrue(injected)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "restoration_failed")
+        self.assertEqual(result["restoration"]["DP-1"], "FAILED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "PIXEL_VERIFIED")
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertTrue((self.root / "proof/result.json").exists())
+        recovery = self.root / "proof/recovery.json"
+        self.assertTrue(recovery.exists())
+        self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
+
     def test_solid_png_is_valid_and_ppm_rejects_wrong_magic_payload_and_dimensions(self):
         self.assertTrue(verifier.solid_png((1, 2, 3)).startswith(b"\x89PNG\r\n\x1a\n"))
         self.assertAlmostEqual(verifier.pixel_coverage(ppm((232, 36, 42)), verifier.COLORS[0]), 1)
