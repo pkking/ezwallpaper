@@ -1,7 +1,7 @@
 # 2026-11-10: Reject excessively nested native niri inventory without abandoning peer restoration
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -41,8 +41,8 @@ AGENTS.md, README.md, Cargo.toml, docs/architecture.md, docs/agents/workflow.md,
 
 ## Implementation slices
 
-- [ ] Add tightly scoped recursion-error normalization in `niri_output_geometry` decoder.
-- [ ] Add three deterministic fake native IPC tests for before-apply, between-applies and restoration-time deep inventory.
+- [x] Add tightly scoped recursion-error normalization in `niri_output_geometry` decoder.
+- [x] Add three deterministic fake native IPC tests for before-apply, between-applies and restoration-time deep inventory.
 - [ ] Test and merge final-head PR only after review + CI; archive plan in separate completion-only PR.
 
 ## Verification matrix
@@ -61,6 +61,7 @@ None: minor parser error-classification safety fix within an explicitly opt-in v
 ## Evidence log
 
 - 2026-11-10: inspected master and all open PRs, #248 was already source-merged; archived PR #248 final-head 10 applicable checks passed before merge. No new code or physical desktop executed yet.
+- 2026-11-10: code `55af9c928f6f` converts native JSON decoder `RecursionError` to `invalid_niri_inventory`; test commit `b0198951f5cc` added three fake desktop regressions at initial/pre-second-apply/restore boundaries. Offline CI pending, no real desktop touched.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ None.
 
 ## Resume from here
 
-Implement small decoder fix and fake IPC regressions on `agent/issue-59-deep-niri-inventory-20261110`, create PR linked to this active plan and Issue #59, then inspect final exact-head CI and merge only after all required gates succeed.
+Open Issue #59-linked PR for `agent/issue-59-deep-niri-inventory-20261110`, validate every required exact-head check including native virtual framebuffers and review, repair any failures, squash merge only after all gates pass.
 
 ## Completion
 
