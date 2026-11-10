@@ -1,7 +1,7 @@
 # 2026-11-10: Require coherent native wpaperd inventory and per-output readback
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -36,15 +36,15 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #223; active p
 
 ## Acceptance criteria
 
-- [ ] A pure validator requires `AllWallpapers` and both `CurrentWallpaper` responses to match the expected exact two monitor image paths.
-- [ ] Regression tests reject stale/conflicting/partial/wrong-output inventory while keeping valid per-output responses; no mock treated as native proof.
+- [x] A pure validator requires `AllWallpapers` and both `CurrentWallpaper` responses to match the expected exact two monitor image paths.
+- [x] Regression tests reject stale/conflicting/partial/wrong-output inventory while keeping valid per-output responses; no mock treated as native proof.
 - [ ] Final PR-head applicable CI passes, including selected *real* pinned wpaperd source validation, IPC and independent virtual dual-output framebuffer pixels; record actual cache hit/miss and native artifact.
 - [ ] Preserve #223 open until real warm-hit performance and multi-run P50/P90 evidence are established; do not claim physical devices tested.
 
 ## Implementation slices
 
-- [ ] Implement tiny pure path-consistency checker in test-only native helper and use it in startup readiness gate.
-- [ ] Add deterministic positive/negative fixtures.
+- [x] Implement tiny pure path-consistency checker in test-only native helper and use it in startup readiness gate.
+- [x] Add deterministic positive/negative fixtures.
 - [ ] Run all final-head required CI, inspect review threads and native evidence; squash merge only after complete green, then separately archive this slice.
 
 ## Verification matrix
@@ -62,7 +62,9 @@ None: test-only correctness on existing IPC protocol; no runtime/default/permiss
 
 ## Evidence log
 
-- 2026-11-10: read latest master, all open PR/Issues and plans, latest Actions, native source + helper fixtures, and real PR #234 native artifact. Confirmed both IPC views agree for actual successful sample, while code only asserts CurrentWallpaper. No code edit made yet.
+- 2026-11-10: trusted master [run 42742405020](https://github.com/pkking/ezwallpaper/actions/runs/42742405020) completed Sway native IPC and dual-output framebuffer PASS, saved pinned-nightly wpaperd key `ezw-native-v1-wpaperd-e8e843b4f19a925769e535f6e41d2937d4172b12c1e9cee713a5ca108144a8c4` after pixel success. Upcoming PR has no cache/workflow edits, so independent hit observation is possible but not assumed.
+
+- 2026-11-10: read latest master, all open PR/Issues and plans, latest Actions, native source + helper fixtures, and real PR #234 native artifact. Confirmed both IPC views agree for actual successful sample, while code only asserts CurrentWallpaper. Plan created in commit `39b0b5c`; pure comparison helper in `77b8668`; fixture tests in `c408319`. Exact-head CI PENDING.
 
 ## Deviations and discoveries
 
@@ -70,7 +72,7 @@ Old CI cache-hit status cannot be assumed from successful restore step; inspect 
 
 ## Resume from here
 
-Add a pure inventory/readback/expected consistency check to `tests/e2e/sway/wpaperd_native.py` and fixture tests, then submit exactly one small PR from `agent/issue-223-wpaperd-inventory-consistency-20261110`; verify exact-head CI and report real cache outcome before merge.
+Open one PR from `agent/issue-223-wpaperd-inventory-consistency-20261110` linking Issue #223 and this plan, inspect exact-head native IPC/pixels and actual key HIT/MISS, resolve any failures before squash merge.
 
 ## Completion
 
