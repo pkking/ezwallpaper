@@ -1,7 +1,7 @@
 # 2026-11-10: Require coherent native wpaperd inventory and per-output readback
 
 Issue: #223
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -38,29 +38,31 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #223; active p
 
 - [x] A pure validator requires `AllWallpapers` and both `CurrentWallpaper` responses to match the expected exact two monitor image paths.
 - [x] Regression tests reject stale/conflicting/partial/wrong-output inventory while keeping valid per-output responses; no mock treated as native proof.
-- [ ] Final PR-head applicable CI passes, including selected *real* pinned wpaperd source validation, IPC and independent virtual dual-output framebuffer pixels; record actual cache hit/miss and native artifact.
-- [ ] Preserve #223 open until real warm-hit performance and multi-run P50/P90 evidence are established; do not claim physical devices tested.
+- [x] Final PR-head applicable CI passes, including selected *real* pinned wpaperd source validation, IPC and independent virtual dual-output framebuffer pixels; record actual cache hit/miss and native artifact.
+- [x] Preserve #223 open until real warm-hit performance and multi-run P50/P90 evidence are established; do not claim physical devices tested.
 
 ## Implementation slices
 
 - [x] Implement tiny pure path-consistency checker in test-only native helper and use it in startup readiness gate.
 - [x] Add deterministic positive/negative fixtures.
-- [ ] Run all final-head required CI, inspect review threads and native evidence; squash merge only after complete green, then separately archive this slice.
+- [x] Run all final-head required CI, inspect review threads and native evidence; squash merge only after complete green, then separately archive this slice.
 
 ## Verification matrix
 
 | Gate | Command / source | Status |
 |---|---|---|
-| Pure fixture regression | `python3 -m unittest discover -s tests -p test_wpaperd_native_helpers.py -v` | PENDING |
-| Native cache isolation/selector | `test_ci_native_cache.py`, `test_ci_integration_scope.py` | PENDING |
-| Actual native wpaperd | Source SHA, AllWallpapers, CurrentWallpaper, Sway pixels + hit/miss | PENDING |
-| Full quality | Rust, Windows, macOS, agent integrity on latest PR head | PENDING |
+| Pure fixture regression | `python3 -m unittest discover -s tests -p test_wpaperd_native_helpers.py -v` | PASS: PR #238 run 42743149379 |
+| Native cache isolation/selector | `test_ci_native_cache.py`, `test_ci_integration_scope.py` | PASS: PR #238 run 42743149379 |
+| Actual native wpaperd | Source SHA, AllWallpapers, CurrentWallpaper, Sway pixels + hit/miss | PASS: PR #238 run 42743149379 |
+| Full quality | Rust, Windows, macOS, agent integrity on latest PR head | PASS: PR #238 run 42743149379 |
 
 ## Decision gates
 
 None: test-only correctness on existing IPC protocol; no runtime/default/permissions/architecture change. Architecture diagram: not applicable.
 
 ## Evidence log
+
+- 2026-11-10: [PR #238 final-head CI 42743149379](https://github.com/pkking/ezwallpaper/actions/runs/42743149379), head `0835f6129b12731a4955ef11fbb524f3b874a6fb`: eight applicable checks PASS, two Noctalia-only SKIPPED. Real pinned wpaperd (upstream `9e71fdd10e1f2d94532edaf0f54402aac3c0b01c`) selected, exact key HIT via `Cache restored from key: ezw-native-v1-wpaperd-e8e843b4f19a925769e535f6e41d2937d4172b12c1e9cee713a5ca108144a8c4`, source compile skipped, virtual Sway native `AllWallpapers` and `CurrentWallpaper` consistent and pixel PASS. Artifact 13729484838 includes actual hit log, native-initial-inventory.json and verdict (both before/after 1.0, `physical_pixels_verified=false`). Same-key cold master 42742405020 logs first-to-last span 4.407m vs warm PR 0.849m (~80.7% shorter), not Jobs API duration or P50/P90. No review threads. Squash merge `2af2e475bea47bbfc464af2c58f92482414fa2ee`. #223 stays OPEN for population verification.
 
 - 2026-11-10: trusted master [run 42742405020](https://github.com/pkking/ezwallpaper/actions/runs/42742405020) completed Sway native IPC and dual-output framebuffer PASS, saved pinned-nightly wpaperd key `ezw-native-v1-wpaperd-e8e843b4f19a925769e535f6e41d2937d4172b12c1e9cee713a5ca108144a8c4` after pixel success. Upcoming PR has no cache/workflow edits, so independent hit observation is possible but not assumed.
 
@@ -72,11 +74,11 @@ Old CI cache-hit status cannot be assumed from successful restore step; inspect 
 
 ## Resume from here
 
-Open one PR from `agent/issue-223-wpaperd-inventory-consistency-20261110` linking Issue #223 and this plan, inspect exact-head native IPC/pixels and actual key HIT/MISS, resolve any failures before squash merge.
+Continue open Issue #223: gather >=5 independently selected, actual native wpaperd warm-hit Jobs API durations and compare with cold cohort; preserve exact key/IPC/virtual pixel evidence and diagnose any new misses. #59 physical devices remain UNASSESSED.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `2af2e475bea47bbfc464af2c58f92482414fa2ee` (PR #238 squash; tested head `0835f6129b12731a4955ef11fbb524f3b874a6fb`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42743149379 (8 applicable jobs success, 2 expected Noctalia-only skipped)
+E2E artifact: `native-wpaperd-1.3.0-sway-dual-evidence` ID 13729484838, exact-key warm HIT with source compilation skipped, independent Sway IPC + dual virtual framebuffer pixels PASS; physical_pixels_verified=false.
 Remaining unassessed items: #223 warm-hit P50/P90 and package ABI drift; #211 complete hit-rate/miss reasons; #59 physical GPU/4K/hotplug/lockscreen.
