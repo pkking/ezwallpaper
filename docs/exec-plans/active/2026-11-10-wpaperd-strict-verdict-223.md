@@ -60,7 +60,8 @@ None: CI test harness correctness only; no product defaults, desktop behavior, n
 
 ## Evidence log
 
-- 2026-11-10: inspected master source, native helper fixtures, Issue #223 comment, and latest master CI; identified bool/string coercion false-positive path.\n- 2026-11-10: plan commit `8ddb5a7`; native test harness fix `a571375`; malformed flag and schema fixtures `09c1a66`. Local Git fetch failed with `Could not resolve host: github.com` (no repository-wide offline tests claimed); exact-head CI must execute before merge.
+- 2026-11-10: inspected master source, native helper fixtures, Issue #223 comment, and latest master CI; identified bool/string coercion false-positive path.
+- 2026-11-10: plan commit `8ddb5a7`; native test harness fix `a571375`; malformed flag and schema fixtures `09c1a66`. Local Git fetch failed with `Could not resolve host: github.com` (no repository-wide offline tests claimed); exact-head CI must execute before merge.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ Local container GitHub DNS previously failed; if unresolved, do not report local
 
 ## Resume from here
 
-Open the single-scope PR linking #223 and this plan, then inspect every required CI job on its exact head. Require selected native wpaperd IPC and dual-output framebuffer success before any squash merge.
+Inspect PR #234 at exact head and all applicable required CI jobs; require selected native wpaperd IPC and dual-output framebuffer success. Require selected native wpaperd IPC and dual-output framebuffer success before any squash merge.
 
 ## Completion
 
