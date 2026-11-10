@@ -1,7 +1,7 @@
 # 2026-11-10: Reject excessively nested native niri inventory without abandoning peer restoration
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -34,25 +34,25 @@ AGENTS.md, README.md, Cargo.toml, docs/architecture.md, docs/agents/workflow.md,
 
 ## Acceptance criteria
 
-- [ ] Deep (1200-level) JSON in initial inventory yields `VerificationError("invalid_niri_inventory")` before any mutation.
-- [ ] Deep JSON at second preapply inventory causes a failed structured verdict, blocks second fixture apply, and restores first output without exception.
-- [ ] Deep JSON during first output restore skips that output with `TOPOLOGY_UNVERIFIED`, still restores peer and preserves recovery evidence.
-- [ ] Final head CI 10/10 applicable required checks green (Rust, Windows/macOS, Noctalia Python, actual isolated Sway and niri+Noctalia dual-framebuffer, governance).
+- [x] Deep (1200-level) JSON in initial inventory yields `VerificationError("invalid_niri_inventory")` before any mutation.
+- [x] Deep JSON at second preapply inventory causes a failed structured verdict, blocks second fixture apply, and restores first output without exception.
+- [x] Deep JSON during first output restore skips that output with `TOPOLOGY_UNVERIFIED`, still restores peer and preserves recovery evidence.
+- [x] Final head CI 10/10 applicable required checks green (Rust, Windows/macOS, Noctalia Python, actual isolated Sway and niri+Noctalia dual-framebuffer, governance).
 
 ## Implementation slices
 
 - [x] Add tightly scoped recursion-error normalization in `niri_output_geometry` decoder.
 - [x] Add three deterministic fake native IPC tests for before-apply, between-applies and restoration-time deep inventory.
-- [ ] Test and merge final-head PR only after review + CI; archive plan in separate completion-only PR.
+- [x] Test and merge final-head PR only after review + CI; archive plan in separate completion-only PR.
 
 ## Verification matrix
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Noctalia offline safety | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | PENDING |
-| Platform/Rust | cargo fmt/clippy/workspace tests and Windows/macOS jobs | PENDING |
-| Visual | Sway/swaybg plus native Noctalia and experimental niri + Noctalia dual virtual-output actual pixels | PENDING |
-| Governance | Agent plan integrity, contract suite | PENDING |
+| Noctalia offline safety | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | PASS — PR #249 run 42862970797, 10/10 required jobs success |
+| Platform/Rust | cargo fmt/clippy/workspace tests and Windows/macOS jobs | PASS — PR #249 run 42862970797, 10/10 required jobs success |
+| Visual | Sway/swaybg plus native Noctalia and experimental niri + Noctalia dual virtual-output actual pixels | PASS — PR #249 run 42862970797, 10/10 required jobs success |
+| Governance | Agent plan integrity, contract suite | PASS — PR #249 run 42862970797, 10/10 required jobs success |
 
 ## Decision gates
 
@@ -65,15 +65,18 @@ None: minor parser error-classification safety fix within an explicitly opt-in v
 
 ## Deviations and discoveries
 
-None.
+The PR's macOS job was queued longer than the other nine checks; no bypass or test skip was used. It subsequently executed and completed SUCCESS on the exact PR head. This is a native JSON error classification in a consent-gated helper; no live physical niri/Noctalia session or user monitor was exercised.
+
+- [PR #249](https://github.com/pkking/ezwallpaper/pull/249) exact tested head `8d949f19f98a6cdb5c1ee1d89169ad168ad47d7b`: [CI run 42862970797](https://github.com/pkking/ezwallpaper/actions/runs/42862970797), **10/10 required checks SUCCESS**, including 48/48 Noctalia offline safety tests (three new deep native JSON regressions), Rust/Windows/macOS, agent integrity, real native Noctalia/Sway IPC with two virtual framebuffer pixels, and experimental niri+Noctalia two virtual framebuffer pixels. Both native source builds skipped after trusted cache restoration but tests were actually executed.
+- Source code squash merge commit: `a459e2412653e0ce223d752a47775fbcdf419637`. Scope remains opt-in physical verification helper safety, not confirmation of actual physical 4K/GPU/hotplug/lockscreen or full rotation behavior.
 
 ## Resume from here
 
-Open Issue #59-linked PR for `agent/issue-59-deep-niri-inventory-20261110`, validate every required exact-head check including native virtual framebuffers and review, repair any failures, squash merge only after all gates pass.
+Continue open Issue #59 from the current master with a distinct physical-evidence or opt-in helper safety slice; preserve explicit consent and avoid attributing virtual framebuffer results to actual physical monitors.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `a459e2412653e0ce223d752a47775fbcdf419637` (PR #249; final head `8d949f19f98a6cdb5c1ee1d89169ad168ad47d7b`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42862970797 (all 10 applicable checks SUCCESS)
+E2E artifact: native Noctalia/Sway IPC and experimental niri+Noctalia two-virtual-output framebuffer evidence in run 42862970797 (not physical GPU/4K)
 Remaining unassessed items: physical GPU/4K/hotplug/lockscreen, native niri inventory behavior under real hardware, IPC ownership race after final readback.
