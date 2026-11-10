@@ -1,7 +1,7 @@
 # 2026-11-10: Preserve exact wpaperd native cache fingerprint evidence
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -34,15 +34,15 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #223; .github/
 
 ## Acceptance criteria
 
-- [ ] Exact-key input bytes preserved while fingerprint and digest are saved to the existing native artifact.
+- [x] Exact-key input bytes preserved while fingerprint and digest are saved to the existing native artifact.
 - [ ] Offline source-contract regression confirms fingerprint copy/checksum ordering and preserved key/pixel/save gates.
-- [ ] Documentation gives verification and comparison commands with source/ABI/cache-scope limitations.
+- [x] Documentation gives verification and comparison commands with source/ABI/cache-scope limitations.
 - [ ] Final-head required CI including real native wpaperd selected E2E succeeds before merge.
 
 ## Implementation slices
 
-- [ ] Add diagnostic copy and checksums after original fingerprint generation.
-- [ ] Add offline workflow structural regressions and diagnostic instructions.
+- [x] Add diagnostic copy and checksums after original fingerprint generation.
+- [x] Add offline workflow structural regressions and diagnostic instructions.
 - [ ] Inspect exact-head CI and merge only when passing.
 
 ## Verification matrix
@@ -60,6 +60,8 @@ None: additive CI diagnostics only; no new package/dependency strategy or produc
 ## Evidence log
 
 - 2026-11-10: inspected master source, Issue #223 and actual historical warm-hit notes. Local Rust toolchain/network access unavailable in execution container; no unexecuted checks will be reported as passing.
+
+- 2026-11-10: workflow commit `fb732cf` saves unchanged key input + SHA256; test commit `ec72f57` checks ABI input/order and native gates; documentation commit `9a114d7` explains checksum/diff and caveats. No CI result observed yet.
 
 ## Deviations and discoveries
 
