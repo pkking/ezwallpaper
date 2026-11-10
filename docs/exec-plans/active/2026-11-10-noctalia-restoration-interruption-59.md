@@ -1,7 +1,7 @@
 # 2026-11-10: Continue dual-output restoration after an interrupted restore step
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -41,8 +41,8 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #59; scripts/v
 
 ## Implementation slices
 
-- [ ] Handle interrupt/EOF at each individual restore-stage boundary.
-- [ ] Add deterministic fake-runner tests for topology and readback interrupts.
+- [x] Handle interrupt/EOF at each individual restore-stage boundary.
+- [x] Add deterministic fake-runner tests for topology, readback and setter interrupts.
 - [ ] Verify exact-head CI, repair failures and squash merge only if all required gates pass.
 
 ## Verification matrix
@@ -61,6 +61,7 @@ None: strict opt-in helper safety improvement, no runtime architecture/CLI/IPC d
 ## Evidence log
 
 - 2026-11-10: read master `scripts/verify_noctalia_live.py` and corresponding offline fake tests. No local test, hardware session or new CI evidence yet.
+- 2026-11-10: code commit `1be99b7c` adds per-output `INTERRUPTED` handling during restoration topology and path/setter/frame stages; test commits `a2899dcc` and `1726abb` inject deterministic KeyboardInterrupt/EOFError at topology, path readback, and setter while checking recovery of the peer output. Exact-head PR CI pending.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ None.
 
 ## Resume from here
 
-Implement per-output restoration interruption handling and fake IPC regressions, open one Issue #59-linked PR, then inspect its exact-head CI. Do not run on a real user desktop.
+Open the Issue #59-linked PR from `agent/issue-59-interrupted-restore-20261110`, inspect all final-head CI including Noctalia safety and actual virtual dual-output framebuffer gates, fix any failures, and merge only when every required gate passes.
 
 ## Completion
 
