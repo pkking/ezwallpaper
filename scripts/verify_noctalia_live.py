@@ -323,6 +323,35 @@ def apply(runner, binary: str, output: str, image: Path) -> None:
         raise VerificationError("noctalia_path_readback_mismatch")
 
 
+
+def persist_recovery_manifest(artifact_dir: Path, originals: dict[str, str]) -> Path:
+    """Persist recovery bytes and both new directory entries before any apply.
+
+    The proof directory is freshly created by the caller. Sync the manifest
+    first, the entry within its directory second, and finally the new proof
+    directory entry in its parent. On filesystems that cannot honor this
+    barrier, refuse the live mutation rather than claim crash recoverability.
+    """
+    recovery = artifact_dir / "recovery.json"
+    try:
+        fd = os.open(recovery, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump({"schema_version": 1, "original_wallpapers": originals}, handle)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        for directory in (artifact_dir, artifact_dir.parent):
+            directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    except OSError as exc:
+        # Never expose the private original wallpaper paths in a reportable
+        # error; no fixture is applied when the durability barrier fails.
+        raise VerificationError("cannot_persist_recovery_manifest") from exc
+    return recovery
+
 def verify_dual(
     outputs: tuple[str, str],
     binary: str,
@@ -357,13 +386,7 @@ def verify_dual(
 
     # Never overwrite an existing user's artifact directory or follow its link.
     artifact_dir.mkdir(mode=0o700, parents=False, exist_ok=False)
-    recovery = artifact_dir / "recovery.json"
-    fd = os.open(recovery, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        json.dump({"schema_version": 1, "original_wallpapers": originals}, handle)
-        handle.write("\n")
-        handle.flush()
-        os.fsync(handle.fileno())
+    recovery = persist_recovery_manifest(artifact_dir, originals)
 
     # Capture both original rendered frames before the first desktop mutation.
     # A missing/corrupt frame aborts without changing the wallpaper.
