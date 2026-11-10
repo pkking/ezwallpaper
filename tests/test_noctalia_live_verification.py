@@ -550,6 +550,81 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             self.verify(fake)
         self.assertEqual(fake.writes, [])
 
+    def test_deeply_nested_initial_niri_inventory_refuses_before_apply(self):
+        # A short native reply can still exceed the JSON decoder's nesting
+        # limit; its raw RecursionError must not escape the safety boundary.
+        nested = "[" * 1200 + "0" + "]" * 1200
+        fake = FakeDesktop(self.originals, inventory=nested)
+        with self.assertRaisesRegex(verifier.VerificationError, "invalid_niri_inventory"):
+            self.verify(fake)
+        self.assertEqual(fake.writes, [])
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertFalse((self.root / "proof").exists())
+
+    def test_deeply_nested_second_preapply_inventory_restores_first_output(self):
+        fake = FakeDesktop(self.originals)
+        nested = "[" * 1200 + "0" + "]" * 1200
+        niri_reads = 0
+
+        def runner(argv, **kwargs):
+            nonlocal niri_reads
+            completed = fake(argv, **kwargs)
+            if argv == ["niri", "msg", "--json", "outputs"]:
+                niri_reads += 1
+                if niri_reads == 3:
+                    return subprocess.CompletedProcess(argv, 0, nested, "")
+            return completed
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            runner, lambda _: "APPLY", confirmed=True,
+        )
+        self.assertEqual(niri_reads, 5)
+        self.assertEqual(fake.fixture_applies, 1)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "invalid_niri_inventory")
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertTrue((self.root / "proof/result.json").exists())
+        self.assertFalse((self.root / "proof/recovery.json").exists())
+
+    def test_deeply_nested_first_restore_inventory_still_restores_peer(self):
+        fake = FakeDesktop(self.originals)
+        nested = "[" * 1200 + "0" + "]" * 1200
+        niri_reads = 0
+
+        def runner(argv, **kwargs):
+            nonlocal niri_reads
+            completed = fake(argv, **kwargs)
+            if argv == ["niri", "msg", "--json", "outputs"]:
+                niri_reads += 1
+                if niri_reads == 4:
+                    return subprocess.CompletedProcess(argv, 0, nested, "")
+            return completed
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            runner, lambda _: "APPLY", confirmed=True,
+        )
+        self.assertEqual(niri_reads, 5)
+        self.assertEqual(fake.fixture_applies, 2)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "niri_topology_unavailable_before_restore")
+        self.assertEqual(result["restoration"]["DP-1"], "TOPOLOGY_UNVERIFIED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "PIXEL_VERIFIED")
+        self.assertNotEqual(fake.wallpapers["DP-1"], self.originals["DP-1"])
+        self.assertEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        self.assertFalse(any(
+            call[4] == "DP-1" and call[-1] == self.originals["DP-1"]
+            for call in fake.writes
+        ), "an output with unverified topology must not be rewritten")
+        recovery = self.root / "proof/recovery.json"
+        self.assertTrue(recovery.exists())
+        self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
+        self.assertTrue((self.root / "proof/result.json").exists())
+
     def test_topology_change_during_baseline_capture_refuses_both_applies(self):
         good = {
             out: {"name": out, "current_mode": 0,
