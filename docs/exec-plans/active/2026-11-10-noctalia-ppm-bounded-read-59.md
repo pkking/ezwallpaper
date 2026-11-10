@@ -63,6 +63,8 @@ None: bounded read in existing opt-in nonproduction helper; no user-visible defa
 
 - 2026-11-10: code commit `58707d9` replaced both stat+unbounded read paths with cap+1 bounded reads; test commit `bc2c888` adds exact-limit/cap+1 read request probes, pre-mutation baseline refusal and oversized fixture restoration. No local runtime invocation. GitHub CI pending.
 
+- 2026-11-10: first exact-head PR #242 CI run [42825215475](https://github.com/pkking/ezwallpaper/actions/runs/42825215475) **failed** only the new recording-stream assertion: `BytesIO.tell()` was invoked after the context manager closed its stream; the production bounded reader and two full-path over-limit safety fixtures passed in that run. Commit `a9aecb6` changes the fixture to record actual bytes inside `read()`, asserting `limit+1` without using a closed file. Latest-head CI pending; first run is NOT acceptance evidence.
+
 ## Deviations and discoveries
 
 Preserve the difference between virtual CI compositor pixels and opt-in physical desktop validation. Test mocks provide no hardware verification.
