@@ -56,6 +56,33 @@ class WpaperdNativeHelperTests(unittest.TestCase):
             with self.assertRaises(E2EFailure):
                 parse_cli_outcomes(invalid)
 
+    def test_rotation_cli_requires_strict_version_and_boolean_apply_flags(self):
+        valid_outputs = [
+            {"output": "HEADLESS-1", "applied_path_observed": True},
+            {"output": "HEADLESS-2", "applied_path_observed": False},
+        ]
+        for invalid_version in (True, 1.0, "1", None):
+            with self.subTest(schema_version=invalid_version):
+                with self.assertRaises(E2EFailure):
+                    parse_cli_outcomes({
+                        "schema_version": invalid_version, "outputs": valid_outputs
+                    })
+        for invalid_flag in ("false", "true", 1, 0, None, {}, []):
+            for index in (0, 1):
+                with self.subTest(flag=invalid_flag, index=index):
+                    outputs = [dict(item) for item in valid_outputs]
+                    outputs[index]["applied_path_observed"] = invalid_flag
+                    with self.assertRaises(E2EFailure):
+                        parse_cli_outcomes({
+                            "schema_version": 1, "outputs": outputs
+                        })
+        for index in (0, 1):
+            with self.subTest(missing_flag_index=index):
+                outputs = [dict(item) for item in valid_outputs]
+                del outputs[index]["applied_path_observed"]
+                with self.assertRaises(E2EFailure):
+                    parse_cli_outcomes({"schema_version": 1, "outputs": outputs})
+
     def test_malformed_or_remote_error_never_passes(self):
         for data in [b"", b"broken", b"{}", b'{"Err":"bad"}',
                      b'{"Ok":"Ok","Err":"bad"}', b"x" * 65537]:
