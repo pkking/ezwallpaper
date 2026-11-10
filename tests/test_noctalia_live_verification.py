@@ -825,22 +825,24 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             def __init__(self, data):
                 super().__init__(data)
                 self.request_sizes = []
+                self.bytes_read = 0
 
             def read(self, size=-1):
                 self.request_sizes.append(size)
                 if size < 0:
                     raise AssertionError("unbounded capture read")
-                return super().read(size)
+                data = super().read(size)
+                self.bytes_read += len(data)
+                return data
 
         class CapturePath:
             def __init__(self, reader):
                 self.reader = reader
 
             def open(self, mode):
-                self_outer = self
                 if mode != "rb":
                     raise AssertionError("frame must be read in binary mode")
-                return self_outer.reader
+                return self.reader
 
             def stat(self):
                 raise AssertionError("a prior stat is not an atomic size limit")
@@ -853,7 +855,7 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             with self.assertRaisesRegex(verifier.VerificationError, "oversize_ppm_capture"):
                 verifier.read_captured_ppm(CapturePath(over))
             self.assertEqual(over.request_sizes, [limit + 1])
-            self.assertEqual(over.tell(), limit + 1)
+            self.assertEqual(over.bytes_read, limit + 1)
 
     def test_oversize_baseline_refuses_before_any_wallpaper_mutation(self):
         fake = FakeDesktop(self.originals)
