@@ -205,7 +205,10 @@ def niri_output_geometry(runner, outputs: tuple[str, ...]) -> dict[str, dict]:
         raise VerificationError("oversize_niri_inventory")
     try:
         inventory = json.loads(raw, object_pairs_hook=unique_niri_object)
-    except (ValueError, UnicodeError) as exc:
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        # A deeply nested, size-bounded native JSON reply can exhaust the
+        # decoder's recursion limit. Keep this within the verification error
+        # boundary so the other output still receives a restore attempt.
         raise VerificationError("invalid_niri_inventory") from exc
     if not isinstance(inventory, dict):
         raise VerificationError("invalid_niri_inventory")
