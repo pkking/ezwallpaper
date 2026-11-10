@@ -1,7 +1,7 @@
 # 2026-11-10: Durably publish opt-in Noctalia restoration manifest before applying wallpaper
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -41,8 +41,8 @@ AGENTS.md; README.md; Cargo.toml; docs/agents/workflow.md; docs/agents/testing.m
 
 ## Implementation slices
 
-- [ ] Add a small Linux-only durability helper and fail-closed publication barrier to opt-in `verify_dual`.
-- [ ] Add fake-desktop file/dir/parent fsync order and failure-injection regressions.
+- [x] Add a small Linux-only durability helper and fail-closed publication barrier to opt-in `verify_dual`.
+- [x] Add fake-desktop file/dir/parent fsync order and failure-injection regressions.
 - [ ] Run applicable exact-head CI and merge tested head only after all gates pass.
 
 ## Verification matrix
@@ -61,6 +61,7 @@ None: opt-in verifier safety fix. No product runtime, default, privilege, persis
 ## Evidence log
 
 - 2026-11-10: inspected current master, open PR/Issues and exact recovery record creation. Baseline CI 42836230370 SUCCESS; no new branch tests executed yet.
+- 2026-11-10: implementation commit `85e01de` introduces file/child/parent sync barrier and stable fail-closed error; offline test commit `f385a8a` adds success ordering before first apply plus file/child/parent fsync failures. Exact-head CI PENDING; no physical session touched.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ None.
 
 ## Resume from here
 
-Implement file/child/parent fsync barrier in `scripts/verify_noctalia_live.py`, add fully offline failure-injection tests, then open Issue #59-linked PR and verify its exact head CI. Never run on a real user session.
+Open one Issue #59-linked PR for this branch, inspect 10/10 applicable exact-head jobs (especially offline Noctalia live test), fix failures and re-run before merge; do not run physical desktop tests.
 
 ## Completion
 
