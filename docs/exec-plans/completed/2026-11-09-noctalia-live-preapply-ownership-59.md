@@ -80,7 +80,7 @@ Archive this already-implemented preapply ownership plan; continue Issue #59 wit
 
 ## Completion
 
-Existing implementation: source and regressions verified in master `795fc8eda970b24813dab8d34782747a4d28213b`; this plan is governance reconciliation only.
+Final commit: `795fc8eda970b24813dab8d34782747a4d28213b` (master source+regressions verified; historical #231 unmerged as duplicate, this is governance reconciliation rather than a new feature merge)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/42825404579 (source-affecting PR, all required gates SUCCESS) and https://github.com/pkking/ezwallpaper/actions/runs/42825868278 (master push, SUCCESS); new archival PR needs its own final-head check.
 E2E artifact: native Noctalia/Sway + experimental niri virtual framebuffer from source-affecting run 42825404579 (not physical).
 Remaining unassessed items: physical niri/GPU/4K/hotplug/lockscreen and IPC race after final readback.
