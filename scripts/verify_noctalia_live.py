@@ -460,6 +460,10 @@ def verify_dual(
                 # physical/logical output solely because the name survived.
                 try:
                     fresh_geometry = niri_output_geometry(runner, (output,))
+                except (KeyboardInterrupt, EOFError):
+                    # A second interrupt must not cancel recovery of peers.
+                    record["restoration"][output] = "INTERRUPTED"
+                    continue
                 except VerificationError:
                     record["restoration"][output] = "TOPOLOGY_UNVERIFIED"
                     continue
@@ -479,6 +483,10 @@ def verify_dual(
                         runner, output, baselines[output],
                         artifact_dir / f"{output}-restored.ppm",
                     )
+                except (KeyboardInterrupt, EOFError):
+                    # Keep the recovery manifest; another output may still
+                    # be independently restorable after this interruption.
+                    record["restoration"][output] = "INTERRUPTED"
                 except VerificationError:
                     record["restoration"][output] = "FAILED"
                 else:
@@ -491,7 +499,9 @@ def verify_dual(
 
     if not all(v == "PIXEL_VERIFIED" for v in record["restoration"].values()):
         record["status"] = "FAILED"
-        if "TOPOLOGY_CHANGED" in record["restoration"].values():
+        if "INTERRUPTED" in record["restoration"].values():
+            record["error"] = record["error"] or "restoration_interrupted"
+        elif "TOPOLOGY_CHANGED" in record["restoration"].values():
             record["error"] = record["error"] or "niri_topology_changed_before_restore"
         elif "TOPOLOGY_UNVERIFIED" in record["restoration"].values():
             record["error"] = record["error"] or "niri_topology_unavailable_before_restore"
