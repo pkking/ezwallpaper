@@ -115,14 +115,16 @@ def wait_native(proc: subprocess.Popen, sock: Path, expected: dict[str, Path], a
 
 def parse_cli_outcomes(value: object) -> dict[str, dict]:
     """Match src/main.rs rotation --json schema v1 envelope, not a bare list."""
-    if not isinstance(value, dict) or value.get("schema_version") != 1:
+    if (not isinstance(value, dict) or type(value.get("schema_version")) is not int
+            or value["schema_version"] != 1):
         raise E2EFailure("CLI rotation JSON has unexpected schema/version")
     outcomes = value.get("outputs")
     if not isinstance(outcomes, list) or len(outcomes) != len(OUTPUTS):
         raise E2EFailure("CLI returned unexpected dual-output result")
     by_output = {}
     for item in outcomes:
-        if not isinstance(item, dict) or not isinstance(item.get("output"), str):
+        if (not isinstance(item, dict) or not isinstance(item.get("output"), str)
+                or type(item.get("applied_path_observed")) is not bool):
             raise E2EFailure("CLI rotation output entry malformed")
         name = item["output"]
         if name in by_output:
