@@ -1,7 +1,7 @@
 # 2026-11-10: Bound physical Noctalia screenshot reads
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -36,22 +36,22 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, scripts/verify_nocta
 - [x] Screenshot reads request at most the configured cap plus one byte and refuse excess without memory growth.
 - [x] Both baseline/restoration and fixture frame capture routes share the strict bounded reader.
 - [x] Offline tests cover exact cap, cap+1, malformed PPM, and preserve no-desktop-mutation on invalid original screenshot (authored; CI pending).
-- [ ] Latest PR HEAD passes required CI including Sway and Noctalia/niri native virtual framebuffer jobs.
+- [x] Latest PR HEAD passed all 10 required CI jobs, including Sway/swaybg and Noctalia/niri real virtual framebuffer tests. Native wpaperd was NOT SELECTED by CI scope.
 
 ## Implementation slices
 
 - [x] Introduce one bounded screenshot-read helper and use in two capture paths.
 - [x] Add deterministic limit and failure-path fixtures, document verification boundaries.
-- [ ] Verify PR CI and squash merge; archive this plan in separate follow-up PR after evidence.
+- [x] Verified 10/10 exact-head CI and squash merged PR #242 as `5bfa3d13a5b5a86a6c20d466b0ab2077fa5dd85e`; archive in a separate completion PR.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Python verifier | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | PASS | pending |
-| Runtime governance | Agent plan integrity / contract tests | PASS | pending |
-| Rust/platform | fmt/clippy/tests and Windows/macOS jobs | PASS | pending |
-| Native E2E | Sway + wpaperd / Noctalia + experimental niri virtual pixels | PASS when selected | pending |
+| Python verifier | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | 40/40 tests, including three new regression fixtures | PASS, run 42825404579 |
+| Runtime governance | Agent plan integrity / contract tests | exact-head CI | PASS, run 42825404579 |
+| Rust/platform | fmt/clippy/tests and Windows/macOS jobs | exact-head CI | PASS, run 42825404579 |
+| Native E2E | Sway/swaybg pixels, Noctalia native IPC + experimental niri virtual pixels | all named selected steps succeeded; wpaperd native NOT SELECTED | PASS (selected), run 42825404579 |
 
 ## Decision gates
 
@@ -65,17 +65,19 @@ None: bounded read in existing opt-in nonproduction helper; no user-visible defa
 
 - 2026-11-10: first exact-head PR #242 CI run [42825215475](https://github.com/pkking/ezwallpaper/actions/runs/42825215475) **failed** only the new recording-stream assertion: `BytesIO.tell()` was invoked after the context manager closed its stream; the production bounded reader and two full-path over-limit safety fixtures passed in that run. Commit `a9aecb6` changes the fixture to record actual bytes inside `read()`, asserting `limit+1` without using a closed file. Latest-head CI pending; first run is NOT acceptance evidence.
 
+- 2026-11-10: corrected final PR head `5f93e5db3b81def7cc0a57c5d0e9dd9a1e154fc0` passed 10/10 CI jobs in [run 42825404579](https://github.com/pkking/ezwallpaper/actions/runs/42825404579); first prior HEAD failed a fixture's post-close `BytesIO.tell()` assertion and was not accepted. Both selected Noctalia native IPC and experimental niri dual virtual framebuffer gates passed; Sway/swaybg passed. Native wpaperd steps were scoped out, NOT a new native wpaperd success. PR [#242](https://github.com/pkking/ezwallpaper/pull/242) squash-merged as `5bfa3d13a5b5a86a6c20d466b0ab2077fa5dd85e`.
+
 ## Deviations and discoveries
 
 Preserve the difference between virtual CI compositor pixels and opt-in physical desktop validation. Test mocks provide no hardware verification.
 
 ## Resume from here
 
-Open linked #59 PR; inspect latest-head Python fixture and all required GitHub CI, then fix failures before merge.
+After this completion PR merges, return to Issue #59, inspect the latest master and remaining unassessed physical niri/Noctalia behavior before authoring a new independent plan; this screenshot-read slice is finished.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `5bfa3d13a5b5a86a6c20d466b0ab2077fa5dd85e` (PR #242; tested head `5f93e5db3b81def7cc0a57c5d0e9dd9a1e154fc0`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42825404579 (10/10 success)
+E2E artifact: Noctalia + experimental niri virtual dual-output compositor evidence; Sway/swaybg screenshots, native wpaperd NOT SELECTED
 Remaining unassessed items: physical niri GPU/4K/hotplug/lockscreen and runtime restart behavior.
