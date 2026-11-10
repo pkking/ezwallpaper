@@ -1,7 +1,7 @@
 # 2026-11-10: Bound physical Noctalia screenshot reads
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -33,15 +33,15 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, scripts/verify_nocta
 
 ## Acceptance criteria
 
-- [ ] Screenshot reads request at most the configured cap plus one byte and refuse excess without memory growth.
-- [ ] Both baseline/restoration and fixture frame capture routes share the strict bounded reader.
-- [ ] Offline tests cover exact cap, cap+1, malformed PPM, and preserve no-desktop-mutation on invalid original screenshot.
+- [x] Screenshot reads request at most the configured cap plus one byte and refuse excess without memory growth.
+- [x] Both baseline/restoration and fixture frame capture routes share the strict bounded reader.
+- [x] Offline tests cover exact cap, cap+1, malformed PPM, and preserve no-desktop-mutation on invalid original screenshot (authored; CI pending).
 - [ ] Latest PR HEAD passes required CI including Sway and Noctalia/niri native virtual framebuffer jobs.
 
 ## Implementation slices
 
-- [ ] Introduce one bounded screenshot-read helper and use in two capture paths.
-- [ ] Add deterministic limit and failure-path fixtures, document verification boundaries.
+- [x] Introduce one bounded screenshot-read helper and use in two capture paths.
+- [x] Add deterministic limit and failure-path fixtures, document verification boundaries.
 - [ ] Verify PR CI and squash merge; archive this plan in separate follow-up PR after evidence.
 
 ## Verification matrix
@@ -61,13 +61,15 @@ None: bounded read in existing opt-in nonproduction helper; no user-visible defa
 
 - 2026-11-10: audited both screenshots paths on master; `stat` followed by unbounded `read_bytes()` is not an atomic size guarantee. No tests executed at initial checkpoint.
 
+- 2026-11-10: code commit `58707d9` replaced both stat+unbounded read paths with cap+1 bounded reads; test commit `bc2c888` adds exact-limit/cap+1 read request probes, pre-mutation baseline refusal and oversized fixture restoration. No local runtime invocation. GitHub CI pending.
+
 ## Deviations and discoveries
 
 Preserve the difference between virtual CI compositor pixels and opt-in physical desktop validation. Test mocks provide no hardware verification.
 
 ## Resume from here
 
-Implement a bounded `read_captured_ppm` helper, redirect both capture paths and run the Python fixture contract via the latest-head GitHub CI; fix failures before merge.
+Open linked #59 PR; inspect latest-head Python fixture and all required GitHub CI, then fix failures before merge.
 
 ## Completion
 
