@@ -1,7 +1,7 @@
 # 2026-11-10: Strict typed native wpaperd rotation verdicts
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -33,16 +33,16 @@ Run only deterministic offline fixtures locally; no user desktop or external cre
 
 ## Acceptance criteria
 
-- [ ] Strict schema_version typing rejects JSON `true` and string/float alternatives; only exact integer 1 accepted.
-- [ ] Every exact named output requires a boolean `applied_path_observed`; missing, string, integer, null or object values are rejected.
-- [ ] Positive True/False dual-output fixture still parses correctly; all negative fixtures fail closed.
+- [x] Strict schema_version typing rejects JSON `true` and string/float alternatives; only exact integer 1 accepted.
+- [x] Every exact named output requires a boolean `applied_path_observed`; missing, string, integer, null or object values are rejected.
+- [x] Positive True/False dual-output fixture still parses correctly; all negative fixtures fail closed.
 - [ ] Latest PR head passes all applicable required CI; selected native wpaperd IPC and virtual dual-output framebuffer gate passes, retaining artifacts.
 - [ ] Cache hit/miss result is reported from real selected steps, not inferred from job duration or skipped native steps.
 
 ## Implementation slices
 
-- [ ] Harden the test-only `parse_cli_outcomes` schema/flag validation.
-- [ ] Add targeted deterministic malformed JSON and positive response regressions.
+- [x] Harden the test-only `parse_cli_outcomes` schema/flag validation.
+- [x] Add targeted deterministic malformed JSON and positive response regressions.
 - [ ] Verify locally where executable sources are accessible, and inspect exact-head PR Actions and artifacts before squash merge.
 
 ## Verification matrix
@@ -60,7 +60,7 @@ None: CI test harness correctness only; no product defaults, desktop behavior, n
 
 ## Evidence log
 
-- 2026-11-10: inspected master source, native helper fixtures, Issue #223 comment, and latest master CI; identified bool/string coercion false-positive path. No code edits or test execution yet.
+- 2026-11-10: inspected master source, native helper fixtures, Issue #223 comment, and latest master CI; identified bool/string coercion false-positive path.\n- 2026-11-10: plan commit `8ddb5a7`; native test harness fix `a571375`; malformed flag and schema fixtures `09c1a66`. Local Git fetch failed with `Could not resolve host: github.com` (no repository-wide offline tests claimed); exact-head CI must execute before merge.
 
 ## Deviations and discoveries
 
@@ -68,7 +68,7 @@ Local container GitHub DNS previously failed; if unresolved, do not report local
 
 ## Resume from here
 
-Update `tests/e2e/sway/wpaperd_native.py` and `tests/test_wpaperd_native_helpers.py` in this branch, execute deterministic checks when possible, then open a PR with this plan and inspect latest-head selected native pixel results before merging.
+Open the single-scope PR linking #223 and this plan, then inspect every required CI job on its exact head. Require selected native wpaperd IPC and dual-output framebuffer success before any squash merge.
 
 ## Completion
 
