@@ -1,7 +1,7 @@
 # 2026-11-10: Durably publish opt-in Noctalia restoration manifest before applying wallpaper
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -34,25 +34,25 @@ AGENTS.md; README.md; Cargo.toml; docs/agents/workflow.md; docs/agents/testing.m
 
 ## Acceptance criteria
 
-- [ ] Successful fake desktop path executes manifest file, proof directory and parent fsync before first wallpaper apply; recovers/restores two outputs with prior JSON/permission behavior unchanged.
-- [ ] Failure to fsync a directory raises stable `VerificationError`, issues zero wallpaper setters and leaves original wallpaper untouched.
-- [ ] Failure to fsync the manifest file similarly issues zero setters; no sensitive paths leak in error string.
-- [ ] Final-head Python Noctalia safety tests and all applicable Rust, Sway, Windows/macOS, agent-plan, and native virtual framebuffer CI checks pass.
+- [x] Successful fake desktop path executes manifest file, proof directory and parent fsync before first wallpaper apply; recovers/restores two outputs with prior JSON/permission behavior unchanged.
+- [x] Failure to fsync a directory raises stable `VerificationError`, issues zero wallpaper setters and leaves original wallpaper untouched.
+- [x] Failure to fsync the manifest file similarly issues zero setters; no sensitive paths leak in error string.
+- [x] Final-head Python Noctalia safety tests and all applicable Rust, Sway, Windows/macOS, agent-plan, and native virtual framebuffer CI checks pass.
 
 ## Implementation slices
 
 - [x] Add a small Linux-only durability helper and fail-closed publication barrier to opt-in `verify_dual`.
 - [x] Add fake-desktop file/dir/parent fsync order and failure-injection regressions.
-- [ ] Run applicable exact-head CI and merge tested head only after all gates pass.
+- [x] Run applicable exact-head CI and merge tested head only after all gates pass.
 
 ## Verification matrix
 
 | Scope | Required evidence | Status |
 |---|---|---|
-| Noctalia safety | `python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v` | PENDING |
-| Rust/platform | Full CI fmt/clippy/tests, Windows/macOS | PENDING |
-| Virtual pixels | Noctalia native Sway and niri dual-output framebuffer + Sway | PENDING |
-| Governance | PR agent plan integrity and self-tests | PENDING |
+| Noctalia safety | `python3 -m unittest discover -s tests -p 'test_noctalia_live_verification.py' -v` | PASS: [PR #244 run 42843623612](https://github.com/pkking/ezwallpaper/actions/runs/42843623612) |
+| Rust/platform | Full CI fmt/clippy/tests, Windows/macOS | PASS: [PR #244 run 42843623612](https://github.com/pkking/ezwallpaper/actions/runs/42843623612) |
+| Virtual pixels | Noctalia native Sway and niri dual-output framebuffer + Sway | PASS: [PR #244 run 42843623612](https://github.com/pkking/ezwallpaper/actions/runs/42843623612) |
+| Governance | PR agent plan integrity and self-tests | PASS: [PR #244 run 42843623612](https://github.com/pkking/ezwallpaper/actions/runs/42843623612) |
 
 ## Decision gates
 
@@ -63,17 +63,19 @@ None: opt-in verifier safety fix. No product runtime, default, privilege, persis
 - 2026-11-10: inspected current master, open PR/Issues and exact recovery record creation. Baseline CI 42836230370 SUCCESS; no new branch tests executed yet.
 - 2026-11-10: implementation commit `85e01de` introduces file/child/parent sync barrier and stable fail-closed error; offline test commit `f385a8a` adds success ordering before first apply plus file/child/parent fsync failures. Exact-head CI PENDING; no physical session touched.
 
+- 2026-11-10: implementation PR [#244](https://github.com/pkking/ezwallpaper/pull/244), exact tested head `9d1e69b9712e38e37aac8f9842b5aa6b2f32c549`: all **10/10 required GitHub Actions jobs SUCCESS** in [run 42843623612](https://github.com/pkking/ezwallpaper/actions/runs/42843623612), including 42 Noctalia offline safety tests (two new top-level tests, with 3 failure-injection subcases), Rust fmt/clippy/tests, agent plan, Windows/macOS, Sway headless visual pixels and native Noctalia/Sway plus experimental niri/Noctalia virtual dual-output framebuffer. No physical desktop used. Squash merged on master as `44094cdc0f8b6f5e33a960cf92df90488360ced0`.
+
 ## Deviations and discoveries
 
-None.
+No change to user-visible desktop defaults. Directory fsync is a crash-evidence durability barrier for suitable local filesystems, not a universal guarantee of power-failure atomicity, compositor restoration or physical display support.
 
 ## Resume from here
 
-Open one Issue #59-linked PR for this branch, inspect 10/10 applicable exact-head jobs (especially offline Noctalia live test), fix failures and re-run before merge; do not run physical desktop tests.
+Continue Issue #59 with a new independent, evidence-grounded safety or explicit human-approved physical verification slice; do not interpret the virtual compositor CI as GPU/4K/hotplug/lockscreen proof.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `44094cdc0f8b6f5e33a960cf92df90488360ced0` (PR #244; exact tested head `9d1e69b9712e38e37aac8f9842b5aa6b2f32c549`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42843623612 (all 10 required checks SUCCESS)
+E2E artifact: native Noctalia/Sway and experimental niri+Noctalia virtual dual-output framebuffer evidence retained in the CI run (not physical monitors)
 Remaining unassessed items: physical GPU/4K/hotplug/lockscreen, external filesystem power-loss behavior, IPC ownership race after last check.
