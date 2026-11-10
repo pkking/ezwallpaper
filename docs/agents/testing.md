@@ -59,6 +59,21 @@ Pull requests use `actions/cache/restore@v4` only; only successful `master` push
 
 This cache covers **only** the pinned virtual Sway/wpaperd CI combination. It is not physical GPU/4K, niri hardware or lockscreen evidence, and does not change user runtime caching or product compatibility.
 
+### Diagnose wpaperd exact-key cache misses
+
+When native wpaperd is selected, its existing artifact `native-wpaperd-1.3.0-sway-dual-evidence` also carries `cache-fingerprint/fingerprint.txt` and `cache-fingerprint/sha256.txt`. The first file is the **exact byte sequence** passed to `ci_native_cache.py key`; it contains the installed package versions, architecture, dated Rust compiler, Cargo version, workflow SHA and cache-validator SHA. This evidence is captured on a cold build or verified hit before the source build/restore branch, and is preserved by the existing `if: always()` upload if the artifact step is reached.
+
+After downloading two actual, source-selected native wpaperd evidence artifacts, extract them to separate directories (avoid overwriting names) and check both before comparing:
+
+```sh
+(cd /path/to/before/cache-fingerprint && sha256sum -c sha256.txt)
+(cd /path/to/after/cache-fingerprint && sha256sum -c sha256.txt)
+diff -u /path/to/before/cache-fingerprint/fingerprint.txt \\
+  /path/to/after/cache-fingerprint/fingerprint.txt
+```
+
+An empty diff only means the **recorded key inputs** match. A different compiler, ABI package or workflow hash can explain changed keys; a matching fingerprint does not prove a cache restore, GitHub cache scope, source pin or artifact authenticity. Verify the Actions restore log, exact upstream SHA, native IPC and framebuffer verdict independently. Editing this workflow itself intentionally changes the workflow-hashed key and therefore may cause a one-time cold build. This data is limited to CI's virtual Sway/wpaperd test, not physical display validation.
+
 ## Pinned Noctalia/niri native binary cache (Issue #211)
 
 The expensive pinned upstream Noctalia v5.2.1 Meson build and experimental niri #3800 Rust build in `.github/workflows/ci.yml` may reuse binaries **only** from exact-key GitHub Actions caches. The cache is a CI optimization, never a test outcome. PRs only execute `actions/cache/restore@v4`, and GitHub scopes `pull_request` caches to their merge refs; only trusted `master` pushes run `actions/cache/save@v4`. No write-capable cache-mode override is used on untrusted triggers. No `pull_request_target`, privileged token, prefix key, or restore-key fallback is used.
