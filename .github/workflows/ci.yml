@@ -352,7 +352,7 @@ jobs:
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-11-09
       - uses: Swatinem/rust-cache@v2
       - name: Install real headless compositor and capture tools
         run: |
