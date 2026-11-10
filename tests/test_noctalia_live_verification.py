@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import verify_noctalia_live as verifier  # noqa: E402
@@ -815,6 +816,72 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(verifier.VerificationError, "cannot_read_grim_capture"):
             verifier.capture(no_frame, "DP-1", filename, verifier.COLORS[0])
         self.assertFalse(filename.exists())
+
+    def test_captured_frame_reader_bounds_actual_read_without_stat(self):
+        frame = ppm(verifier.COLORS[0])
+        limit = len(frame)
+
+        class RecordingReader(io.BytesIO):
+            def __init__(self, data):
+                super().__init__(data)
+                self.request_sizes = []
+
+            def read(self, size=-1):
+                self.request_sizes.append(size)
+                if size < 0:
+                    raise AssertionError("unbounded capture read")
+                return super().read(size)
+
+        class CapturePath:
+            def __init__(self, reader):
+                self.reader = reader
+
+            def open(self, mode):
+                self_outer = self
+                if mode != "rb":
+                    raise AssertionError("frame must be read in binary mode")
+                return self_outer.reader
+
+            def stat(self):
+                raise AssertionError("a prior stat is not an atomic size limit")
+
+        with mock.patch.object(verifier, "MAX_PPM_BYTES", limit):
+            exact = RecordingReader(frame)
+            self.assertEqual(verifier.read_captured_ppm(CapturePath(exact)), frame)
+            self.assertEqual(exact.request_sizes, [limit + 1])
+            over = RecordingReader(frame + b"\0" * 128)
+            with self.assertRaisesRegex(verifier.VerificationError, "oversize_ppm_capture"):
+                verifier.read_captured_ppm(CapturePath(over))
+            self.assertEqual(over.request_sizes, [limit + 1])
+            self.assertEqual(over.tell(), limit + 1)
+
+    def test_oversize_baseline_refuses_before_any_wallpaper_mutation(self):
+        fake = FakeDesktop(self.originals)
+        with mock.patch.object(verifier, "MAX_PPM_BYTES", len(ppm(verifier.COLORS[0])) - 1):
+            with self.assertRaisesRegex(verifier.VerificationError, "oversize_ppm_capture"):
+                self.verify(fake)
+        self.assertEqual(fake.writes, [])
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertFalse((self.root / "proof/recovery.json").exists())
+
+    def test_oversize_fixture_frame_fails_and_restores_both_outputs(self):
+        fake = FakeDesktop(self.originals)
+
+        def oversized_fixture(argv, **kwargs):
+            result = fake(argv, **kwargs)
+            if (argv[:2] == ["grim", "-o"]
+                    and "fixture-" in fake.wallpapers[argv[2]]):
+                image = Path(argv[5])
+                image.write_bytes(image.read_bytes() + b"x" * 128)
+            return result
+
+        with mock.patch.object(verifier, "MAX_PPM_BYTES", len(ppm(verifier.COLORS[0]))):
+            result, status = self.verify(oversized_fixture)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["error"], "oversize_ppm_capture")
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(fake.wallpapers, self.originals)
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
 
     def test_truncated_original_frame_blocks_mutation_before_apply(self):
         fake = FakeDesktop(self.originals, truncated=True)
