@@ -741,6 +741,35 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
         self.assertTrue((self.root / "proof/recovery.json").exists())
         self.assertTrue((self.root / "proof/result.json").exists())
 
+    def test_interrupted_first_restore_apply_keeps_peer_recovery(self):
+        fake = FakeDesktop(self.originals)
+        interrupted = False
+
+        def runner(argv, **kwargs):
+            nonlocal interrupted
+            if (
+                argv[:4] == ["ezwallpaper", "--setter", "noctalia", "--output"]
+                and argv[4] == "DP-1"
+                and argv[-1] == self.originals["DP-1"]
+                and not interrupted
+            ):
+                interrupted = True
+                raise KeyboardInterrupt()
+            return fake(argv, **kwargs)
+
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            runner, lambda _: "APPLY", confirmed=True,
+        )
+        self.assertTrue(interrupted)
+        self.assertEqual(status, 1)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"], "restoration_interrupted")
+        self.assertEqual(result["restoration"]["DP-1"], "INTERRUPTED")
+        self.assertEqual(result["restoration"]["HDMI-A-1"], "PIXEL_VERIFIED")
+        self.assertEqual(fake.wallpapers["HDMI-A-1"], self.originals["HDMI-A-1"])
+        self.assertTrue((self.root / "proof/recovery.json").exists())
+
     def test_restoration_failure_keeps_private_recovery_manifest(self):
         fake = FakeDesktop(self.originals, restore_failure="HDMI-A-1")
         result, status = self.verify(fake)
