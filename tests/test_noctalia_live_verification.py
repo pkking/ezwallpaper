@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import json
 from pathlib import Path
 import subprocess
@@ -151,6 +152,79 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
             self.outputs, "ezwallpaper", self.root / "proof", self.env,
             fake, lambda _: answer, confirmed=confirmed,
         )
+
+    def test_recovery_manifest_and_directories_synced_before_first_apply(self):
+        fake = FakeDesktop(self.originals)
+        proof = self.root / "proof"
+        synced = []
+        real_fsync = verifier.os.fsync
+
+        def fsync_and_record(fd):
+            info = os.fstat(fd)
+            destinations = {
+                (proof / "recovery.json").stat(): "manifest",
+                proof.stat(): "proof_directory",
+                self.root.stat(): "parent_directory",
+            }
+            matches = [
+                label for path_stat, label in destinations.items()
+                if (path_stat.st_dev, path_stat.st_ino) == (info.st_dev, info.st_ino)
+            ]
+            self.assertEqual(len(matches), 1, "unexpected fsync destination")
+            synced.append(matches[0])
+            return real_fsync(fd)
+
+        def runner(argv, **kwargs):
+            if argv[:4] == ["ezwallpaper", "--setter", "noctalia", "--output"]:
+                if "fixture-" in argv[-1]:
+                    self.assertEqual(
+                        synced, ["manifest", "proof_directory", "parent_directory"]
+                    )
+            return fake(argv, **kwargs)
+
+        with mock.patch.object(verifier.os, "fsync", side_effect=fsync_and_record):
+            result, status = verifier.verify_dual(
+                self.outputs, "ezwallpaper", proof, self.env,
+                runner, lambda _: "APPLY", confirmed=True,
+            )
+        self.assertEqual(status, 0)
+        self.assertEqual(result["restoration"], dict.fromkeys(self.outputs, "PIXEL_VERIFIED"))
+        self.assertEqual(
+            synced, ["manifest", "proof_directory", "parent_directory"]
+        )
+        self.assertFalse((proof / "recovery.json").exists())
+
+    def test_failed_recovery_fsync_never_applies_wallpaper(self):
+        for fail_call in (1, 2, 3):
+            with self.subTest(fail_call=fail_call):
+                fake = FakeDesktop(self.originals)
+                proof = self.root / f"proof-fsync-{fail_call}"
+                real_fsync = verifier.os.fsync
+                sync_calls = 0
+
+                def failing_fsync(fd):
+                    nonlocal sync_calls
+                    sync_calls += 1
+                    if sync_calls == fail_call:
+                        raise OSError("private path in mock failure")
+                    return real_fsync(fd)
+
+                with mock.patch.object(verifier.os, "fsync", side_effect=failing_fsync):
+                    with self.assertRaises(verifier.VerificationError) as error:
+                        verifier.verify_dual(
+                            self.outputs, "ezwallpaper", proof, self.env,
+                            fake, lambda _: "APPLY", confirmed=True,
+                        )
+                self.assertEqual(
+                    str(error.exception), "cannot_persist_recovery_manifest"
+                )
+                self.assertEqual(sync_calls, fail_call)
+                self.assertEqual(fake.writes, [])
+                self.assertEqual(fake.wallpapers, self.originals)
+                self.assertFalse((proof / "result.json").exists())
+                recovery = proof / "recovery.json"
+                self.assertTrue(recovery.exists())
+                self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
 
     def test_success_quantifies_two_distinct_outputs_and_restores_originals(self):
         fake = FakeDesktop(self.originals)
