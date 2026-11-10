@@ -59,7 +59,13 @@ def parse_ppm(data: bytes) -> tuple[int, int, memoryview]:
         start = pos
         while pos < len(data) and data[pos] in b"0123456789":
             pos += 1
-        if start == pos or pos >= len(data) or data[pos] not in b" \t\r\n":
+        # Image dimensions fit within four decimal digits, and maxval is
+        # exactly 255. Cap each token before int(): Python's integer digit
+        # limit otherwise raises ValueError outside recovery error handling.
+        if (
+            start == pos or pos - start > 5
+            or pos >= len(data) or data[pos] not in b" \t\r\n"
+        ):
             raise VerificationError("invalid_ppm_header")
         fields.append(int(data[start:pos]))
     width, height, maxval = fields
