@@ -90,6 +90,18 @@ def frame_similarity(baseline: bytes, actual: bytes) -> float:
     return hits / count
 
 
+def read_captured_ppm(filename: Path) -> bytes:
+    """Read at most MAX_PPM_BYTES + 1, even if the file grows after capture."""
+    try:
+        with filename.open("rb") as handle:
+            data = handle.read(MAX_PPM_BYTES + 1)
+    except OSError as exc:
+        raise VerificationError("cannot_read_grim_capture") from exc
+    if len(data) > MAX_PPM_BYTES:
+        raise VerificationError("oversize_ppm_capture")
+    return data
+
+
 def capture_frame(runner, output: str, filename: Path) -> bytes:
     """Capture a fresh original/restored frame and reject oversize/truncation."""
     try:
@@ -97,13 +109,8 @@ def capture_frame(runner, output: str, filename: Path) -> bytes:
     except OSError as exc:
         raise VerificationError("cannot_clear_previous_capture") from exc
     call(runner, ["grim", "-o", output, "-t", "ppm", str(filename)], "grim_capture_failed")
-    try:
-        if filename.stat().st_size > MAX_PPM_BYTES:
-            raise VerificationError("oversize_ppm_capture")
-        data = filename.read_bytes()
-        parse_ppm(data)
-    except OSError as exc:
-        raise VerificationError("cannot_read_grim_capture") from exc
+    data = read_captured_ppm(filename)
+    parse_ppm(data)
     return data
 
 
@@ -302,12 +309,7 @@ def capture(runner, output: str, filename: Path, rgb: tuple[int, int, int]) -> f
         except OSError as exc:
             raise VerificationError("cannot_clear_previous_capture") from exc
         call(runner, ["grim", "-o", output, "-t", "ppm", str(filename)], "grim_capture_failed")
-        try:
-            if filename.stat().st_size > MAX_PPM_BYTES:
-                raise VerificationError("oversize_ppm_capture")
-            coverage = pixel_coverage(filename.read_bytes(), rgb)
-        except OSError as exc:
-            raise VerificationError("cannot_read_grim_capture") from exc
+        coverage = pixel_coverage(read_captured_ppm(filename), rgb)
         if coverage >= MATCH_THRESHOLD:
             return coverage
         if attempt < 4:
