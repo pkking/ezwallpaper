@@ -1,10 +1,10 @@
 # 2026-11-09: Diagnose native binary cache key drift without weakening trust
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-09
-Last checkpoint: 2026-11-09
+Last checkpoint: 2026-11-10
 
 ## Objective
 
@@ -37,24 +37,24 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci
 
 - [x] Both Noctalia and niri CI fingerprint builders split package and nonpackage portions into reusable evidence files and concatenate them in the same order as before.
 - [x] Retain stable per-component full-fingerprint SHA256 and package/tool SHA256 with the existing native artifacts on hit/miss/failure; do not include secrets.
-- [ ] Offline regression verifies order, full-package inventory, unchanged cache helper invocation, and native pixel gates.
-- [ ] Final exact-head CI all required checks pass.
+- [x] Offline regression verifies order, full-package inventory, unchanged cache helper invocation, and native pixel gates.
+- [x] Final exact-head CI all required checks pass.
 
 ## Implementation slices
 
 - [x] Establish exact GitHub run evidence for hit/miss and key drift.
 - [x] Split fingerprint inputs and persist comparative digests in CI-only artifacts.
 - [x] Add deterministic workflow contract regression and documentation.
-- [ ] Verify exact-head CI and squash merge only when all required gates pass.
+- [x] Verify exact-head CI and squash merge only when all required gates pass.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline fingerprint contract | python3 -m unittest discover -s tests -p test_ci_native_cache.py -v | source layout/safety assertions | PENDING |
-| Rust quality and platform | GitHub Actions required quality, Rust, Windows/macOS | exact-head green | PENDING |
-| Native Sway, Noctalia/niri, safety | GitHub Actions native E2E | actual IPC/framebuffer gates green | PENDING |
-| Agent plan integrity | GitHub Actions | Issue/Plan metadata and checkpoint accepted | PENDING |
+| Offline fingerprint contract | python3 -m unittest discover -s tests -p test_ci_native_cache.py -v | source layout/safety assertions | PASS — PR #226 run 42623664636, exact tested head b2c343de |
+| Rust quality and platform | GitHub Actions required quality, Rust, Windows/macOS | exact-head green | PASS — PR #226 run 42623664636, exact tested head b2c343de |
+| Native Sway, Noctalia/niri, safety | GitHub Actions native E2E | actual IPC/framebuffer gates green | PASS — PR #226 run 42623664636, exact tested head b2c343de |
+| Agent plan integrity | GitHub Actions | Issue/Plan metadata and checkpoint accepted | PASS — PR #226 run 42623664636, exact tested head b2c343de |
 
 ## Decision gates
 
@@ -66,21 +66,28 @@ None: additive CI evidence only, within existing source-pinned cache and trust d
 
 ## Deviations and discoveries
 
-The cold miss for #222 cannot be attributed to a single dependency package from current logs. Do not treat package drift as proven without the proposed per-input evidence. The workflow itself is part of the SHA-based key, so this instrumentation deliberately invalidates the old key once; it does not change the key builder, source verification or trusted-save boundary.
+The historical cold miss for #222 cannot be attributed to a single dependency package from those older logs. Do not treat package drift as proven without the proposed per-input evidence. The workflow itself is part of the SHA-based key, so this instrumentation deliberately invalidates the old key once; it does not change the key builder, source verification or trusted-save boundary.
 
 ## Implementation evidence
 
 - `8ca9942`: the Noctalia and niri fingerprint steps save the identical original sorted package list and original nonpackage inputs separately and concatenate them without adding separators, then upload SHA256 evidence through existing artifact paths.
 - `a2b3f9e`: offline source-contract regression checks both component input layouts, source pins, exact-key helper invocation, full-package inventory and intact compositor gates.
-- `59a5607`: documentation for comparing trusted CI package/tool manifests. These edits have not yet passed exact-head GitHub CI.
+- `59a5607`: documentation for comparing trusted CI package/tool manifests. These edits subsequently passed all 10 exact-head GitHub Actions checks in run 42623664636, including both actual native virtual dual-output framebuffer E2E steps.
+
+## Completion checkpoint — 2026-11-10
+
+- Implementation [PR #226](https://github.com/pkking/ezwallpaper/pull/226) was independently verified at tested head `b2c343dec39017b1732db562ecb84e33663600fd`: [CI run 42623664636](https://github.com/pkking/ezwallpaper/actions/runs/42623664636) has **10/10 required checks SUCCESS**, including offline contract tests, Rust, Windows/macOS, Noctalia live helper safety, actual native Noctalia/Sway and experimental niri+Noctalia virtual dual-output framebuffer pixels. Squash merged into master as `27a66cd89b16da5bb1ed59474f8fd0b5e1a9324c`.
+- Later [PR #229](https://github.com/pkking/ezwallpaper/pull/229) shipped a separate, already-archived offline fingerprint comparison tool; it does not supersede the distinct original raw fingerprint capture instrumentation.
+- The instrumentation records exactly the package, toolchain/workflow and full SHA256 input files for future reproducible comparisons. Historical missing package lists cannot be backfilled from earlier CI runs. Issue #211 remains OPEN for longer-run cache hit/miss rate, cold-root cause and queue-inclusive percentile analysis.
+- This is reconciliation of stale execution-plan bookkeeping, not a new source change or revalidation of physical hardware.
 
 ## Resume from here
 
-Open the Issue #211-linked PR for this branch and inspect its exact-head CI; fix any test or native E2E failures before squash merge.
+Continue the still-open Issue #211 with a separate, independently evidenced population cache hit/miss analysis; do not reopen old PR #226 or misattribute an earlier miss to specific packages without matching fingerprints.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `27a66cd89b16da5bb1ed59474f8fd0b5e1a9324c` (implementation PR #226, tested head `b2c343dec39017b1732db562ecb84e33663600fd`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42623664636 (all 10 required jobs SUCCESS on PR #226 head)
+E2E artifact: native Noctalia/Sway IPC pixels and experimental niri+Noctalia virtual dual-output framebuffer in run 42623664636, source hashes and both cache fingerprints retained (not physical outputs)
 Remaining unassessed items: physical GPU/4K/hotplug, lockscreen and actual cause of the historical #222 key drift.
