@@ -405,6 +405,13 @@ jobs:
               libgbm1 libgl1-mesa-dri | LC_ALL=C sort
             sha256sum .github/workflows/ci.yml scripts/ci_native_cache.py
           } > /tmp/ezw-wpaperd-build-fingerprint
+          # Retain the *exact* original key input. Do not reorder ABI/package
+          # lines or relax the source/toolchain fingerprint for diagnostics.
+          diagnostics=artifacts/wpaperd-native-e2e/cache-fingerprint
+          mkdir -p "$diagnostics"
+          cp /tmp/ezw-wpaperd-build-fingerprint "$diagnostics/fingerprint.txt"
+          cmp /tmp/ezw-wpaperd-build-fingerprint "$diagnostics/fingerprint.txt"
+          (cd "$diagnostics" && sha256sum fingerprint.txt > sha256.txt)
           key="$(python3 scripts/ci_native_cache.py key --component wpaperd --fingerprint /tmp/ezw-wpaperd-build-fingerprint)"
           echo "key=$key" >> "$GITHUB_OUTPUT"
           echo "wpaperd native cache key: $key"

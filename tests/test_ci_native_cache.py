@@ -239,6 +239,44 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("Observe isolated two-output Sway framebuffer separation", job)
         self.assertIn("Always preserve native wpaperd source, IPC and framebuffer evidence", job)
 
+    def test_wpaperd_exact_key_fingerprint_is_retained_without_relaxing_abi(self):
+        """Artifacts preserve the bytes hashed as the wpaperd cache key."""
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  sway-visual-e2e:\n", 1)[1].split(
+            "\n  noctalia-sway-visual-e2e:", 1)[0]
+        start = job.index("- name: Fingerprint pinned wpaperd source build and ABI")
+        end = job.index("- name: Restore trusted wpaperd executable cache")
+        fingerprint = job[start:end]
+        original = "} > /tmp/ezw-wpaperd-build-fingerprint"
+        copied = 'cp /tmp/ezw-wpaperd-build-fingerprint "$diagnostics/fingerprint.txt"'
+        checked = 'cmp /tmp/ezw-wpaperd-build-fingerprint "$diagnostics/fingerprint.txt"'
+        digest = '(cd "$diagnostics" && sha256sum fingerprint.txt > sha256.txt)'
+        key = "scripts/ci_native_cache.py key --component wpaperd --fingerprint /tmp/ezw-wpaperd-build-fingerprint"
+        self.assertIn("diagnostics=artifacts/wpaperd-native-e2e/cache-fingerprint", fingerprint)
+        for record in (
+            "ubuntu-24.04|wpaperd-1.3.0|cargo-locked-release-p-wpaperd",
+            "uname -sm", "rustc -vV", "cargo --version",
+            "dpkg-query -W -f=", "libwayland-dev", "libegl-dev",
+            "libgles-dev", "libxkbcommon-dev", "libssl-dev",
+            "libgbm1", "libgl1-mesa-dri", "LC_ALL=C sort",
+            "sha256sum .github/workflows/ci.yml scripts/ci_native_cache.py",
+            original, copied, checked, digest, key,
+        ):
+            with self.subTest(record=record):
+                self.assertIn(record, fingerprint)
+        self.assertLess(fingerprint.index("dpkg-query -W"), fingerprint.index(
+            "sha256sum .github/workflows/ci.yml scripts/ci_native_cache.py"))
+        self.assertLess(fingerprint.index(original), fingerprint.index(copied))
+        self.assertLess(fingerprint.index(copied), fingerprint.index(checked))
+        self.assertLess(fingerprint.index(checked), fingerprint.index(digest))
+        self.assertLess(fingerprint.index(digest), fingerprint.index(key))
+        self.assertIn("Always preserve native wpaperd source, IPC and framebuffer evidence", job)
+        self.assertIn("path: artifacts/wpaperd-native-e2e/", job)
+        self.assertIn("Verify real wpaperd native IPC and two-output rendered pixels", job)
+        self.assertIn("Save verified wpaperd cache from trusted master only", job)
+        self.assertNotIn("restore-keys:", job)
+
     def test_native_cache_fingerprint_evidence_preserves_full_key_inputs(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
