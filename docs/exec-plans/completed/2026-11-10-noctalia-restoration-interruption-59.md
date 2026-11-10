@@ -1,7 +1,7 @@
 # 2026-11-10: Continue dual-output restoration after an interrupted restore step
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -34,25 +34,25 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #59; scripts/v
 
 ## Acceptance criteria
 
-- [ ] A second interruption during restoration topology check records `INTERRUPTED` for that output and still attempts to restore the peer.
-- [ ] A second interruption during restore-time IPC readback or apply is handled equivalently; no false pixel verification.
-- [ ] Private recovery manifest remains and result JSON records failure without sensitive path disclosure.
-- [ ] Existing restoration and ownership safety tests still pass, and all applicable final-head CI checks pass.
+- [x] A second interruption during restoration topology check records `INTERRUPTED` for that output and still attempts to restore the peer.
+- [x] A second interruption during restore-time IPC readback or apply is handled equivalently; no false pixel verification.
+- [x] Private recovery manifest remains and result JSON records failure without sensitive path disclosure.
+- [x] Existing restoration and ownership safety tests still pass, and all applicable final-head CI checks pass.
 
 ## Implementation slices
 
 - [x] Handle interrupt/EOF at each individual restore-stage boundary.
 - [x] Add deterministic fake-runner tests for topology, readback and setter interrupts.
-- [ ] Verify exact-head CI, repair failures and squash merge only if all required gates pass.
+- [x] Verify exact-head CI, repair failures and squash merge only if all required gates pass.
 
 ## Verification matrix
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Offline safety | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | PENDING |
-| Rust/platform | Cargo fmt/clippy/tests, Windows/macOS native jobs | PENDING |
-| Visual E2E | Noctalia/sway and niri virtual outputs, Sway headless | PENDING |
-| Governance | agent plan integrity and self-tests | PENDING |
+| Offline safety | `python3 -m unittest discover -s tests -p test_noctalia_live_verification.py -v` | PASS - PR #232 run 42728123343 |
+| Rust/platform | Cargo fmt/clippy/tests, Windows/macOS native jobs | PASS - PR #232 run 42728123343 |
+| Visual E2E | Noctalia/sway and niri virtual outputs, Sway headless | PASS - PR #232 run 42728123343 |
+| Governance | agent plan integrity and self-tests | PASS - PR #232 run 42728123343 |
 
 ## Decision gates
 
@@ -61,19 +61,19 @@ None: strict opt-in helper safety improvement, no runtime architecture/CLI/IPC d
 ## Evidence log
 
 - 2026-11-10: read master `scripts/verify_noctalia_live.py` and corresponding offline fake tests. No local test, hardware session or new CI evidence yet.
-- 2026-11-10: code commit `1be99b7c` adds per-output `INTERRUPTED` handling during restoration topology and path/setter/frame stages; test commits `a2899dcc` and `1726abb` inject deterministic KeyboardInterrupt/EOFError at topology, path readback, and setter while checking recovery of the peer output. Exact-head PR CI pending.
+- 2026-11-10: code commit `1be99b7c` adds per-output `INTERRUPTED` handling during restoration topology and path/setter/frame stages; test commits `a2899dcc` and `1726abb` inject deterministic KeyboardInterrupt/EOFError at topology, path readback, and setter while checking recovery of the peer output. Exact-head PR CI later completed SUCCESS: 10/10 required checks. Noctalia offline safety suite ran 37 tests (including 3 new interruptions); virtual dual-output native IPC/framebuffer and Windows/macOS/Rust gates passed.
 
 ## Deviations and discoveries
 
-None.
+PR #232 exact tested head `18eddcb130fea77e1d911e847049376cb79ee215` passed all 10 GitHub Actions jobs in [run 42728123343](https://github.com/pkking/ezwallpaper/actions/runs/42728123343), including both virtual Noctalia/niri framebuffer tests, and was squash merged as `82c218124b2ab7423031d286236ca6ba2ef12c4e`. Scope remains opt-in physical-helper safety only; no actual physical desktop was exercised.
 
 ## Resume from here
 
-Open the Issue #59-linked PR from `agent/issue-59-interrupted-restore-20261110`, inspect all final-head CI including Noctalia safety and actual virtual dual-output framebuffer gates, fix any failures, and merge only when every required gate passes.
+Continue Issue #59's next independent safety/evidence slice on the latest master; do not claim physical monitor or lockscreen validation without opt-in external hardware evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `82c218124b2ab7423031d286236ca6ba2ef12c4e` (PR #232; tested head `18eddcb130fea77e1d911e847049376cb79ee215`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42728123343 (10/10 success)
+E2E artifact: virtual Noctalia/niri/Sway dual-output framebuffer evidence in run 42728123343 (not physical hardware)
 Remaining unassessed items: physical niri/GPU/4K/hotplug/lockscreen, concurrent change after the last path readback.
