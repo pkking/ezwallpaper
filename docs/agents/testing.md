@@ -68,8 +68,7 @@ After downloading two actual, source-selected native wpaperd evidence artifacts,
 ```sh
 (cd /path/to/before/cache-fingerprint && sha256sum -c sha256.txt)
 (cd /path/to/after/cache-fingerprint && sha256sum -c sha256.txt)
-diff -u /path/to/before/cache-fingerprint/fingerprint.txt \\
-  /path/to/after/cache-fingerprint/fingerprint.txt
+diff -u /path/to/before/cache-fingerprint/fingerprint.txt /path/to/after/cache-fingerprint/fingerprint.txt
 ```
 
 An empty diff only means the **recorded key inputs** match. A different compiler, ABI package or workflow hash can explain changed keys; a matching fingerprint does not prove a cache restore, GitHub cache scope, source pin or artifact authenticity. Verify the Actions restore log, exact upstream SHA, native IPC and framebuffer verdict independently. Editing this workflow itself intentionally changes the workflow-hashed key and therefore may cause a one-time cold build. This data is limited to CI's virtual Sway/wpaperd test, not physical display validation.
