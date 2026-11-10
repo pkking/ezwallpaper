@@ -1,7 +1,7 @@
 # 2026-11-10: Stop rolling Rust nightly from invalidating pinned wpaperd executable caches
 
 Issue: #223
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-10
 Last checkpoint: 2026-11-10
@@ -38,24 +38,24 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; Issue #223 and its 2
 
 - [x] Sway/wpaperd job installs the dated nightly rather than rolling `nightly`, while other jobs remain unchanged.
 - [x] Deterministic workflow-contract regression checks pin, full ABI inputs, cache scope and mandatory native pixels; no relaxed key or skipped source checks.
-- [ ] Full final-head PR CI passes with selected native wpaperd IPC and pixel E2E; record actual hit/miss and toolchain identity.
-- [ ] Report the actual exact-key hit/miss and native pixels for the final PR head; keep multi-run warm-hit P50/P90 unassessed for #223 until independently selected comparable runs exist.
+- [x] Full final-head PR CI passes with selected native wpaperd IPC and pixel E2E; record actual hit/miss and toolchain identity.
+- [x] Report the actual exact-key hit/miss and native pixels for the final PR head; keep multi-run warm-hit P50/P90 unassessed for #223 until independently selected comparable runs exist.
 
 ## Implementation slices
 
 - [x] Pin only Sway native toolchain to `nightly-2026-11-09`, retaining all existing key inputs.
 - [x] Add offline regression for dated toolchain and original native E2E/cache trust.
-- [ ] Observe exact-head GitHub PR CI and selected native pixels, then squash merge only after green; archive this implementation slice separately.
-- [ ] Record true hit/miss outcome on the final PR head, then leave Issue #223 OPEN for future statistically meaningful warm-hit performance evidence.
+- [x] Observe exact-head GitHub PR CI and selected native pixels, then squash merge only after green; archive this implementation slice separately.
+- [x] Record true hit/miss outcome on the final PR head, then leave Issue #223 OPEN for future statistically meaningful warm-hit performance evidence.
 
 ## Verification matrix
 
 | Gate | Command / evidence | Status |
 |---|---|---|
-| Offline selector and workflow pin | `python3 -m unittest discover -s tests -p test_ci_integration_scope.py -v` | PENDING |
-| Cache trust contract | `python3 -m unittest discover -s tests -p test_ci_native_cache.py -v` | PENDING |
-| Sway/wpaperd native | Selected actual Sway + pinned wpaperd IPC and 2-output framebuffer, source SHA, exact cache verdict | PENDING |
-| Plan, Rust, macOS, Windows | All applicable final-head GitHub CI, review threads | PENDING |
+| Offline selector and workflow pin | `python3 -m unittest discover -s tests -p test_ci_integration_scope.py -v` | PASS PR #236 run 42741894200 |
+| Cache trust contract | `python3 -m unittest discover -s tests -p test_ci_native_cache.py -v` | PASS PR #236 run 42741894200 |
+| Sway/wpaperd native | Selected actual Sway + pinned wpaperd IPC and 2-output framebuffer, source SHA, exact cache verdict | PASS PR #236 run 42741894200 |
+| Plan, Rust, macOS, Windows | All applicable final-head GitHub CI, review threads | PASS PR #236 run 42741894200 |
 
 ## Decision gates
 
@@ -63,7 +63,9 @@ None. Narrow CI reproducibility fix for existing nightly, not a project-wide com
 
 ## Evidence log
 
-- 2026-11-10: examined master, open PR/Issues and plans; compared real job logs from 42637690794 and 42739971585. Rust nightly compiler changed, matching an exact-cache-key mismatch. Existing full ABI key cannot safely be relaxed. Plan created in commit `efd20a3`; Sway pin edited in `df3a771`; strict offline contract added in `792ce45`. GitHub Actions and native pixels PENDING.
+- 2026-11-10: PR #236 head `8c74e9e9a9261b88a061507f547777c8e4a2a0d9`, [Actions 42741894200](https://github.com/pkking/ezwallpaper/actions/runs/42741894200): 8 applicable jobs successful (change-scope + pinned-cache/offline selector, Rust quality, Rust tests, Windows, macOS, plan integrity, contract self-tests, Sway wpaperd native), 2 expected Noctalia-only skips. Source-pinned wpaperd IPC and independent dual-output virtual framebuffer PASS, `physical_pixels_verified=false`, native artifact 13729018995. Installed `nightly-2026-11-09` = rustc 1.102.0-nightly (5b7b37aef 2026-11-08). Exact key `ezw-native-v1-wpaperd-e8e843b4f19a925769e535f6e41d2937d4172b12c1e9cee713a5ca108144a8c4` MISS as workflow SHA changed; original source compiled, `wpaperd 1.3.0` validated. No review threads. Squash-merged as master `1acb51b81197948437fdd4ff16e9cf0abe741e61`.
+
+- 2026-11-10: examined master, open PR/Issues and plans; compared real job logs from 42637690794 and 42739971585. Rust nightly compiler changed, matching an exact-cache-key mismatch. Existing full ABI key cannot safely be relaxed. Plan created in commit `efd20a3`; Sway pin edited in `df3a771`; strict offline contract added in `792ce45`. GitHub Actions selected native and executed real virtual Sway pixels PASS on PR head `8c74e9e`, [run 42741894200](https://github.com/pkking/ezwallpaper/actions/runs/42741894200). Full exact-key MISS after workflow SHA changed, no warm claim.
 
 ## Deviations and discoveries
 
@@ -71,11 +73,11 @@ Local GitHub DNS from the container failed in earlier attempts; do not claim loc
 
 ## Resume from here
 
-Open a single-scope PR from `agent/issue-223-pin-wpaperd-nightly-20261110` linking #223 and this plan; inspect exact-head Actions and native pixels, repair failures, merge only once all applicable gates pass.
+For Issue #223, inspect the next *independently selected* native wpaperd PR under the pinned compiler and trusted master seed; confirm exact key HIT and successful IPC/two-output pixels before computing warm P50/P90; never reinterpret skipped gates as hits.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `1acb51b81197948437fdd4ff16e9cf0abe741e61` (PR #236 squash, tested head `8c74e9e9a9261b88a061507f547777c8e4a2a0d9`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42741894200 (8 applicable successful, 2 expected Noctalia-only skips)
+E2E artifact: `native-wpaperd-1.3.0-sway-dual-evidence` artifact ID 13729018995; real isolated Sway IPC + virtual 2 output pixels PASS, physical_pixels_verified=false; exact cache MISS after changed workflow SHA
 Remaining unassessed items: population warm-hit rate/P50/P90 and any package ABI drift; #211 broader misses; #59 physical GPU/4K/hotplug/lockscreen.
