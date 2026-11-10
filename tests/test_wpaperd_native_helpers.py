@@ -9,7 +9,9 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).parent / "e2e" / "sway"))
 from run import E2EFailure  # noqa: E402
-from wpaperd_native import decode_ok, parse_cli_outcomes, parse_current, parse_inventory  # noqa: E402
+from wpaperd_native import (  # noqa: E402
+    decode_ok, initial_paths_match, parse_cli_outcomes, parse_current, parse_inventory,
+)
 
 
 class WpaperdNativeHelperTests(unittest.TestCase):
@@ -20,6 +22,27 @@ class WpaperdNativeHelperTests(unittest.TestCase):
         self.assertEqual(parse_inventory(decode_ok(json.dumps(reply).encode())), {
             "HEADLESS-1": "/tmp/red.png", "HEADLESS-2": "/tmp/blue.png"
         })
+
+    def test_initial_ipc_inventory_and_readback_must_agree_with_both_outputs(self):
+        expected = {
+            "HEADLESS-1": Path("/tmp/red.png"),
+            "HEADLESS-2": Path("/tmp/blue.png"),
+        }
+        correct = {name: str(path) for name, path in expected.items()}
+        self.assertTrue(initial_paths_match(correct, correct, expected))
+        for inventory, current in (
+            ({"HEADLESS-1": "/tmp/old.png", "HEADLESS-2": "/tmp/blue.png"},
+             correct),
+            ({"HEADLESS-1": "/tmp/blue.png", "HEADLESS-2": "/tmp/red.png"},
+             correct),
+            ({"HEADLESS-1": "/tmp/red.png"}, correct),
+            ({**correct, "UNEXPECTED-3": "/tmp/other.png"}, correct),
+            (correct, {"HEADLESS-1": "/tmp/red.png",
+                       "HEADLESS-2": "/tmp/old.png"}),
+            (correct, {"HEADLESS-1": "/tmp/red.png"}),
+        ):
+            with self.subTest(inventory=inventory, current=current):
+                self.assertFalse(initial_paths_match(inventory, current, expected))
 
     def test_current_wallpaper_is_typed(self):
         self.assertEqual(parse_current(decode_ok(
