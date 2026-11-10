@@ -1,7 +1,7 @@
 # 2026-11-09: Reject concurrent wallpaper changes before opt-in dual-output verification applies
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-09
 Last checkpoint: 2026-11-09
@@ -40,24 +40,24 @@ No automatic testing on a real desktop, no new CLI/IPC/backend behavior, no new 
 
 - [x] External path replacement during human confirmation/capture: first fixture is never applied; external wallpaper survives; exit fails with a stable conflict code and private recovery.
 - [x] External path replacement on either output after first apply but before second: second fixture is never applied; first is restored only if still owned; external path survives; private recovery retained.
-- [ ] Unchanged two-output baseline and existing concurrent restore conflict fixtures still pass without weakening safety checks.
-- [ ] Exact final-head Rust/Windows/macOS/Sway/native Noctalia+niri/offline helper/agent plan CI all pass before merge.
+- [x] Unchanged two-output baseline and existing concurrent restore conflict fixtures still pass without weakening safety checks.
+- [x] Exact final-head Rust/Windows/macOS/Sway/native Noctalia+niri/offline helper/agent plan CI all pass before merge.
 
 ## Implementation slices
 
 - [x] Add both-output expected-path check before each fixture apply to the existing live helper.
 - [x] Add isolated fake IPC regression tests at confirmation and between output applies (including both peer directions).
-- [ ] Verify final-head CI; squash merge if all required checks green.
+- [x] Verify final-head CI; squash merge if all required checks green.
 
 ## Verification matrix
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PENDING |
-| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PENDING |
-| Windows/macOS/Sway | GitHub Actions native/headless jobs | PENDING |
-| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PENDING |
-| Agent governance | GitHub Actions PR plan integrity | PENDING |
+| Offline Python safety | GitHub Actions Noctalia live-verification safety tests | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Rust fmt, Clippy, Rust tests | GitHub Actions quality and smoke | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Windows/macOS/Sway | GitHub Actions native/headless jobs | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Noctalia v5.2.1 + niri virtual framebuffer | GitHub Actions native E2E | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
+| Agent governance | GitHub Actions PR plan integrity | PASS: source-affecting PR run 42825404579, subsequent master run 42825868278; 42836230370 is docs-only and native gates were SKIPPED |
 
 ## Decision gates
 
@@ -68,17 +68,19 @@ None: local, consent-gated test helper safety tightening. Architecture diagram: 
 - 2026-11-09: inspected verified `master`, Issue #59, helper and offline fake tests; found missing path ownership rechecks during a long-running opt-in interactive verification. No branch tests have run yet.
 - 2026-11-09: implementation `7a8bb333fecd855cae1b5dba0c79e2ac7480f058` checks both path observations against original or previously attempted fixture immediately before each change. Test commit `212e0841a784cb8b4bca03f0e11159ec039c207b` injects third-party changes during APPLY confirmation and between first/second apply (including either connector). Exact-head CI remains PENDING; no local desktop tests executed.
 
+- 2026-11-10: source audit of master `795fc8eda970b24813dab8d34782747a4d28213b` confirms `verify_dual` checks both outputs for expected original/previous fixture paths immediately before each setter, and fake regressions `test_external_change_during_confirmation_refuses_first_fixture` and `test_external_change_to_either_output_blocks_second_fixture` are present. Source-affecting [PR #242 run 42825404579](https://github.com/pkking/ezwallpaper/actions/runs/42825404579) and ensuing [master run 42825868278](https://github.com/pkking/ezwallpaper/actions/runs/42825868278) both SUCCESS with native Noctalia safety and virtual pixel checks selected; latest docs-only [master 42836230370](https://github.com/pkking/ezwallpaper/actions/runs/42836230370) SUCCESS but Noctalia/niri was correctly NOT SELECTED. Later [PR #231](https://github.com/pkking/ezwallpaper/pull/231) was closed **without merge** because its change duplicated existing master and omitted newer #227 UTF-8 safety handling. Archival closes stale governance bookkeeping; it does not claim #231 was merged. No real physical display tested.
+
 ## Deviations and discoveries
 
-None.
+The initial implementation evidence was already incorporated into master before this plan was independently archived; #231 was an outdated duplicate. Do not resurrect the old feature branch; the source and tests on current master are authoritative.
 
 ## Resume from here
 
-Open a PR from `agent/issue-59-noctalia-live-preapply-ownership-20261109` linked to Issue #59 and this plan, then inspect full exact-head CI (especially offline live safety) and repair any failures before merging.
+Archive this already-implemented preapply ownership plan; continue Issue #59 with independent, still-unassessed physical GPU/4K/hotplug/lockscreen tests. Never reopen or merge outdated #231.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed: physical niri/GPU/4K/hotplug/lockscreen and IPC race after final readback.
+Final commit: `795fc8eda970b24813dab8d34782747a4d28213b` (master source+regressions verified; historical #231 unmerged as duplicate, this is governance reconciliation rather than a new feature merge)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42825404579 (source-affecting PR, all required gates SUCCESS) and https://github.com/pkking/ezwallpaper/actions/runs/42825868278 (master push, SUCCESS); new archival PR needs its own final-head check.
+E2E artifact: native Noctalia/Sway + experimental niri virtual framebuffer from source-affecting run 42825404579 (not physical).
+Remaining unassessed items: physical niri/GPU/4K/hotplug/lockscreen and IPC race after final readback.
