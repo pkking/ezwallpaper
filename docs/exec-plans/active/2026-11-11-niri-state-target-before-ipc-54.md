@@ -1,7 +1,7 @@
 # 2026-11-11: Reject non-regular rotation state and lock targets before opt-in niri IPC
 
 Issue: #54
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -40,8 +40,8 @@ AGENTS.md, README.md, Cargo.toml, docs/agents/workflow.md, docs/agents/testing.m
 
 ## Implementation slices
 
-- [ ] Resolve state target once prior to optional niri preflight, perform read-only state + lock target checks.
-- [ ] Add deterministic offline fake-compositor absent negative regression tests for both targets and symlinks.
+- [x] Resolve state target once prior to optional niri preflight, perform read-only state + lock target checks.
+- [x] Add deterministic offline fake-compositor absent negative regression tests for both targets and symlinks.
 - [ ] Exact-final-head PR CI/reviews green, then squash merge and archive plan separately.
 
 ## Verification matrix
@@ -59,6 +59,7 @@ None: read-only argument/target validation order inside existing opt-in niri inv
 ## Evidence log
 
 - 2026-11-11: inspected master `src/rotation_cli.rs`, existing guard `check_regular_or_absent` and controller lock order. Latest #276 source CI 10/10 passed, #279 archive running. New branch no tests executed yet.
+- 2026-11-11: implementation `a2b4a27` resolves state before optional niri session preflight and tests state+lock entry using existing guard; offline regression `649366e` and format correction `cd912d0` cover directory and symlink targets, original sentinel unchanged, no state/lock publication. Exact head CI PENDING; local cargo unavailable and no physical desktop contacted.
 
 ## Deviations and discoveries
 
@@ -66,7 +67,7 @@ None.
 
 ## Resume from here
 
-Implement state and lock target preflight in `run_rotation` on this branch with offline fixtures, then open one Issue #54-linked PR; verify exact-head CI and review before merging.
+Open one Issue #54-linked implementation PR from this branch, inspect all exact-head CI and review threads, fix failures then squash merge. Archive the plan only after merge in a separately gated PR.
 
 ## Completion
 
