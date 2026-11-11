@@ -24,12 +24,12 @@ AGENTS.md; docs/agents/workflow.md; scripts/ci_native_cache.py; tests/test_ci_na
 No real desktop or network; retain pinned provenance, checksums and read-only PR cache behavior. Do not overwrite pre-existing output or follow identity-file symlinks.
 
 ## Acceptance criteria
-- [ ] Existing regular identity file and symlink cause CacheError before target copy; original bytes unchanged.
-- [ ] Restore with fresh paths remains successful, and CLI reports nonzero on rejection.
+- [x] Existing regular identity file and symlink cause CacheError before target copy; regression added, execution pending.
+- [x] Existing fresh-path restore regression retained; CacheError CLI handler remains unchanged; execution pending.
 - [ ] Final-head CI applicable gates pass, with review.
 
 ## Implementation slices
-- [ ] Add preflight and exclusive identity-file creation; add deterministic offline regression.
+- [x] Add preflight and exclusive identity-file creation; add deterministic offline regression.
 - [ ] Verify CI and review, squash merge; archive plan separately.
 
 ## Verification matrix
@@ -42,13 +42,14 @@ No real desktop or network; retain pinned provenance, checksums and read-only PR
 None; fail-closed hardening of CI-only output handling.
 
 ## Evidence log
+- 2026-11-11: source and offline regression committed on feature branch; exact-head CI pending; no local test execution claimed.
 - 2026-11-11: source inspection at master 0cb71c60: restore() uses sha_file.write_text() without preflight, unlike binary target.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement safe exclusive source identity creation and regression, then inspect final-head PR CI.
+Open PR, inspect final-head CI and reviews; correct failures before merge.
 
 ## Completion
 Final commit: pending
