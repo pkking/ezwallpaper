@@ -454,6 +454,15 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         // Reuse exactly the checked profile AND its private physical/layout
         // fingerprint. Hotplugged hardware can retain the same connector name.
         let profile = load_profile(profile_path)?;
+        // Event targets are already part of this opt-in invocation. Reject
+        // malformed or symlinked targets before contacting the niri session;
+        // the controller revalidates them before any wallpaper side effect.
+        if let Some(directory) = events_dir {
+            crate::rotation_event::prepare_directory(
+                directory,
+                profile.outputs.iter().map(|output| output.name.as_str()),
+            )?;
+        }
         let outputs = profile
             .outputs
             .iter()
@@ -1186,6 +1195,74 @@ mod tests {
                 !saved.outputs.contains_key("HDMI-A-1"),
                 "the second output must remain untouched and unacknowledged"
             );
+        }
+    }
+
+    #[test]
+    fn invalid_event_target_preflight_never_queries_niri() {
+        let (root, profile, state) = fixture();
+        let nonexistent = root.path().join("missing-events");
+        let events = root.path().join("events");
+        fs::create_dir(&events).expect("event directory");
+        let blocked = events.join("DP-1.json");
+        fs::create_dir(&blocked).expect("invalid directory where event file belongs");
+        let sentinel = blocked.join("sentinel");
+        fs::write(&sentinel, b"untouched").expect("sentinel");
+        for (directory, expected) in [
+            (&nonexistent, "cannot inspect event directory"),
+            (&events, "event target must be a regular non-symlink file"),
+        ] {
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply: true,
+                interval_minutes: 60,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: Some(directory),
+                require_niri_outputs: true,
+            })
+            .expect_err("invalid event target must fail before external niri IPC");
+            assert!(
+                error.to_string().contains(expected),
+                "unexpected event preflight error: {}",
+                error
+            );
+            assert!(
+                !state.exists(),
+                "invalid event target must not publish state"
+            );
+            assert!(
+                !state_lock_path(&state).exists(),
+                "invalid event target must not create a rotation lock"
+            );
+            assert!(!state.parent().expect("state parent").exists());
+        }
+        assert_eq!(
+            fs::read(&sentinel).expect("existing event target untouched"),
+            b"untouched"
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let alias = root.path().join("linked-events");
+            symlink(&events, &alias).expect("symlinked event directory");
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply: true,
+                interval_minutes: 60,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: Some(&alias),
+                require_niri_outputs: true,
+            })
+            .expect_err("symlinked event directory must fail before niri IPC");
+            assert!(error.to_string().contains("not a symlink"));
+            assert!(!state.exists());
+            assert!(!state_lock_path(&state).exists());
         }
     }
 
