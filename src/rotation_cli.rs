@@ -1893,7 +1893,8 @@ mod tests {
             .truncate(false)
             .open(state_lock_path(&state))
             .expect("test lock");
-        file.lock_exclusive().expect("hold lock across UTC boundary");
+        file.lock_exclusive()
+            .expect("hold lock across UTC boundary");
         let (tx, rx) = std::sync::mpsc::channel();
         let worker = std::thread::spawn(move || {
             tx.send(()).expect("worker started");
