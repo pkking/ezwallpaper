@@ -1,6 +1,6 @@
 # Measure selected wpaperd native cache outcomes across CI runs
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -23,14 +23,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; scripts/ci_wpaperd_c
 Use locally saved bounded decoded logs and independently captured actual Actions job + native build/pixel step status and timestamps. Preserve step selection distinction, run ID + attempt + head, strict duplicate JSON object rejection, no unsafe log paths. Only successful selected pixel step and full job count verified HIT/MISS, never skipped/failed steps. Native build-step elapsed is not workflow queue or whole CI E2E.
 
 ## Acceptance criteria
-- [ ] Deterministic batch reporter with selected verified counts, explicit skipped/failed/not-reached and nearest-rank native build/IPC wall P50/P90 per HIT/MISS.
-- [ ] Strict offline regression covers source echo, malformed/duplicated JSON members, stale/cross-run identities, skipped native step, failed pixel step, path traversal and time ordering.
-- [ ] Document repeatable actual Actions job and step evidence collection and current verified cold sample without asserting population hit rate.
+- [x] Deterministic batch reporter with selected verified counts, explicit skipped/failed/not-reached and nearest-rank native build/IPC wall P50/P90 per HIT/MISS.
+- [x] Strict offline regression covers source echo, malformed/duplicated JSON members, stale/cross-run identities, skipped native step, failed pixel step, path traversal and time ordering.
+- [x] Document repeatable actual Actions job and step evidence collection and current verified cold sample without asserting population hit rate.
 - [ ] Final-head applicable CI/review PASS, squash merge; independent plan archive. Issue #223 stays OPEN for representative warm runs.
 
 ## Implementation slices
-- [ ] Aggregate selected native step and full-job conclusions.
-- [ ] Offline tests via native wpaperd helpers; evidence documentation.
+- [x] Aggregate selected native step and full-job conclusions.
+- [x] Offline tests via native wpaperd helpers; evidence documentation.
 - [ ] Final-head CI/reviews, merge and archive.
 
 ## Verification matrix
@@ -44,13 +44,14 @@ Use locally saved bounded decoded logs and independently captured actual Actions
 None. CI-only read-only evidence aggregation, no runtime/permissions/architecture changes.
 
 ## Evidence log
+- 2026-11-11: source and offline regressions committed to active branch; no local runtime was available for tests. Exact-head Actions CI and review are required before merging.
 - 2026-11-11: master and source inspected. Existing reporter only classifies one log and requires actual selected native IPC step; no batch report available.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement offline batch reporter and regression on this branch, open PR, verify exact final-head selected native pixels and review before merge. Do not claim warm cache performance without observed valid HIT.
+Open PR from this branch against verified master. Inspect exact final-head Actions checks, including actual selected native E2E when triggered, and review threads. Repair any failures; merge only after all applicable checks pass. Archive separately.
 
 ## Completion
 Final commit: pending
