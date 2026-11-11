@@ -24,12 +24,12 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci
 No desktop mutation, external network, secrets, unsafe cache trust, changed CLI defaults, bypass of native E2E, or invented evidence.
 
 ## Acceptance criteria
-- [ ] Sample the current UTC rotation bucket only after acquiring the per-profile state lock, preventing a queued hourly invocation from applying a stale pre-lock time bucket.
+- [x] Sample the current UTC rotation bucket only after acquiring the per-profile state lock, preventing a queued hourly invocation from applying a stale pre-lock time bucket.
 - [ ] Rust offline race test with held lock and injected clock; existing 30/60-minute state idempotence; exact-head CI.
 - [ ] Review and exact-final-head applicable CI SUCCESS.
 
 ## Implementation slices
-- [ ] Implement minimal slice with negative and boundary regression.
+- [x] Implement minimal slice with negative and boundary regression.
 - [ ] Verify exact-head CI and review; squash merge only after all applicable checks succeed.
 - [ ] Archive completed plan in a separate follow-up PR after verified merge.
 
@@ -43,13 +43,14 @@ No desktop mutation, external network, secrets, unsafe cache trust, changed CLI 
 None: internal reliability/diagnostic behavior within accepted boundaries.
 
 ## Evidence log
+- 2026-11-11: Moved automatic UTC epoch sampling below lock_exclusive and added an offline delayed-lock/clock-boundary regression. Existing preview and simulated periods remain unchanged. CI pending.
 - 2026-11-11: inspected master bd7724235cde883125994cca8fdd7daca7dd81e8: run_with_backend_interval_scoped() computes epoch before lock_exclusive(); an invocation blocked across a UTC hour boundary can retain the prior bucket.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement the minimal post-lock clock sampling and offline regression on the current branch, open PR and check final-head CI.
+Open PR against current master, inspect final-head CI, correct failures, and verify reviews before squash merge.
 
 ## Completion
 Final commit: pending
