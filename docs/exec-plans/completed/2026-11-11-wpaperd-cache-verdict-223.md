@@ -1,7 +1,7 @@
 # Emit auditable wpaperd cache outcomes only after validated native E2E
 
 Issue: #223
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -33,23 +33,23 @@ Only explicitly selected wpaperd native step with SUCCESS native job and explici
 
 - [x] Emit deterministic HIT/MISS after native cache validation or full compilation, no marker on skipped steps.
 - [x] Offline parser requires independent native step conclusion + job conclusion, rejects unexpected/ambiguous data and follows fail-closed semantics.
-- [ ] Run offline tests through existing selected Sway/wpaperd CI test path; selected native E2E still executes on final PR head.
-- [ ] Final-head applicable 10 checks PASS, no blocking reviews, squash merge, then archive separately.
+- [x] PR #269 final head `72167c0424aad90e2707fad728f1a1f02e581ef1` run 42998836830: selected Sway native offline helper test, actual pinned wpaperd build, IPC and dual-screen framebuffer assertions all SUCCESS.
+- [x] PR #269 exact-head 42998836830: 8 SUCCESS / 2 correctly SKIPPED; no blocking reviews/threads; squash merged `f4197917bb71dea73a182a6de94850b162fd5cd7`; independently archive.
 
 ## Implementation slices
 
 - [x] Add selected-only emitted log markers without relaxing cache/source/pixel checks.
 - [x] Implement minimal read-only reporter reusing safe log input and add negative/positive tests.
 - [x] Document sample collection limitation and verify full CI.
-- [ ] Archive in separate docs-only PR.
+- [x] Archive in separate docs-only PR.
 
 ## Verification matrix
 
 | Gate | Expected | Status |
 |---|---|---|
-| `python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v` | exact emitted output and fail cases | pending |
-| Exact-head workflow run | selected native wpaperd IPC+dual pixels, Rust/Windows/macOS/Sway | pending |
-| PR review/thread | no blockers | pending |
+| `python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v` | selected Sway native offline helper suite SUCCESS in #42998836830 |
+| Exact-head workflow run | exact head #42998836830: 8 SUCCESS, 2 intentionally SKIPPED; native wpaperd IPC + two-output framebuffer SUCCESS |
+| PR review/thread | no blocking reviews/threads |
 
 ## Decision gates
 
@@ -57,21 +57,23 @@ None. CI-only observability semantics, no runtime contract or OS support change.
 
 ## Evidence log
 
+- 2026-11-11: PR #269 exact final head `72167c0424aad90e2707fad728f1a1f02e581ef1`, Actions https://github.com/pkking/ezwallpaper/actions/runs/42998836830 completed 8 SUCCESS/2 correctly SKIPPED. Selected Sway job 130449650383 confirmed `Build or validate exact upstream wpaperd 1.3.0` SUCCESS, `Verify real wpaperd native IPC and two-output rendered pixels` SUCCESS, upload artifact step SUCCESS, PR save skipped. Decoded job log emitted `wpaperd native cache MISS; compiled pinned source` at 09:56:02Z (source-echo lines ignored); no HIT claimed. No blocking reviews/threads. Squash merge `f4197917bb71dea73a182a6de94850b162fd5cd7`.
+
 - 2026-11-11: branch implementation and offline regression source committed; local Python tests NOT run (repo checkout unavailable in sandbox); final exact PR HEAD GitHub CI required. No production/desktop changes.
 
 - 2026-11-11: inspected workflow at `8c20462c`: wpaperd cache hit emits `Pinned wpaperd binary cache hit; source build skipped`; no matching cold MISS marker. Current selected native job is a conditional step in always-running Sway E2E. No changes made before this plan.
 
 ## Deviations and discoveries
 
-Pending.
+The workflow SHA changed the source-bound cache key, so the PR selected native test completed a legitimate cold build. The sample does not prove a warm PR HIT, nor any physical-display results.
 
 ## Resume from here
 
-Open PR for this branch with Issue/Plan lines, verify all required final-head CI and reviews; repair failures before squash merge. If implementation succeeds, archive the plan in independent docs-only PR.
+Archive this completed plan in a separate docs-only PR; verify that PR's exact final-head applicable CI and reviews before merge. Issue #223 remains OPEN for representative warm-cache PR performance evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed: warm repeated PR rate and physical #59 evidence.
+Final commit: `f4197917bb71dea73a182a6de94850b162fd5cd7` (#269 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42998836830 (8 SUCCESS / 2 SKIPPED, native wpaperd selected)
+E2E artifact: wpaperd native dual-output evidence upload step SUCCESS in run 42998836830; artifact bytes not independently downloaded
+Remaining unassessed items: #223 representative warm PR HIT rate/performance and cache-miss causes; #59 physical GPU/4K/hotplug/lockscreen evidence UNASSESSED.
