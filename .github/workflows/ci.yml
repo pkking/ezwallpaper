@@ -677,17 +677,23 @@ jobs:
         with:
           path: /tmp/ezw-native-cache/niri
           key: ${{ steps.niri_key.outputs.niri }}
-      - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
-        if: steps.niri_cache.outputs.cache-hit != 'true'
+      - name: Checkout exact experimental niri source for cache identity
         shell: bash
         run: |
           set -euo pipefail
+          # The independent checkout and SHA check are mandatory on BOTH a
+          # cache hit and cold build. Only compilation may be skipped on HIT.
           mkdir -p artifacts/niri-noctalia-e2e
           git clone --depth 1 --branch wip/virtual-outputs \
             https://github.com/willybarret/niri.git /tmp/niri-virtual-3800
           git -C /tmp/niri-virtual-3800 rev-parse HEAD | tee artifacts/niri-noctalia-e2e/upstream-commit.txt
           grep -Fx '7fd585dd44ed67644977dd9561bb6e8b3837f8f7' \
             artifacts/niri-noctalia-e2e/upstream-commit.txt
+      - name: Build exact unmerged niri virtual-output PR #3800 (CI-only)
+        if: steps.niri_cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           rustc +1.99.1 --version | tee artifacts/niri-noctalia-e2e/build-toolchain.txt
           (cd /tmp/niri-virtual-3800 && \
             NIRI_BUILD_COMMIT=7fd585dd44ed67644977dd9561bb6e8b3837f8f7 \
