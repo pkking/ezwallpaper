@@ -1,7 +1,7 @@
 # 2026-11-11: Reap spawned plugin workers before native Noctalia test-home cleanup
 
 Issue: #59
-Status: PLANNING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -42,8 +42,8 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, Issue #59 and tests/
 
 ## Implementation slices
 
-- [ ] Extend `owned_stop` to account for group descendants, including after leader exit, with bounded TERM/KILL and live-group detection.
-- [ ] Add Linux-only offline subprocess tests for child descendants, TERM-resistant process, and full cleanup.
+- [x] Extend `owned_stop` to account for group descendants, including after leader exit, with bounded TERM/KILL and live-group detection.
+- [x] Add Linux-only offline subprocess tests for child descendants, TERM-resistant process, and full cleanup.
 - [ ] Final-head CI, review, squash merge only on success, separate completed-plan PR.
 
 ## Verification matrix
@@ -61,6 +61,7 @@ None: confined to an already test-owned noninteractive process group in the disp
 ## Evidence log
 
 - 2026-11-11: read current master native harness and exact artifact/log from failing PR #280; confirmed pixel captures and native plugin clone overlap. No code or tests executed on this branch yet.
+- 2026-11-11: `db0cda4` extends test-owned Linux process-group lifecycle with read-only procfs group enumeration and bounded TERM/KILL; `c18c1db` adds isolated subprocess regressions for an exited leader with a live child and a TERM-resistant worker while proving an unrelated process group stays alive. No local Python/Cargo execution or live desktop; exact PR-head CI PENDING.
 
 ## Deviations and discoveries
 
@@ -68,7 +69,7 @@ Root cause may involve an upstream plugin worker outside the original process gr
 
 ## Resume from here
 
-Implement bounded owned-process-group cleanup and offline Linux child-process regression in this branch, open Issue #59-linked PR, verify all final-head gates and review before merge.
+Open Issue #59-linked PR from this branch; run exact-head offline helper tests and native Noctalia/niri two-virtual-framebuffer CI. Fix failures without weakening the pixel gate; squash merge only when all applicable CI and review pass.
 
 ## Completion
 
