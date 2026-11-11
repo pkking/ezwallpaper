@@ -1,7 +1,7 @@
 # Fail invalid niri event targets before external IPC
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -33,22 +33,22 @@ Only preflight when `require_niri_outputs` is selected, after existing profile l
 
 - [x] Invalid opted-in event directory rejected with event-specific error before any niri inventory IPC, lock, or state.
 - [x] Invalid existing output event target rejected before niri IPC; no existing target bytes altered.
-- [ ] Existing valid niri IPC and dual-output virtual framebuffer path remains selected and passes actual final-head CI.
-- [ ] Squash merge after all applicable final-head checks and review; archive separately, keep #54/#59 OPEN.
+- [x] Existing valid niri IPC and dual-output virtual framebuffer path remains selected and passes actual final-head CI.
+- [x] Squash merge after all applicable final-head checks and review; archive separately, keep #54/#59 OPEN.
 
 ## Implementation slices
 
 - [x] Preflight event targets on the verified niri profile without removing controller revalidation.
 - [x] Deterministic no-desktop negative tests and no side-effect assertions.
-- [ ] Exact-head CI, review, squash merge and separate plan archive.
+- [x] Exact-head CI, review, squash merge and separate plan archive.
 
 ## Verification matrix
 
 | Gate | Expected | Status |
 |---|---|---|
-| Rust offline | `cargo test rotation_cli::tests::invalid_event_target_preflight_never_queries_niri` | pending |
-| Complete PR CI | applicable Rust, Windows, macOS, Sway, Noctalia/niri native virtual pixels SUCCESS | pending |
-| Review | none blocking/unresolved | pending |
+| Rust offline | `cargo test rotation_cli::tests::invalid_event_target_preflight_never_queries_niri` | SUCCESS — [PR #276 run 43008982037](https://github.com/pkking/ezwallpaper/actions/runs/43008982037) |
+| Complete PR CI | applicable Rust, Windows, macOS, Sway, Noctalia/niri native virtual pixels SUCCESS | SUCCESS — [PR #276 run 43008982037](https://github.com/pkking/ezwallpaper/actions/runs/43008982037) |
+| Review | none blocking/unresolved | SUCCESS — [PR #276 run 43008982037](https://github.com/pkking/ezwallpaper/actions/runs/43008982037) |
 
 ## Decision gates
 
@@ -62,15 +62,20 @@ None: existing opt-in event contract is unchanged, only errors are detected befo
 
 ## Deviations and discoveries
 
-Pending.
+The archived change only moves the existing read-only event-target validation earlier in an explicitly opt-in niri invocation; the controller retains the later, authoritative recheck to detect path changes before state mutation. It does not provide atomic protection against arbitrary concurrent filesystem replacements nor real physical monitor proof.
+
+## Verified final-head evidence
+
+- [PR #276](https://github.com/pkking/ezwallpaper/pull/276) exact tested head `efff5934665619b7a17b0a9762f7cb188942c8e4` passed **10/10 CI checks** in [run 43008982037](https://github.com/pkking/ezwallpaper/actions/runs/43008982037): Rust fmt/clippy/tests including offline event target regression, Windows/macOS, Sway framebuffer, native Noctalia/Sway dual virtual IPC/pixels, experimental niri+Noctalia virtual framebuffer and plan integrity. No blocking review threads.
+- Squash merged PR #276 as `83a21d418b2f848f4285017732a7c4743b5ba12d`. No live user desktop accessed. Broader hourly-rotation #54 and physical-evidence #59 remain OPEN.
 
 ## Resume from here
 
-Open the implementation PR against the freshly checked master with exactly one Issue and Plan. Verify all applicable exact-final-head CI jobs and reviews; fix failures before squash merge, then move this plan to completed in an independent docs PR.
+Continue open Issue #54 with a new independently scoped, evidence-backed reliability test or fix on current master; do not reopen merged PR #276 or retest an actual user desktop in CI.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed items: physical niri GPU/4K/hotplug/lockscreen and broader #54 scope.
+Final commit: `83a21d418b2f848f4285017732a7c4743b5ba12d` (PR #276; tested head `efff5934665619b7a17b0a9762f7cb188942c8e4`)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43008982037 (all 10 required exact-head checks SUCCESS)
+E2E artifact: native Noctalia/Sway and experimental niri+Noctalia two-virtual-output framebuffer evidence in run 43008982037 (not physical pixels)
+Remaining unassessed items: physical niri GPU/4K/hotplug/lockscreen, concurrent path races and broader #54 hourly rotation behavior.
