@@ -25,6 +25,17 @@ The script is offline, read-only, bounded and rejects symlinked or malformed job
 **Evidence boundary:** A verified marker proves only the pinned virtual Sway/wpaperd CI job and its native IPC/framebuffer assertions. It does not prove a physical display, niri GPU/4K/hotplug, or the cache hit rate over unobserved runs. Changing `.github/workflows/ci.yml` changes the existing workflow-hashed cache key; the first run of this slice can be a legitimate cold build. Confirm later warm observations and timing separately. The tool changes neither PR restore-only/cache save permissions nor existing screenshot assertions.
 
 
+
+## Failed native source build: preserve the negative evidence
+
+A selected native wpaperd build can fail **before** the independent IPC/pixel step starts. The offline batch reporter accepts this narrow, independently timed state:
+
+- the overall Sway job is `failure`; `Build or validate exact upstream wpaperd 1.3.0` is `failure`;
+- `Verify real wpaperd native IPC and two-output rendered pixels` is `skipped` with no pixel timestamps;
+- the build step has actual start/end timestamps and a decoded job log exists; **no emitted** wpaperd native cache HIT/MISS decision is present.
+
+It reports `build_failed_before_native_pixels` with the build-step duration and `pixel_seconds: null`. That failure is **not** `skipped_or_not_reached` (an unselected native path) and is **never** included in verified HIT/MISS counts or successful latency distributions. A skipped native step with forged execution timestamps, a failed build paired with successful job conclusion, or an emitted cache marker without a native pixel step is rejected. This is observational coverage, not a retry mechanism or a change to the native gate. No real selected failed-build run is claimed by these deterministic fixtures.
+
 ## Aggregate only selected native jobs
 
 The read-only batch reporter `scripts/ci_wpaperd_cache_metrics.py` accepts a bounded UTF-8 `jobs.json` manifest beside independently captured decoded Sway job logs. The manifest has one row per actual GitHub Actions job (not workflow), with exact `run_id`, `attempt`, `job_id`, `head_sha`, `event`, `job_name`, `conclusion`, `native_step_conclusion`, `build_step_conclusion`, job `created_at`/`started_at`/`completed_at`, and independently reported build/pixel-step `*_started_at`/`*_completed_at` timestamps, plus relative `log` path. Use the exact step names `Build or validate exact upstream wpaperd 1.3.0` and `Verify real wpaperd native IPC and two-output rendered pixels` in the Actions jobs API. For both conditionally skipped steps use `null` step times and `null` log; the overall Sway job may still be SUCCESS.
