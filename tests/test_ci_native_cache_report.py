@@ -145,10 +145,10 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
     def test_batch_metrics_cohorts_do_not_conflate_master_hits_with_warm_prs(self):
         root = self._metrics_fixture()
         (root / "mixed.log").write_text(
-            output("Noctalia", "hit") + "\\n" + output("niri", "miss") + "\\n",
+            output("Noctalia", "hit") + "\n" + output("niri", "miss") + "\n",
             encoding="utf-8")
         (root / "incomplete.log").write_text(
-            output("Noctalia", "hit") + "\\n", encoding="utf-8")
+            output("Noctalia", "hit") + "\n", encoding="utf-8")
         job = self._metrics_job
         records = [
             {**job(11, "warm.log", completed="2026-11-11T00:00:05Z"),
