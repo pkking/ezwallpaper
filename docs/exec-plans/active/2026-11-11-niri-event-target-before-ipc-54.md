@@ -1,7 +1,7 @@
 # Fail invalid niri event targets before external IPC
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -31,15 +31,15 @@ Only preflight when `require_niri_outputs` is selected, after existing profile l
 
 ## Acceptance criteria
 
-- [ ] Invalid opted-in event directory rejected with event-specific error before any niri inventory IPC, lock, or state.
-- [ ] Invalid existing output event target rejected before niri IPC; no existing target bytes altered.
+- [x] Invalid opted-in event directory rejected with event-specific error before any niri inventory IPC, lock, or state.
+- [x] Invalid existing output event target rejected before niri IPC; no existing target bytes altered.
 - [ ] Existing valid niri IPC and dual-output virtual framebuffer path remains selected and passes actual final-head CI.
 - [ ] Squash merge after all applicable final-head checks and review; archive separately, keep #54/#59 OPEN.
 
 ## Implementation slices
 
-- [ ] Preflight event targets on the verified niri profile without removing controller revalidation.
-- [ ] Deterministic no-desktop negative tests and no side-effect assertions.
+- [x] Preflight event targets on the verified niri profile without removing controller revalidation.
+- [x] Deterministic no-desktop negative tests and no side-effect assertions.
 - [ ] Exact-head CI, review, squash merge and separate plan archive.
 
 ## Verification matrix
@@ -56,6 +56,8 @@ None: existing opt-in event contract is unchanged, only errors are detected befo
 
 ## Evidence log
 
+- 2026-11-11: source and deterministic regression committed on isolated branch; no local test execution claimed. Exact-head Actions CI including the selected native gates and blocking reviews must be checked before merge.
+
 - 2026-11-11: inspected repository SHA `9ca9a573`, existing call order and read-only `prepare_directory` implementation. No local tests run.
 
 ## Deviations and discoveries
@@ -64,7 +66,7 @@ Pending.
 
 ## Resume from here
 
-Implement on this branch, open a linked PR and verify final exact-head CI/reviews. Repair any failures; merge only when complete, then archive independently.
+Open the implementation PR against the freshly checked master with exactly one Issue and Plan. Verify all applicable exact-final-head CI jobs and reviews; fix failures before squash merge, then move this plan to completed in an independent docs PR.
 
 ## Completion
 
