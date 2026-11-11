@@ -1,6 +1,6 @@
 # Validate rotation invocation before any opt-in niri IPC
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -25,36 +25,39 @@ Validate only pure arguments upfront; preserve legitimate dual-output niri topol
 ## Acceptance criteria
 - [x] Invalid interval 0 or overflow with opt-in niri fails before any external desktop IPC and state writes.
 - [x] Apply + epoch override with opt-in niri fails with preview-only error independent of compositor availability.
-- [ ] Valid inputs retain existing niri preflight order; exact final-head CI/Rust/platform/headless and selected native E2E pass.
-- [ ] Squash merge after review; independently archive plan, keep #54 OPEN.
+- [x] Valid inputs retain existing niri preflight order; final-head run 43002585814 completed 10/10 SUCCESS including independent Noctalia/Sway and experimental niri/Noctalia virtual dual-output framebuffer tests.
+- [x] PR #272 no blocking reviews/threads, final-head SUCCESS and squash merged as `2f6e364bebb3803ab980d255d7f54bf31f37f802`. Archive independently; #54 remains OPEN.
 
 ## Implementation slices
 - [x] Pure validation before niri preflight and ensure one consistent controller validation.
 - [x] Add offline no-desktop regression.
-- [ ] Verify exact-head CI, review and merge, then archive independently.
+- [x] Verify exact-head CI, review and merge, then archive independently.
 
 ## Verification matrix
 | Gate | Target | State |
 |---|---|---|
-| Rust offline preflight | cargo test rotation_cli::tests::invalid_opt_in_niri_parameters_fail_before_ipc | pending |
-| Rust/Windows/macOS + native selected | latest PR exact head GitHub Actions, 10 applicable checks | pending |
-| Review threads | none unresolved | pending |
+| Rust offline preflight | cargo test rotation_cli::tests::invalid_opt_in_niri_parameters_fail_before_ipc | PASS in final head #43002585814 |
+| Rust/Windows/macOS + native selected | latest PR exact head GitHub Actions, 10 applicable checks | PASS 10/10 SUCCESS including both selected native compositor checks |
+| Review threads | none unresolved | no blocking reviews or unresolved threads |
 
 ## Decision gates
 None. Narrow fail-closed validation ordering, no new user-visible flags/semantics, permissions, architecture, or OS support change.
 
 ## Evidence log
+- 2026-11-11: PR #272 final HEAD `1460a2295207f2dccd8be21033852eded0d29fb2`; GitHub Actions https://github.com/pkking/ezwallpaper/actions/runs/43002585814 completed 10/10 SUCCESS. Rust fmt/Clippy/Rust tests, Windows, macOS, Agent and plan checks, Sway, Noctalia live safety, Noctalia/Sway IPC and virtual dual-output pixels, and experimental niri/Noctalia virtual framebuffer checks all SUCCESS. Native source builds passed; screenshots/topology artifact upload step SUCCESS. No blocking reviews/threads. PR #272 squash merged `2f6e364bebb3803ab980d255d7f54bf31f37f802`.
+- 2026-11-11: a formatting-only Rust check initially failed on assertion formatting, repaired on latest head and re-validated; never used previous failing/ cancelled heads as approval.
+
 - 2026-11-11: source and offline regressions committed to active branch; no local runtime was available for tests. Exact-head Actions CI and review are required before merging.
 - 2026-11-11: inspected master `16723d6` source and confirmed existing niri preflight order; no tests executed before branch.
 
 ## Deviations and discoveries
-None.
+Native Noctalia and niri source builds took place on this final-head run; cache restore alone was not treated as pixel verification. Both virtual framebuffer checks passed, not physical monitor proof.
 
 ## Resume from here
-Open PR from this branch against verified master. Inspect exact final-head Actions checks, including actual selected native E2E when triggered, and review threads. Repair any failures; merge only after all applicable checks pass. Archive separately.
+Archive this verified plan in a separate docs-only PR. Require its own final-head applicable CI and review before merge. Keep Issue #54 OPEN for broader rotation requirements and Issue #59 for physical-display evidence.
 
 ## Completion
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `2f6e364bebb3803ab980d255d7f54bf31f37f802` (PR #272 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43002585814 (10/10 SUCCESS, exact head)
+E2E artifact: native niri topology and screenshot evidence upload step SUCCESS in run 43002585814; artifact bytes not independently inspected
 Remaining unassessed items: real niri GPU/4K/hotplug/lockscreen and #54 larger reliability objectives.
