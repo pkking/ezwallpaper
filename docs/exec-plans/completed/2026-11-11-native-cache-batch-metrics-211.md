@@ -1,7 +1,7 @@
 # Aggregate selected native cache evidence across Actions jobs
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -34,29 +34,31 @@ Offline read-only inputs, bounded manifest and job logs; refuse duplicate job/ru
 
 - [x] Batch aggregation schema for exact run_id, attempt, job_id, head_sha, event, native job conclusion and actual decoded job logs.
 - [x] Offline positive/negative cases for duplicated attempts, unselected/skipped/failed logs, ambiguous markers, timestamp monotonicity, path bounds, and zero-sample rates.
-- [ ] Final implementation head CI all applicable checks SUCCESS and reviews unblocked.
-- [ ] Squash merge and separately archive this plan after verified final-head CI.
+- [x] PR #264 final head `4f549b3772d65cda1f4400855aa134bc8a1d1d54`, run 42974678520: 8 SUCCESS, 2 correctly SKIPPED; no blocking reviews/threads.
+- [x] PR #264 squash merged `7f425f098fad441b6af989dcbc1f0f03fe8a2e2a`; archive in independent PR.
 
 ## Implementation slices
 
 - [x] Implement pure offline batch metrics from existing classifier without CI cache-key changes.
 - [x] Add deterministic offline tests and usage documentation. Five-job direct sample recorded under docs/agents/native-cache-metrics.md.
-- [ ] Verify full exact-head CI/reviews then merge.
-- [ ] Archive via separate docs-only PR after implementation merge.
+- [x] Verify full exact-head CI/reviews then merge.
+- [x] Archive via separate docs-only PR after implementation merge.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
 | Batch metrics offline | python3 -m unittest discover -s tests -p 'test_ci_native_cache_metrics.py' -v | Five negative/positive tests | PASS locally before PR, 5/5 |
-| Existing classifier | python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v | No native source/cache trust change | pending CI |
-| CI | exact PR implementation head | applicable Rust/platform/agent/Sway, native selected/skipped accurately | pending |
+| Existing classifier | python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v | No native source/cache trust change | PASS: #42974678520 classifier suite |
+| CI | exact PR implementation head | applicable Rust/platform/agent/Sway, native selected/skipped accurately | PASS: #42974678520, 8 SUCCESS / 2 SKIPPED |
 
 ## Decision gates
 
 None. No new permissions, no user-visible CLI behavior, no architecture/data-flow change.
 
 ## Evidence log
+
+- 2026-11-11: PR #264 final-head `4f549b3772d65cda1f4400855aa134bc8a1d1d54` exact CI run 42974678520 completed 8 SUCCESS/2 intended SKIPPED (including Windows, macOS, Rust, Sway headless pixels and Agent plan gate), no blocking reviews/threads. The existing native-cache offline CI step executed four new batch tests (37 native-cache tests PASS). Squash merged `7f425f098fad441b6af989dcbc1f0f03fe8a2e2a`.
 
 - 2026-11-11: master baseline ecce067208368c9ccb59a464a81988ca4b17b4ad; PR #260 native job 130329242982 (run 42961581423) 10/10 job SUCCESS; native decoded log emitted MISS for Noctalia and niri; source echoes were not counted. Independently read job created_at 04:48:32Z, started_at 04:48:34Z, completed_at 05:13:56Z.
 - 2026-11-11: local offline five-case tests PASS on uncommitted script and isolated copy of existing classifier; GitHub exact-head CI pending.
@@ -69,11 +71,11 @@ No claim that a cold-cache miss is caused by ABI drift without independently com
 
 ## Resume from here
 
-Open PR from branch agent/native-cache-batch-metrics-211-20261111 against latest master. Verify exact final-head CI and review; squash merge only if all applicable checks pass.
+Archive this completed plan via its independent docs-only PR, check that PR's own exact-head applicable CI and reviews, and merge. Keep the wider Issue #211 OPEN for comprehensive cache-performance evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: `7f425f098fad441b6af989dcbc1f0f03fe8a2e2a` (#264 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42974678520 (8 success, 2 selected native jobs skipped at final head)
 E2E artifact: not applicable (CI-only offline reporting; existing native gate unchanged)
 Remaining unassessed items: all physical niri evidence, full population coverage, root-causes for individual misses.
