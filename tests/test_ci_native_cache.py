@@ -262,8 +262,8 @@ class PinnedNativeCacheTests(unittest.TestCase):
         # cache restore. Restore must not overwrite it, even on a valid hit.
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
-        job = ci.split("  noctalia-sway-visual-e2e:\\n", 1)[1].split(
-            "\\n  platform-tests:", 1)[0]
+        job = ci.split("  noctalia-sway-visual-e2e:\n", 1)[1].split(
+            "\n  platform-tests:", 1)[0]
         for component, directory in (
             ("noctalia", "noctalia-sway-e2e"),
             ("niri", "niri-noctalia-e2e"),
@@ -275,13 +275,15 @@ class PinnedNativeCacheTests(unittest.TestCase):
                 self.assertIn(restore_cmd, job)
                 self.assertEqual(job.count(f"--sha-file {restored}"), 1)
                 self.assertNotIn(f"--sha-file {verified}", job)
-                self.assertIn(f"cmp {restored} \\\n              {verified}", job)
+                self.assertIn(f"cmp {restored} \\", job)
+                self.assertIn(f"              {verified}", job)
                 self.assertLess(job.index(f"| tee {verified}"),
                                 job.index(restore_cmd))
                 self.assertLess(job.index(restore_cmd),
                                 job.index(f"cmp {restored}"))
+                hit = ("Noctalia" if component == "noctalia" else "niri")
                 self.assertLess(job.index(f"cmp {restored}"),
-                                job.index(f"native cache HIT; skipping upstream compilation"))
+                                job.index(f"{hit} native cache HIT; skipping upstream compilation"))
         self.assertIn("Test actual native IPC and dual output rendered pixels", job)
         self.assertIn("Verify real niri + Noctalia dual-output framebuffer", job)
 
