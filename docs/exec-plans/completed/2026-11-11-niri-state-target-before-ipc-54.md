@@ -1,7 +1,7 @@
 # 2026-11-11: Reject non-regular rotation state and lock targets before opt-in niri IPC
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -34,23 +34,23 @@ AGENTS.md, README.md, Cargo.toml, docs/agents/workflow.md, docs/agents/testing.m
 
 ## Acceptance criteria
 
-- [ ] Existing directory at state or lock target is rejected before niri IPC without mutating the target; no rotation state commit.
-- [ ] Symlink at state or lock target rejected before niri IPC; target sentinel contents unchanged.
-- [ ] Normal state-path and later lock checks remain intact, and final-head full CI including Rust/Windows/macOS/Sway/native Noctalia+niri virtual pixels and agent plan passes.
+- [x] Existing directory at state or lock target is rejected before niri IPC without mutating the target; no rotation state commit.
+- [x] Symlink at state or lock target rejected before niri IPC; target sentinel contents unchanged.
+- [x] Normal state-path and later lock checks remain intact, and final-head full CI including Rust/Windows/macOS/Sway/native Noctalia+niri virtual pixels and agent plan passes.
 
 ## Implementation slices
 
 - [x] Resolve state target once prior to optional niri preflight, perform read-only state + lock target checks.
 - [x] Add deterministic offline fake-compositor absent negative regression tests for both targets and symlinks.
-- [ ] Exact-final-head PR CI/reviews green, then squash merge and archive plan separately.
+- [x] Exact-final-head PR CI/reviews green, then squash merge and archive plan separately.
 
 ## Verification matrix
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Rust offline state-path | `cargo test rotation_cli::tests::invalid_opt_in_niri_state_targets_fail_before_ipc` | PENDING |
-| Full CI | fmt/clippy/Rust/Windows/macOS + Noctalia safety + Sway/niri native framebuffer E2E | PENDING |
-| Governance | agent plan integrity and contract CI | PENDING |
+| Rust offline state-path | `cargo test rotation_cli::tests::invalid_opt_in_niri_state_targets_fail_before_ipc` | SUCCESS, run 43048093901 |
+| Full CI | fmt/clippy/Rust/Windows/macOS + Noctalia safety + Sway/niri native framebuffer E2E | SUCCESS, run 43048093901 |
+| Governance | agent plan integrity and contract CI | SUCCESS, run 43048093901 |
 
 ## Decision gates
 
@@ -67,11 +67,13 @@ None.
 
 ## Resume from here
 
-Open one Issue #54-linked implementation PR from this branch, inspect all exact-head CI and review threads, fix failures then squash merge. Archive the plan only after merge in a separately gated PR.
+Implementation merged in #280 after final-head 10/10 CI and no blocking reviews. This plan is complete; continue broader Issue #54 in separate slices.
+
+- 2026-11-11: PR #280 exact head `8b185f44` passed all 10 applicable jobs in run 43048093901 after retry, including native virtual framebuffer; no blocking reviews; squash-merged as `ee1e1686`. This does not establish physical display coverage or eliminate TOCTOU.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `8b185f44bbfed5cae6bd91258e3a23c7fc5c07a1`; squash merge `ee1e1686b748ee6e4fdbd2ffbd0e83e3114d6783`
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43048093901 (10/10 SUCCESS after rerun, exact implementation head)
+E2E artifact: Noctalia/Sway and experimental niri virtual dual-output CI jobs SUCCESS; physical monitor tests UNASSESSED
 Remaining unassessed items: filesystem races after read-only preflight, physical GPU/4K/hotplug/lockscreen and broader #54 scope.
