@@ -74,4 +74,4 @@ Archive this completed plan through this independent docs-only PR, require its o
 Final commit: `b63c88c1487c05aebe9a46d8a70f15b0d8f4e7ab` (#268 squash)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/42998711169 (8 SUCCESS / 2 SKIPPED)
 E2E artifact: not applicable; offline metric verification
-Remaining unassessed: broad issue #211 warm PR metrics and #59 physical evidence.
+Remaining unassessed items: #211 representative warm-cache PR metrics, cold-miss causes and performance target; #59 physical GPU/4K/hotplug/lockscreen evidence UNASSESSED.
