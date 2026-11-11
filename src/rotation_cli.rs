@@ -1213,7 +1213,8 @@ mod tests {
             .expect_err("invalid opt-in argument must fail without niri IPC");
             assert!(
                 error.to_string().contains(expected),
-                "unexpected preflight error: {}", error
+                "unexpected preflight error: {}",
+                error
             );
             assert!(!state.exists(), "invalid arguments must not write state");
             assert!(
