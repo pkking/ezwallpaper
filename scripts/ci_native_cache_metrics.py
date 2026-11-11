@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Summarize selected native Actions jobs from independently saved job logs.
+
+Offline. Each manifest row is a GitHub Actions job record (not an entire run).
+The job's conclusion is authoritative for whether a cache marker is verified;
+source echo lines, skipped jobs and failing jobs are not cache successes.
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime
+import json
+import math
+from pathlib import Path
+import re
+import stat
+
+import ci_native_cache_report as report
+
+MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_JOBS = 200
+SHA = re.compile(r"[0-9a-f]{40}\Z")
+UTC = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z\Z")
+FIELDS = frozenset({"run_id", "attempt", "job_id", "event", "head_sha", "job_name",
+                    "conclusion", "created_at", "started_at", "completed_at", "log"})
+STATUSES = ("verified_hit", "verified_miss", "unverified_hit",
+            "unverified_miss", "not_reached", "skipped")
+
+
+def _timestamp(value: str) -> datetime:
+    if not isinstance(value, str) or not UTC.fullmatch(value):
+        raise report.EvidenceError("invalid_job_timestamp")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise report.EvidenceError("invalid_job_timestamp") from exc
+
+
+def _load_log(directory: Path, relative: str) -> str:
+    if not isinstance(relative, str) or not relative or "\\" in relative:
+        raise report.EvidenceError("unsafe_job_log_path")
+    subpath = Path(relative)
+    if subpath.is_absolute() or any(p in ("..", ".") for p in relative.split("/")):
+        raise report.EvidenceError("unsafe_job_log_path")
+    target = directory
+    for part in subpath.parts[:-1]:
+        target = target / part
+        try:
+            mode = target.lstat().st_mode
+        except OSError as exc:
+            raise report.EvidenceError("cannot_read_job_log") from exc
+        if not stat.S_ISDIR(mode):
+            raise report.EvidenceError("unsafe_job_log_path")
+    return report.read_log(directory / subpath)
+
+
+def _percentile(values: list[float], percentile: float) -> float | None:
+    """Observed nearest-rank percentile, no extrapolation from sparse samples."""
+    if not values:
+        return None
+    sorted_values = sorted(values)
+    return round(sorted_values[math.ceil(percentile * len(values)) - 1], 3)
+
+
+def summarize(items: list[dict], base_dir: Path) -> dict:
+    if not isinstance(items, list) or len(items) > MAX_JOBS:
+        raise report.EvidenceError("invalid_native_job_count")
+    seen_runs: set[tuple[int, int]] = set()
+    seen_jobs: set[int] = set()
+    totals = {c: {status: 0 for status in STATUSES} for c in report.COMPONENTS}
+    wall_seconds: list[float] = []
+    queue_seconds: list[float] = []
+    event_counts = {"pull_request": 0, "push": 0}
+    conclusions = {c: 0 for c in report.CONCLUSIONS}
+    rows = []
+    for item in items:
+        if not isinstance(item, dict) or set(item) != FIELDS:
+            raise report.EvidenceError("invalid_native_job_fields")
+        run_id, attempt, job_id = (item[k] for k in ("run_id", "attempt", "job_id"))
+        if (any(type(x) is not int or x < 1 for x in (run_id, attempt, job_id))
+                or (run_id, attempt) in seen_runs or job_id in seen_jobs):
+            raise report.EvidenceError("invalid_or_duplicate_job_identity")
+        seen_runs.add((run_id, attempt))
+        seen_jobs.add(job_id)
+        if (not isinstance(item["event"], str) or
+                item["event"] not in event_counts or
+                not isinstance(item["head_sha"], str) or
+                not SHA.fullmatch(item["head_sha"])):
+            raise report.EvidenceError("invalid_run_identity")
+        event_counts[item["event"]] += 1
+        conclusion = item["conclusion"]
+        if not isinstance(conclusion, str) or conclusion not in conclusions:
+            raise report.EvidenceError("invalid_job_conclusion")
+        conclusions[conclusion] += 1
+        if item["job_name"] != report.NATIVE_JOB:
+            raise report.EvidenceError("unexpected_native_job")
+        if conclusion == "skipped":
+            if item["log"] is not None or any(item[k] is not None for k in
+                                                ("started_at", "completed_at")):
+                raise report.EvidenceError("skipped_job_has_execution_evidence")
+            elapsed = None
+            queued = None
+            if item["created_at"] is not None:
+                _timestamp(item["created_at"])
+            classified = report.classify(item["job_name"], conclusion, "")
+        else:
+            if item["log"] is None:
+                raise report.EvidenceError("missing_job_log")
+            start, end, created = (_timestamp(item[k]) for k in
+                                   ("started_at", "completed_at", "created_at"))
+            queued = round((start - created).total_seconds(), 3)
+            elapsed = round((end - start).total_seconds(), 3)
+            if queued < 0 or elapsed < 0:
+                raise report.EvidenceError("nonmonotonic_job_timestamps")
+            classified = report.classify(item["job_name"], conclusion,
+                                         _load_log(base_dir, item["log"]))
+            if conclusion == "success":
+                wall_seconds.append(elapsed)
+                queue_seconds.append(queued)
+        for component, status in classified["components"].items():
+            totals[component][status] += 1
+        rows.append({"run_id": run_id, "attempt": attempt, "job_id": job_id,
+                     "head_sha": item["head_sha"], "event": item["event"],
+                     "conclusion": conclusion, "queue_seconds": queued,
+                     "wall_seconds": elapsed, "components": classified["components"]})
+    rates = {}
+    for component, stats in totals.items():
+        hit, miss = stats["verified_hit"], stats["verified_miss"]
+        observed = hit + miss
+        rates[component] = {**stats, "verified_observations": observed,
+                            "verified_hit_rate": round(hit / observed, 4) if observed else None}
+    return {"schema": "native-cache-jobs-v1", "sample_count": len(rows),
+            "events": event_counts, "conclusions": conclusions,
+            "components": rates,
+            "successful_job_wall_seconds": {"n": len(wall_seconds), "p50": _percentile(wall_seconds, .5),
+                                            "p90": _percentile(wall_seconds, .9)},
+            "successful_job_queue_seconds": {"n": len(queue_seconds), "p50": _percentile(queue_seconds, .5),
+                                             "p90": _percentile(queue_seconds, .9)},
+            "queue_definition": "job.created_at to job.started_at (not workflow submission wait)",
+            "miss_reason": "unattributed_without_verified_fingerprint_comparison",
+            "runs": rows}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", required=True, type=Path)
+    args = parser.parse_args(argv)
+    try:
+        st = args.manifest.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_MANIFEST_BYTES:
+            raise report.EvidenceError("unsafe_or_oversized_manifest")
+        raw = args.manifest.read_bytes()
+        if len(raw) > MAX_MANIFEST_BYTES:
+            raise report.EvidenceError("oversized_manifest")
+        data = json.loads(raw)
+        result = summarize(data, args.manifest.parent)
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
+        parser.exit(2, "refused: invalid_or_unreadable_manifest\n")
+    except report.EvidenceError as exc:
+        parser.exit(2, "refused: " + str(exc) + "\n")
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
