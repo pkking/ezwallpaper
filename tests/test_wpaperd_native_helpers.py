@@ -285,6 +285,53 @@ class WpaperdSelectedNativeCacheMetricsTests(unittest.TestCase):
         self.assertIsNone(cache_metrics.summarize([], self.root)["cohorts"]
                           ["push"]["verified_hit_rate"])
 
+    def test_batch_retains_failed_build_when_native_pixels_never_ran(self):
+        # Real selected build failures skip the conditional native pixel step;
+        # they are neither cache MISSES nor unselected successful Sway jobs.
+        (self.root / "failed-build.log").write_text(
+            "2026-11-11T00:00:10Z pinned upstream compiler failed\n",
+            encoding="utf-8")
+        failed = {
+            **self.row(5, "failed-build.log", native_conclusion="skipped"),
+            "conclusion": "failure",
+            "build_step_conclusion": "failure",
+            "build_started_at": "2026-11-11T00:00:05Z",
+            "build_completed_at": "2026-11-11T00:00:25Z",
+        }
+        result = cache_metrics.summarize([failed], self.root)
+        entry = result["runs"][0]
+        self.assertEqual(entry["verdict"], "build_failed_before_native_pixels")
+        self.assertEqual(entry["build_seconds"], 20)
+        self.assertIsNone(entry["pixel_seconds"])
+        self.assertEqual(
+            result["cohorts"]["pull_request"]["statuses"]
+            ["build_failed_before_native_pixels"], 1)
+        self.assertEqual(result["cohorts"]["pull_request"]
+                         ["verified_selected_observations"], 0)
+        self.assertIsNone(result["cohorts"]["pull_request"]["verified_hit_rate"])
+
+        failures = [
+            ({**failed, "conclusion": "success"}, "inconsistent_skipped_native_step"),
+            ({**failed, "build_step_conclusion": "cancelled"},
+             "inconsistent_skipped_native_step"),
+            ({**failed, "log": None}, "missing_wpaperd_job_log"),
+            ({**failed, "build_started_at": None}, "missing_native_step_timestamps"),
+            ({**failed, "native_started_at": "2026-11-11T00:00:26Z"},
+             "skipped_native_step_has_timestamps"),
+            ({**failed, "log": "warm.log"}, "cache_marker_for_skipped_native_step"),
+        ]
+        for record, reason in failures:
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(cache_report.EvidenceError, reason):
+                    cache_metrics.summarize([record], self.root)
+        unselected = {
+            **self.row(6, None, native_conclusion="skipped"),
+            "build_started_at": "2026-11-11T00:00:05Z",
+        }
+        with self.assertRaisesRegex(cache_report.EvidenceError,
+                                    "skipped_native_step_has_timestamps"):
+            cache_metrics.summarize([unselected], self.root)
+
     def test_batch_refuses_ambiguous_wrong_or_out_of_order_evidence(self):
         original = self.row(1, "warm.log")
         failures = [
