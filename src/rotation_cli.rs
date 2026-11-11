@@ -1278,6 +1278,72 @@ mod tests {
     }
 
     #[test]
+    fn invalid_opt_in_niri_state_targets_fail_before_ipc() {
+        let (root, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state parent"))
+            .expect("make offline fixture directory");
+        let lock = state_lock_path(&state);
+        let sentinel = root.path().join("unrelated.txt");
+        fs::write(&sentinel, b"unchanged").expect("sentinel");
+
+        // No niri compositor, IPC process or real wallpaper is involved.
+        // A failed early preflight must identify the invalid target itself,
+        // not fail later while probing a live niri desktop.
+        let assert_invalid = |invalid_path: &Path| {
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply: true,
+                interval_minutes: 60,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: None,
+                require_niri_outputs: true,
+            })
+            .expect_err("invalid state or lock target must fail before niri IPC");
+            assert!(
+                error
+                    .to_string()
+                    .contains("refusing non-regular or symlink state/lock path"),
+                "unexpected early target error: {}",
+                error
+            );
+            assert!(
+                error.to_string().contains(&invalid_path.display().to_string()),
+                "early error must identify the invalid state/lock target"
+            );
+            assert_eq!(fs::read(&sentinel).expect("sentinel still exists"), b"unchanged");
+        };
+
+        fs::create_dir(&state).expect("directory in place of state file");
+        assert_invalid(&state);
+        assert!(!lock.exists(), "preflight must not create a lock");
+        fs::remove_dir(&state).expect("reset state directory");
+
+        fs::create_dir(&lock).expect("directory in place of lock file");
+        assert_invalid(&lock);
+        assert!(!state.exists(), "preflight must not create state");
+        fs::remove_dir(&lock).expect("reset lock directory");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&sentinel, &state).expect("state symlink fixture");
+            assert_invalid(&state);
+            assert!(!lock.exists(), "symlink preflight must not create lock");
+            fs::remove_file(&state).expect("reset state symlink");
+
+            symlink(&sentinel, &lock).expect("lock symlink fixture");
+            assert_invalid(&lock);
+            assert!(!state.exists(), "symlink preflight must not create state");
+            fs::remove_file(&lock).expect("reset lock symlink");
+        }
+        assert!(!state.exists());
+        assert!(!lock.exists());
+    }
+
+    #[test]
     fn invalid_opt_in_niri_parameters_fail_before_ipc() {
         let (_dir, profile, state) = fixture();
         // This test does not rely on a compositor, niri binary or desktop
