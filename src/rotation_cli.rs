@@ -1229,7 +1229,10 @@ mod tests {
                 "unexpected event preflight error: {}",
                 error
             );
-            assert!(!state.exists(), "invalid event target must not publish state");
+            assert!(
+                !state.exists(),
+                "invalid event target must not publish state"
+            );
             assert!(
                 !state_lock_path(&state).exists(),
                 "invalid event target must not create a rotation lock"
