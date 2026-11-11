@@ -1,6 +1,6 @@
 # Measure selected wpaperd native cache outcomes across CI runs
 Issue: #223
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -26,17 +26,17 @@ Use locally saved bounded decoded logs and independently captured actual Actions
 - [x] Deterministic batch reporter with selected verified counts, explicit skipped/failed/not-reached and nearest-rank native build/IPC wall P50/P90 per HIT/MISS.
 - [x] Strict offline regression covers source echo, malformed/duplicated JSON members, stale/cross-run identities, skipped native step, failed pixel step, path traversal and time ordering.
 - [x] Document repeatable actual Actions job and step evidence collection and current verified cold sample without asserting population hit rate.
-- [ ] Final-head applicable CI/review PASS, squash merge; independent plan archive. Issue #223 stays OPEN for representative warm runs.
+- [x] Final head `f4f057dd5c85e7183e964f16be4749a5c7c1a378` CI 43002369363: 8 SUCCESS/2 correctly SKIPPED with selected native wpaperd IPC and two-output pixels SUCCESS; no blocking reviews. PR #273 squash merged `a17fcd30866518a6c47189d8a00d757a1c2213cd`. Independent archive; keep #223 OPEN for representative warm runs.
 
 ## Implementation slices
 - [x] Aggregate selected native step and full-job conclusions.
 - [x] Offline tests via native wpaperd helpers; evidence documentation.
-- [ ] Final-head CI/reviews, merge and archive.
+- [x] Final-head CI/reviews, merge and archive.
 
 ## Verification matrix
 | Gate | Target | State |
 |---|---|---|
-| Offline selected Sway/wpaperd helpers | python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v | pending |
+| Offline selected Sway/wpaperd helpers | python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v | PASS: final-head #43002369363 |
 | Full required CI | exact final PR head / source-selected native wpaperd IPC/pixels | pending |
 | Review | none blocking | pending |
 
@@ -44,17 +44,20 @@ Use locally saved bounded decoded logs and independently captured actual Actions
 None. CI-only read-only evidence aggregation, no runtime/permissions/architecture changes.
 
 ## Evidence log
+- 2026-11-11: PR #273 final head `f4f057dd5c85e7183e964f16be4749a5c7c1a378`, Actions https://github.com/pkking/ezwallpaper/actions/runs/43002369363 completed 8 SUCCESS/2 expected SKIPPED. Sway wpaperd selected offline helper, native pinned validation, independent IPC and two-output framebuffer steps SUCCESS. No blocking reviews/threads; squash merged `a17fcd30866518a6c47189d8a00d757a1c2213cd`.
+- 2026-11-11: selected PR #273 job 130461433086 decoded log emitted `wpaperd native cache HIT; skipping upstream compilation` at 10:18:34Z (source echo excluded). Build-or-validate step 1s, real native pixels 6s, whole Sway job 63s; this is a verified **single warm PR** after the trusted master save in #42999413761, not a population P50.
+
 - 2026-11-11: source and offline regressions committed to active branch; no local runtime was available for tests. Exact-head Actions CI and review are required before merging.
 - 2026-11-11: master and source inspected. Existing reporter only classifies one log and requires actual selected native IPC step; no batch report available.
 
 ## Deviations and discoveries
-None.
+One verified warm PR sample exists for #273; confidence limited to its pinned Sway/wpaperd virtual dual-output setup. Hardware evidence and representative warm-rate/performance remain UNASSESSED.
 
 ## Resume from here
-Open PR from this branch against verified master. Inspect exact final-head Actions checks, including actual selected native E2E when triggered, and review threads. Repair any failures; merge only after all applicable checks pass. Archive separately.
+Archive via this independent docs-only PR. Verify its own exact-head CI and review before squash merge. Keep Issue #223 OPEN for representative warm PR samples and physical evidence gap.
 
 ## Completion
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable to analysis; selected native E2E remains mandatory when triggered
+Final commit: `a17fcd30866518a6c47189d8a00d757a1c2213cd` (#273 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43002369363 (8 SUCCESS, 2 correctly SKIPPED, selected native wpaperd SUCCESS)
+E2E artifact: selected wpaperd IPC/pixel gate passed in run 43002369363; artifact files not downloaded for independent inspection
 Remaining unassessed items: population warm-cache hit rate/durations and physical display #59.
