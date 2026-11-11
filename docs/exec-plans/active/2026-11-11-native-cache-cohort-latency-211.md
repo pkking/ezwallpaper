@@ -1,7 +1,7 @@
 # Separate fully warm, fully cold and mixed native E2E job latency
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -31,15 +31,15 @@ Reuse existing emitted-marker, job conclusion and filesystem safety checks. A fu
 
 ## Acceptance criteria
 
-- [ ] Add deterministic per-cohort successful job wall and queue nearest-rank P50/P90 for all events and specifically `pull_request`, without changing existing JSON fields.
-- [ ] Offline regression for both HIT, both MISS, mixed, missing marker, failure and skipped, nonrandom sparse sample; existing cache safety tests unaffected.
-- [ ] Keep sample documentation grounded in real Actions runs; do not claim P50 <=8m based on a master-push-only warm hit.
+- [x] Add deterministic per-cohort successful job wall and queue nearest-rank P50/P90 for all events and specifically `pull_request`, without changing existing JSON fields.
+- [x] Offline regression for both HIT, both MISS, mixed, missing marker, failure and skipped, nonrandom sparse sample; existing cache safety tests unaffected.
+- [x] Keep sample documentation grounded in real Actions runs; do not claim P50 <=8m based on a master-push-only warm hit.
 - [ ] All applicable exact-final-head CI SUCCESS, reviews unblocked, squash merge then separate plan archive.
 
 ## Implementation slices
 
-- [ ] Extend offline aggregator with explicit native-cache outcome cohorts.
-- [ ] Add offline negative and positive cohort tests and update evidence doc.
+- [x] Extend offline aggregator with explicit native-cache outcome cohorts.
+- [x] Add offline negative and positive cohort tests and update evidence doc.
 - [ ] Verify final-head CI/reviews and squash merge.
 - [ ] Archive plan in independent docs-only PR.
 
@@ -57,6 +57,8 @@ None. Offline metrics only; no CLI behavior, security permission or architecture
 
 ## Evidence log
 
+- 2026-11-11: Implementation branch added success-only cohorts to existing offline aggregator, one synthetic positive/negative regression test in existing native-cache test import path, and evidence-scoped documentation. Local Python tests not run; require exact-head GitHub CI before merge.
+
 - 2026-11-11: master `e9e0928fb7889cc1615278db313f8eed0e7c838c`, zero open PR, CI 42975165450 SUCCESS. Existing docs/agents/native-cache-metrics.md shows one master-push both-HIT success, three PR both-MISS successes and one failing HIT, which must not be mixed into a warm PR performance conclusion.
 
 ## Deviations and discoveries
@@ -65,7 +67,7 @@ Pending.
 
 ## Resume from here
 
-Implement and run offline cohort tests on the branch, open PR using Issue/Plan lines, review exact-final-head required CI and blocking threads; merge only when all applicable checks succeed.
+Open PR from this branch against the freshly checked master; verify the complete exact-head CI, including actual offline Python tests, and review threads before merging. No local tests were run; PR CI is pending.
 
 ## Completion
 
