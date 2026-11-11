@@ -442,6 +442,7 @@ jobs:
               --sha-file /tmp/ezw-wpaperd-restored-upstream-sha.txt
             cmp /tmp/ezw-wpaperd-restored-upstream-sha.txt artifacts/wpaperd-native-e2e/upstream-sha.txt
             printf 'Pinned wpaperd binary cache hit; source build skipped\n' | tee artifacts/wpaperd-native-e2e/upstream-build.log
+            printf 'wpaperd native cache HIT; skipping upstream compilation\n'
           else
             (cd /tmp/ezw-wpaperd-1.3.0 && cargo build --locked --release -p wpaperd) \
               2>&1 | tee artifacts/wpaperd-native-e2e/upstream-build.log
@@ -449,6 +450,7 @@ jobs:
               --key "$NATIVE_CACHE_KEY" --binary /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd \
               --observed-sha-file artifacts/wpaperd-native-e2e/upstream-sha.txt \
               --cache-dir /tmp/ezw-native-cache/wpaperd
+            printf 'wpaperd native cache MISS; compiled pinned source\n'
           fi
           /tmp/ezw-wpaperd-1.3.0/target/release/wpaperd --version | tee artifacts/wpaperd-native-e2e/upstream-version.txt
           grep -F '1.3.0' artifacts/wpaperd-native-e2e/upstream-version.txt
