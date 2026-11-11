@@ -1310,10 +1310,15 @@ mod tests {
                 error
             );
             assert!(
-                error.to_string().contains(invalid_path.display().to_string().as_str()),
+                error
+                    .to_string()
+                    .contains(invalid_path.display().to_string().as_str()),
                 "early error must identify the invalid state/lock target"
             );
-            assert_eq!(fs::read(&sentinel).expect("sentinel still exists"), b"unchanged");
+            assert_eq!(
+                fs::read(&sentinel).expect("sentinel still exists"),
+                b"unchanged"
+            );
         };
 
         fs::create_dir(&state).expect("directory in place of state file");
