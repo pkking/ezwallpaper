@@ -1,7 +1,7 @@
 # Preserve failed native wpaperd build evidence when pixel test never runs
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -31,15 +31,15 @@ Accept only **job failure + build step failure + pixel step skipped** for this e
 
 ## Acceptance criteria
 
-- [ ] Selected failed build + skipped native step recorded as `build_failed_before_native_pixels`, with real build elapsed and no pixel elapsed, without verified HIT/MISS.
-- [ ] Same malformed evidence (job SUCCESS, missing log/timestamps, emitted HIT/MISS, unselected native or inconsistent conclusions) rejected.
+- [x] Selected failed build + skipped native step recorded as `build_failed_before_native_pixels`, with real build elapsed and no pixel elapsed, without verified HIT/MISS.
+- [x] Same malformed evidence (job SUCCESS, missing log/timestamps, emitted HIT/MISS, unselected native or inconsistent conclusions) rejected.
 - [ ] Offline unit suite PASS, exact final-head CI and reviews pass; no CI/native gate changes.
 - [ ] Merge and archive separately; keep #223 open for population coverage.
 
 ## Implementation slices
 
-- [ ] Fail-closed additional batch verdict for genuine failed native build.
-- [ ] Positive/negative offline fixtures and evidence documentation.
+- [x] Fail-closed additional batch verdict for genuine failed native build.
+- [x] Positive/negative offline fixtures and evidence documentation.
 - [ ] Exact-head CI/reviews, squash merge, and independent plan archive.
 
 ## Verification matrix
@@ -56,6 +56,8 @@ None: offline reporting only, no workflow or security changes.
 
 ## Evidence log
 
+- 2026-11-11: source and deterministic regression committed on isolated branch; no local test execution claimed. Exact-head Actions CI including the selected native gates and blocking reviews must be checked before merge.
+
 - 2026-11-11: baseline source and live GitHub Issue/PR/master inspected. Failure case is currently rejected before reading logs. No local tests run.
 
 ## Deviations and discoveries
@@ -64,7 +66,7 @@ Pending.
 
 ## Resume from here
 
-Implement strict failure evidence handling and offline tests, open a PR with Issue/Plan metadata, verify exact final head CI/review before squash merge; archive separately.
+Open the implementation PR against the freshly checked master with exactly one Issue and Plan. Verify all applicable exact-final-head CI jobs and reviews; fix failures before squash merge, then move this plan to completed in an independent docs PR.
 
 ## Completion
 
