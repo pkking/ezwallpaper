@@ -1,7 +1,7 @@
 # Reject duplicate or nonfinite native cache job evidence JSON
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -34,19 +34,19 @@ Parse *all* JSON objects with duplicate-key rejection, refuse NaN/Infinity liter
 - [x] Duplicate top-level job fields (conclusion/log/IDs) and nested duplicate objects fail closed rather than silently choose later values.
 - [x] Nonfinite JSON numeric literals, recursion errors and malformed JSON remain controlled failure, with no success-shaped report.
 - [x] Valid bounded manifests, skipped/failed/selected cohort reports unchanged.
-- [ ] Final-head applicable CI PASS, reviews clear, squash merge; archive separately.
+- [x] PR #268 exact head `ef57aa68783b05d39f3eae92ba5e7cb34ca1ee4a`: Actions 42998711169 completed 8 SUCCESS, 2 correct SKIPPED; no blocking reviews/threads, squash merged `b63c88c1487c05aebe9a46d8a70f15b0d8f4e7ab`. Archive separately.
 
 ## Implementation slices
 
 - [x] Strengthen JSON decoder and reporting errors.
 - [x] Add deterministic offline regression tests in existing selected-native cache suite.
-- [ ] Verify final-head CI and merge; archive in separate docs PR.
+- [x] Verify final-head CI and merge; archive in separate docs PR.
 
 ## Verification matrix
 
 | Gate | Expected | Status |
 |---|---|---|
-| `python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v` | malformed/valid evidence cases | pending |
+| `python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v` | malformed/valid evidence cases | PASS in PR #268 final-head CI 42998711169 |
 | Exact final PR CI (10 jobs, native appropriately selected/skipped) | all applicable SUCCESS | pending |
 
 ## Decision gates
@@ -54,6 +54,8 @@ Parse *all* JSON objects with duplicate-key rejection, refuse NaN/Infinity liter
 None. Pure offline safety of user-supplied analysis data; no new permission or production trust boundary.
 
 ## Evidence log
+
+- 2026-11-11: PR #268 exact head `ef57aa68783b05d39f3eae92ba5e7cb34ca1ee4a` passed Actions 42998711169 (8 SUCCESS / 2 appropriately SKIPPED, including Python offline cache suite, Rust, Windows/macOS, Agent and Sway). Zero blocking reviews or unresolved threads; squash merge `b63c88c1487c05aebe9a46d8a70f15b0d8f4e7ab`. No physical native tests were selected.
 
 - 2026-11-11: branch implementation and offline regression source committed; local Python tests NOT run (repo checkout unavailable in sandbox); final exact PR HEAD GitHub CI required. No production/desktop changes.
 
@@ -65,11 +67,11 @@ Pending.
 
 ## Resume from here
 
-Open PR for this branch with Issue/Plan lines, verify all required final-head CI and reviews; repair failures before squash merge. If implementation succeeds, archive the plan in independent docs-only PR.
+Archive this completed plan through this independent docs-only PR, require its own final-head applicable CI and review before merging. Keep #211 OPEN for broader cache performance and cause analysis.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: `b63c88c1487c05aebe9a46d8a70f15b0d8f4e7ab` (#268 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42998711169 (8 SUCCESS / 2 SKIPPED)
 E2E artifact: not applicable; offline metric verification
-Remaining unassessed: broad issue #211 warm PR metrics and #59 physical evidence.
+Remaining unassessed items: #211 representative warm-cache PR metrics, cold-miss causes and performance target; #59 physical GPU/4K/hotplug/lockscreen evidence UNASSESSED.
