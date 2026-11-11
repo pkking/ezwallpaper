@@ -447,14 +447,14 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     if apply && epoch_override.is_some() {
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
+    if require_niri_outputs && (!apply || choice != registry::RotationBackend::Noctalia) {
+        bail!("--require-niri-outputs requires --apply with the Noctalia backend");
+    }
     let state = match state_override {
         Some(path) => path.to_path_buf(),
         None => default_state_path(choice)?,
     };
     let (verified_profile, niri_snapshot) = if require_niri_outputs {
-        if !apply || choice != registry::RotationBackend::Noctalia {
-            bail!("--require-niri-outputs requires --apply with the Noctalia backend");
-        }
         // Reuse exactly the checked profile AND its private physical/layout
         // fingerprint. Hotplugged hardware can retain the same connector name.
         let profile = load_profile(profile_path)?;
