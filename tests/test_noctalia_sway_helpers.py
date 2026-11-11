@@ -1,10 +1,18 @@
 """Pure, offline failure-contract tests for the native Noctalia/Sway harness."""
+import os
+import signal
+import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "e2e" / "sway"))
-from noctalia_v5 import CONFIG, assert_readback, check_shell_version, topology_from_json
+from noctalia_v5 import (
+    CONFIG, assert_readback, check_shell_version, live_owned_group_members,
+    owned_stop, topology_from_json,
+)
 from dual import GEOMETRY, pixel_fraction
 from run import E2EFailure, solid_png, parse_ppm
 
@@ -15,6 +23,40 @@ def topology(name2="HEADLESS-2", second_width=240):
         {"name": "HEADLESS-1", "active": True, "current_mode": {"width": 320, "height": 240}},
         {"name": name2, "active": True, "current_mode": {"width": second_width, "height": 320}},
     ]).encode()
+
+
+def spawned_owned_group(ready: Path, *, resist_term: bool, stay_running: bool):
+    """An offline Linux process group with a child mimicking asynchronous git."""
+    child_code = (
+        "import pathlib, signal, sys, time\n"
+        f"if {resist_term!r}: signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "pathlib.Path(sys.argv[1]).write_text('ready')\n"
+        "time.sleep(60)\n"
+    )
+    parent_code = (
+        "import subprocess, sys, time\n"
+        "subprocess.Popen([sys.executable, '-c', sys.argv[1], sys.argv[2]], "
+        "stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, "
+        "stderr=subprocess.DEVNULL)\n"
+        "print('ready', flush=True)\n"
+        "if sys.argv[3] == 'stay': time.sleep(60)\n"
+    )
+    proc = subprocess.Popen(
+        [sys.executable, "-c", parent_code, child_code, str(ready),
+         "stay" if stay_running else "exit"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, start_new_session=True,
+    )
+    assert proc.stdout is not None
+    if proc.stdout.readline() != b"ready\n":
+        raise AssertionError("disposable parent process did not start")
+    for _ in range(60):
+        if ready.exists():
+            return proc
+        time.sleep(0.05)
+    os.killpg(proc.pid, signal.SIGKILL)
+    proc.wait(timeout=5)
+    raise AssertionError("disposable child did not become ready")
 
 
 class NativeNoctaliaHarnessTests(unittest.TestCase):
@@ -49,6 +91,48 @@ class NativeNoctaliaHarnessTests(unittest.TestCase):
                        b"[]", b"not-json"):
             with self.subTest(broken=broken), self.assertRaises(E2EFailure):
                 topology_from_json(broken)
+
+    @unittest.skipUnless(sys.platform == "linux", "requires test-owned Linux procfs")
+    def test_owned_stop_reaps_worker_after_group_leader_exits(self):
+        with tempfile.TemporaryDirectory(prefix="ezw-owned-group-test-") as tmp:
+            proc = spawned_owned_group(
+                Path(tmp) / "child-ready", resist_term=False, stay_running=False
+            )
+            try:
+                proc.wait(timeout=5)
+                self.assertTrue(live_owned_group_members(proc.pid))
+                owned_stop(proc, "offline detached-parent fixture")
+                self.assertFalse(live_owned_group_members(proc.pid))
+            finally:
+                if live_owned_group_members(proc.pid):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait(timeout=5)
+
+    @unittest.skipUnless(sys.platform == "linux", "requires test-owned Linux procfs")
+    def test_owned_stop_escalates_only_term_resistant_group(self):
+        with tempfile.TemporaryDirectory(prefix="ezw-owned-group-test-") as tmp:
+            proc = spawned_owned_group(
+                Path(tmp) / "child-ready", resist_term=True, stay_running=True
+            )
+            unrelated = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(60)"],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL, start_new_session=True,
+            )
+            try:
+                self.assertTrue(live_owned_group_members(proc.pid))
+                owned_stop(proc, "offline resistant fixture")
+                self.assertFalse(live_owned_group_members(proc.pid))
+                self.assertIsNone(
+                    unrelated.poll(), "cleanup must never signal another process group"
+                )
+            finally:
+                if live_owned_group_members(proc.pid):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait(timeout=5)
+                if unrelated.poll() is None:
+                    os.killpg(unrelated.pid, signal.SIGKILL)
+                unrelated.wait(timeout=5)
 
     def test_real_pixel_parser_requires_color_not_just_screenshot(self):
         from run import solid_png
