@@ -440,6 +440,13 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         events_dir,
         require_niri_outputs,
     } = request;
+    // Pure argument errors must fail before the opt-in niri inventory query.
+    // Even a read-only external IPC call is inappropriate for an invalid
+    // preview epoch or overflowing UTC interval.
+    utc_bucket_for_seconds(0, interval_minutes)?;
+    if apply && epoch_override.is_some() {
+        bail!("--epoch is preview-only and cannot be combined with --apply");
+    }
     let (verified_profile, niri_snapshot) = if require_niri_outputs {
         if !apply || choice != registry::RotationBackend::Noctalia {
             bail!("--require-niri-outputs requires --apply with the Noctalia backend");
@@ -463,8 +470,6 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             crate::niri_outputs::recheck_output_snapshot(names, &baseline)
         }) as NiriOutputRecheck
     });
-    // Reject an invalid period before creating even a default state directory.
-    utc_bucket_for_seconds(0, interval_minutes)?;
     let state = match state_override {
         Some(path) => path.to_path_buf(),
         None => default_state_path(choice)?,
@@ -1182,6 +1187,42 @@ mod tests {
                 "the second output must remain untouched and unacknowledged"
             );
         }
+    }
+
+    #[test]
+    fn invalid_opt_in_niri_parameters_fail_before_ipc() {
+        let (_dir, profile, state) = fixture();
+        // This test does not rely on a compositor, niri binary or desktop
+        // session. Reaching niri IPC would mask these precise argument errors.
+        for (minutes, epoch, expected) in [
+            (0, None, "rotation interval must be positive"),
+            (u64::MAX, None, "rotation interval must be positive"),
+            (60, Some(12), "--epoch is preview-only"),
+        ] {
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: epoch,
+                force: false,
+                apply: true,
+                interval_minutes: minutes,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: None,
+                require_niri_outputs: true,
+            })
+            .expect_err("invalid opt-in argument must fail without niri IPC");
+            assert!(
+                error.to_string().contains(expected),
+                "unexpected preflight error: {}",
+                error
+            );
+            assert!(!state.exists(), "invalid arguments must not write state");
+            assert!(
+                !state_lock_path(&state).exists(),
+                "invalid arguments must not create a rotation lock"
+            );
+        }
+        assert!(!state.parent().expect("state parent").exists());
     }
 
     #[test]
