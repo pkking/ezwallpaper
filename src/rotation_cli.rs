@@ -447,6 +447,10 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     if apply && epoch_override.is_some() {
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
+    let state = match state_override {
+        Some(path) => path.to_path_buf(),
+        None => default_state_path(choice)?,
+    };
     let (verified_profile, niri_snapshot) = if require_niri_outputs {
         if !apply || choice != registry::RotationBackend::Noctalia {
             bail!("--require-niri-outputs requires --apply with the Noctalia backend");
@@ -463,6 +467,17 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                 profile.outputs.iter().map(|output| output.name.as_str()),
             )?;
         }
+        // State and lock paths are part of this opt-in operation too.
+        // Reject obvious non-files/symlinks before querying a live niri
+        // session; keep the controller's later lock-time validation because
+        // another process may replace either target after this read.
+        let state_target = if state.is_absolute() {
+            state.clone()
+        } else {
+            std::env::current_dir()?.join(&state)
+        };
+        check_regular_or_absent(&state_target)?;
+        check_regular_or_absent(&state_lock_path(&state_target))?;
         let outputs = profile
             .outputs
             .iter()
@@ -479,10 +494,6 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             crate::niri_outputs::recheck_output_snapshot(names, &baseline)
         }) as NiriOutputRecheck
     });
-    let state = match state_override {
-        Some(path) => path.to_path_buf(),
-        None => default_state_path(choice)?,
-    };
     // Preview remains offline and independent of any desktop session.
     // Keep the Box alive for exactly the duration of the borrowed trait port.
     if apply {
