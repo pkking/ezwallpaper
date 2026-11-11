@@ -1,6 +1,6 @@
 # Validate rotation invocation before any opt-in niri IPC
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -23,14 +23,14 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; src/rotation_cli.rs 
 Validate only pure arguments upfront; preserve legitimate dual-output niri topology baseline, lock-held and just-in-time rechecks, exact path readback and state commit. Never automatically query a real desktop from tests. Use a deterministic bad-parameter test that can pass even when no niri binary is installed and checks the specific error cause.
 
 ## Acceptance criteria
-- [ ] Invalid interval 0 or overflow with opt-in niri fails before any external desktop IPC and state writes.
-- [ ] Apply + epoch override with opt-in niri fails with preview-only error independent of compositor availability.
+- [x] Invalid interval 0 or overflow with opt-in niri fails before any external desktop IPC and state writes.
+- [x] Apply + epoch override with opt-in niri fails with preview-only error independent of compositor availability.
 - [ ] Valid inputs retain existing niri preflight order; exact final-head CI/Rust/platform/headless and selected native E2E pass.
 - [ ] Squash merge after review; independently archive plan, keep #54 OPEN.
 
 ## Implementation slices
-- [ ] Pure validation before niri preflight and ensure one consistent controller validation.
-- [ ] Add offline no-desktop regression.
+- [x] Pure validation before niri preflight and ensure one consistent controller validation.
+- [x] Add offline no-desktop regression.
 - [ ] Verify exact-head CI, review and merge, then archive independently.
 
 ## Verification matrix
@@ -44,13 +44,14 @@ Validate only pure arguments upfront; preserve legitimate dual-output niri topol
 None. Narrow fail-closed validation ordering, no new user-visible flags/semantics, permissions, architecture, or OS support change.
 
 ## Evidence log
+- 2026-11-11: source and offline regressions committed to active branch; no local runtime was available for tests. Exact-head Actions CI and review are required before merging.
 - 2026-11-11: inspected master `16723d6` source and confirmed existing niri preflight order; no tests executed before branch.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement pure invocation checks and no-desktop regression in this branch; open PR with Issue/Plan lines. Merge only when all final-head applicable CI and reviews are clear.
+Open PR from this branch against verified master. Inspect exact final-head Actions checks, including actual selected native E2E when triggered, and review threads. Repair any failures; merge only after all applicable checks pass. Archive separately.
 
 ## Completion
 Final commit: pending
