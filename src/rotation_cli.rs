@@ -1240,6 +1240,27 @@ mod tests {
             fs::read(&sentinel).expect("existing event target untouched"),
             b"untouched"
         );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let alias = root.path().join("linked-events");
+            symlink(&events, &alias).expect("symlinked event directory");
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply: true,
+                interval_minutes: 60,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: Some(&alias),
+                require_niri_outputs: true,
+            })
+            .expect_err("symlinked event directory must fail before niri IPC");
+            assert!(error.to_string().contains("not a symlink"));
+            assert!(!state.exists());
+            assert!(!state_lock_path(&state).exists());
+        }
     }
 
     #[test]
