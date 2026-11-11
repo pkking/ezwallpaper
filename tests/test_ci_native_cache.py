@@ -350,6 +350,35 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("Save verified wpaperd cache from trusted master only", job)
         self.assertNotIn("restore-keys:", job)
 
+    def test_niri_warm_cache_requires_independent_pinned_checkout(self):
+        # A cache hit must not skip the source SHA fixture that the restored
+        # cache manifest is compared against; #261 exposed this native failure.
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  noctalia-sway-visual-e2e:\n", 1)[1].split(
+            "\n  platform-tests:", 1)[0]
+        source_name = "- name: Checkout exact experimental niri source for cache identity"
+        build_name = "- name: Build exact unmerged niri virtual-output PR #3800 (CI-only)"
+        restore_name = "- name: Verify and prepare pinned niri binary"
+        source_start = job.index(source_name)
+        build_start = job.index(build_name)
+        restore_start = job.index(restore_name)
+        source = job[source_start:build_start]
+        build = job[build_start:restore_start]
+        verify = job[restore_start:job.index("- name: Verify real niri + Noctalia dual-output framebuffer")]
+        self.assertLess(source_start, build_start)
+        self.assertLess(build_start, restore_start)
+        self.assertNotIn("\n        if:", source)
+        self.assertIn("git clone --depth 1 --branch wip/virtual-outputs", source)
+        self.assertIn("git -C /tmp/niri-virtual-3800 rev-parse HEAD", source)
+        self.assertIn("grep -Fx '7fd585dd44ed67644977dd9561bb6e8b3837f8f7'", source)
+        self.assertIn("if: steps.niri_cache.outputs.cache-hit != 'true'", build)
+        self.assertNotIn("git clone", build)
+        self.assertIn("python3 scripts/ci_native_cache.py restore --component niri", verify)
+        self.assertIn("--sha-file artifacts/niri-noctalia-e2e/restored-upstream-commit.txt", verify)
+        self.assertIn("cmp artifacts/niri-noctalia-e2e/restored-upstream-commit.txt", verify)
+        self.assertIn("artifacts/niri-noctalia-e2e/upstream-commit.txt", verify)
+
     def test_native_cache_fingerprint_evidence_preserves_full_key_inputs(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
@@ -435,6 +464,7 @@ class PinnedNativeCacheTests(unittest.TestCase):
 # contract regressions here. Changes to ci.yml intentionally rekey native
 # executable caches because the workflow hash is part of their fingerprint.
 from test_cache_fingerprint_diff import NativeCacheFingerprintDiffTests  # noqa: E402,F401
+from test_ci_native_cache_report import NativeCacheLogClassifierTests  # noqa: E402,F401
 
 
 if __name__ == "__main__":
