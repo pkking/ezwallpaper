@@ -1,7 +1,7 @@
 # Emit auditable wpaperd cache outcomes only after validated native E2E
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -31,16 +31,16 @@ Only explicitly selected wpaperd native step with SUCCESS native job and explici
 
 ## Acceptance criteria
 
-- [ ] Emit deterministic HIT/MISS after native cache validation or full compilation, no marker on skipped steps.
-- [ ] Offline parser requires independent native step conclusion + job conclusion, rejects unexpected/ambiguous data and follows fail-closed semantics.
+- [x] Emit deterministic HIT/MISS after native cache validation or full compilation, no marker on skipped steps.
+- [x] Offline parser requires independent native step conclusion + job conclusion, rejects unexpected/ambiguous data and follows fail-closed semantics.
 - [ ] Run offline tests through existing selected Sway/wpaperd CI test path; selected native E2E still executes on final PR head.
 - [ ] Final-head applicable 10 checks PASS, no blocking reviews, squash merge, then archive separately.
 
 ## Implementation slices
 
-- [ ] Add selected-only emitted log markers without relaxing cache/source/pixel checks.
-- [ ] Implement minimal read-only reporter reusing safe log input and add negative/positive tests.
-- [ ] Document sample collection limitation and verify full CI.
+- [x] Add selected-only emitted log markers without relaxing cache/source/pixel checks.
+- [x] Implement minimal read-only reporter reusing safe log input and add negative/positive tests.
+- [x] Document sample collection limitation and verify full CI.
 - [ ] Archive in separate docs-only PR.
 
 ## Verification matrix
@@ -57,6 +57,8 @@ None. CI-only observability semantics, no runtime contract or OS support change.
 
 ## Evidence log
 
+- 2026-11-11: branch implementation and offline regression source committed; local Python tests NOT run (repo checkout unavailable in sandbox); final exact PR HEAD GitHub CI required. No production/desktop changes.
+
 - 2026-11-11: inspected workflow at `8c20462c`: wpaperd cache hit emits `Pinned wpaperd binary cache hit; source build skipped`; no matching cold MISS marker. Current selected native job is a conditional step in always-running Sway E2E. No changes made before this plan.
 
 ## Deviations and discoveries
@@ -65,7 +67,7 @@ Pending.
 
 ## Resume from here
 
-Add markers, parser and tests on this branch, verify workflow does not skip native pixel gate or change save trust; open PR, inspect exact-final-head CI and reviews, merge only on required results.
+Open PR for this branch with Issue/Plan lines, verify all required final-head CI and reviews; repair failures before squash merge. If implementation succeeds, archive the plan in independent docs-only PR.
 
 ## Completion
 
