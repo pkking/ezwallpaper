@@ -1,7 +1,7 @@
 # 2026-11-11: Reap spawned plugin workers before native Noctalia test-home cleanup
 
 Issue: #59
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -35,24 +35,24 @@ AGENTS.md, docs/agents/workflow.md, docs/agents/testing.md, Issue #59 and tests/
 
 ## Acceptance criteria
 
-- [ ] Stop a test-owned process group whose parent has already exited but child still runs, without leaving a live worker.
-- [ ] Stop an owned child that ignores SIGTERM using bounded SIGKILL escalation; never send signals to another process group or real desktop.
-- [ ] Native Noctalia virtual two-output screenshot E2E completes with ephemeral HOME removed, no plugin git race; all applicable exact-head CI passes.
-- [ ] Windows/macOS/Rust/agent and Sway native gate remains intact.
+- [x] Stop a test-owned process group whose parent has already exited but child still runs, without leaving a live worker.
+- [x] Stop an owned child that ignores SIGTERM using bounded SIGKILL escalation; never send signals to another process group or real desktop.
+- [x] Native Noctalia virtual two-output screenshot E2E completes with ephemeral HOME removed, no plugin git race; all applicable exact-head CI passes.
+- [x] Windows/macOS/Rust/agent and Sway native gate remains intact.
 
 ## Implementation slices
 
 - [x] Extend `owned_stop` to account for group descendants, including after leader exit, with bounded TERM/KILL and live-group detection.
 - [x] Add Linux-only offline subprocess tests for child descendants, TERM-resistant process, and full cleanup.
-- [ ] Final-head CI, review, squash merge only on success, separate completed-plan PR.
+- [x] Final-head CI, review, squash merge only on success, separate completed-plan PR.
 
 ## Verification matrix
 
 | Gate | Required evidence | Status |
 |---|---|---|
-| Isolated Python helper | `python3 -m unittest discover -s tests -p test_noctalia_sway_helpers.py -v` | PENDING |
-| Real native compositor | Noctalia v5.2.1 + Sway/headless two-output pixels, experimental niri+Noctalia dual pixels | PENDING |
-| Rust/platform/governance | Full 10/10 applicable GitHub Actions checks and reviews | PENDING |
+| Isolated Python helper | `python3 -m unittest discover -s tests -p test_noctalia_sway_helpers.py -v` | SUCCESS, run 43050223528 |
+| Real native compositor | Noctalia v5.2.1 + Sway/headless two-output pixels, experimental niri+Noctalia dual pixels | SUCCESS, run 43050223528 |
+| Rust/platform/governance | Full 10/10 applicable GitHub Actions checks and reviews | SUCCESS, run 43050223528 |
 
 ## Decision gates
 
@@ -69,11 +69,13 @@ Root cause may involve an upstream plugin worker outside the original process gr
 
 ## Resume from here
 
-Open Issue #59-linked PR from this branch; run exact-head offline helper tests and native Noctalia/niri two-virtual-framebuffer CI. Fix failures without weakening the pixel gate; squash merge only when all applicable CI and review pass.
+Implementation merged in #281 after exact-head 10/10 CI and no blocking review. This plan is complete; continue remaining Issue #59 physical-device evidence as a separate slice.
+
+- 2026-11-11: PR #281 final head `cd376e3b` passed all 10 applicable jobs in run 43050223528, including native virtual framebuffer and offline helpers; no blocking reviews; squash-merged as `5e19363a`. This does not establish physical display coverage.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
+Final commit: `cd376e3b66238c4dcf1d75d669771f16c3b23508`; squash merge `5e19363a5b1d76ac156414617cc051cdce984315`
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43050223528 (10/10 SUCCESS, exact implementation head)
+E2E artifact: native Noctalia/Sway and experimental niri virtual dual-output CI job SUCCESS; physical monitor tests UNASSESSED
 Remaining unassessed items: detached upstream workers outside the owned group, physical GPU/4K/hotplug/lockscreen.
