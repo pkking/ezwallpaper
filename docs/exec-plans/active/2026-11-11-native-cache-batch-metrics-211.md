@@ -1,7 +1,7 @@
 # Aggregate selected native cache evidence across Actions jobs
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -40,7 +40,7 @@ Offline read-only inputs, bounded manifest and job logs; refuse duplicate job/ru
 ## Implementation slices
 
 - [x] Implement pure offline batch metrics from existing classifier without CI cache-key changes.
-- [x] Add deterministic offline tests and usage documentation.
+- [x] Add deterministic offline tests and usage documentation. Five-job direct sample recorded under docs/agents/native-cache-metrics.md.
 - [ ] Verify full exact-head CI/reviews then merge.
 - [ ] Archive via separate docs-only PR after implementation merge.
 
@@ -63,11 +63,13 @@ None. No new permissions, no user-visible CLI behavior, no architecture/data-flo
 
 ## Deviations and discoveries
 
+- Actual selected runs 42945464476, 42958294998, 42958708842, 42961581423, 42965074083: 4 successful, one failure. Only one successful native HIT per component out of four successful observations (nonrandom sample); failed Noctalia HIT excluded. Job success wall nearest-rank P50 1456s, P90 1673s. This sampled rate must not be labeled the aggregate rate.
+
 No claim that a cold-cache miss is caused by ABI drift without independently comparing retained fingerprints. This tool does not fetch GitHub data and cannot itself prove the origin or completeness of user-supplied records.
 
 ## Resume from here
 
-Upload batch metrics implementation and offline tests to this branch, open PR with Issue/Plan lines, verify exact final-head CI and reviews; squash merge only when all required checks succeed.
+Open PR from branch agent/native-cache-batch-metrics-211-20261111 against latest master. Verify exact final-head CI and review; squash merge only if all applicable checks pass.
 
 ## Completion
 
