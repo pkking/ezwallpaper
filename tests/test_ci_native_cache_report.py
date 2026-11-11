@@ -221,6 +221,42 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
                 with self.assertRaises(report.EvidenceError):
                     metrics.summarize([self._metrics_job(1, path)], root)
 
+    def test_batch_metrics_json_refuses_duplicate_fields_and_nonfinite_values(self):
+        root = self._metrics_fixture()
+        manifest = root / "untrusted-jobs.json"
+        original = json.dumps([self._metrics_job(1, "warm.log")])
+        invalid = [
+            (original.replace('"conclusion": "success"',
+                              '"conclusion": "failure", "conclusion": "success"'),
+             "duplicate_manifest_json_field"),
+            (original.replace('"log": "warm.log"',
+                              '"log": "failed.log", "log": "warm.log"'),
+             "duplicate_manifest_json_field"),
+            (original.replace('"event": "pull_request"',
+                              '"event": {"note": 1, "note": 2}'),
+             "duplicate_manifest_json_field"),
+            (original.replace('"attempt": 1', '"attempt": NaN'),
+             "nonfinite_manifest_number"),
+            (original.replace('"attempt": 1', '"attempt": Infinity'),
+             "nonfinite_manifest_number"),
+        ]
+        for raw, reason in invalid:
+            with self.subTest(reason=reason, raw=raw):
+                manifest.write_text(raw, encoding="utf-8")
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as raised:
+                        metrics.main(["--manifest", str(manifest)])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn("refused: " + reason, stderr.getvalue())
+        manifest.write_text(original, encoding="utf-8")
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(metrics.main(["--manifest", str(manifest)]), 0)
+        self.assertEqual(json.loads(stdout.getvalue())["components"]["noctalia"]
+                         ["verified_hit"], 1)
+
     def test_batch_metrics_cli_reads_bounded_offline_manifest(self):
         root = self._metrics_fixture()
         manifest = root / "jobs.json"
