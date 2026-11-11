@@ -435,6 +435,7 @@ class PinnedNativeCacheTests(unittest.TestCase):
 # contract regressions here. Changes to ci.yml intentionally rekey native
 # executable caches because the workflow hash is part of their fingerprint.
 from test_cache_fingerprint_diff import NativeCacheFingerprintDiffTests  # noqa: E402,F401
+from test_ci_native_cache_report import NativeCacheLogClassifierTests  # noqa: E402,F401
 
 
 if __name__ == "__main__":
