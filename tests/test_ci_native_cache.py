@@ -131,6 +131,26 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "cache_binary_integrity_failed"):
             self.restore()
 
+    def test_deeply_nested_manifest_fails_closed_without_restoring(self):
+        self.seal()
+        # Within MAX_META_BYTES, but beyond CPython's JSON nesting limit.
+        (self.directory / "manifest.json").write_text("[" * 1200 + "0" + "]" * 1200)
+        with self.assertRaisesRegex(cache.CacheError, "invalid_cache_manifest_json"):
+            self.restore()
+        self.assertFalse((self.root / "installed/noctalia").exists())
+        self.assertFalse((self.root / "artifacts/source-sha.txt").exists())
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            status = cache.main([
+                "restore", "--component", self.component, "--key", self.key,
+                "--cache-dir", str(self.directory),
+                "--target", str(self.root / "installed/noctalia"),
+                "--sha-file", str(self.root / "artifacts/source-sha.txt"),
+            ])
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("refused: invalid_cache_manifest_json", stderr.getvalue())
+
     def test_duplicate_manifest_fields_and_symlink_executables_fail_closed(self):
         self.seal()
         original = (self.directory / "manifest.json").read_text()
