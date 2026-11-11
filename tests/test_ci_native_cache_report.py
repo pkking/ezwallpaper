@@ -141,6 +141,50 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertIsNone(empty["components"]["niri"]["verified_hit_rate"])
         self.assertIsNone(empty["successful_job_wall_seconds"]["p50"])
 
+
+    def test_batch_metrics_cohorts_do_not_conflate_master_hits_with_warm_prs(self):
+        root = self._metrics_fixture()
+        (root / "mixed.log").write_text(
+            output("Noctalia", "hit") + "\n" + output("niri", "miss") + "\n",
+            encoding="utf-8")
+        (root / "incomplete.log").write_text(
+            output("Noctalia", "hit") + "\n", encoding="utf-8")
+        job = self._metrics_job
+        records = [
+            {**job(11, "warm.log", completed="2026-11-11T00:00:05Z"),
+             "event": "push"},
+            job(12, "cold.log", completed="2026-11-11T00:00:42Z"),
+            job(13, "mixed.log", completed="2026-11-11T00:00:18Z"),
+            job(14, "incomplete.log", completed="2026-11-11T00:00:14Z"),
+            job(15, "failed.log", conclusion="failure"),
+            job(16, None, conclusion="skipped", started=None, completed=None),
+        ]
+        result = metrics.summarize(records, root)
+        cohorts = result["successful_native_cache_cohorts"]
+        self.assertEqual(
+            cohorts["all_events"]["both_hit"]["wall_seconds"],
+            {"n": 1, "p50": 3, "p90": 3})
+        self.assertEqual(
+            cohorts["pull_request"]["both_hit"]["wall_seconds"],
+            {"n": 0, "p50": None, "p90": None})
+        self.assertEqual(
+            cohorts["push"]["both_hit"]["queue_seconds"],
+            {"n": 1, "p50": 2, "p90": 2})
+        self.assertEqual(
+            cohorts["pull_request"]["both_miss"]["wall_seconds"]["p50"], 40)
+        self.assertEqual(
+            cohorts["pull_request"]["mixed"]["wall_seconds"]["p50"], 16)
+        self.assertEqual(
+            cohorts["pull_request"]["incomplete"]["wall_seconds"]["p50"], 12)
+        self.assertEqual(
+            [row["cache_cohort"] for row in result["runs"]],
+            ["both_hit", "both_miss", "mixed", "incomplete", None, None])
+        self.assertEqual(
+            sum(cohorts["all_events"][c]["wall_seconds"]["n"]
+                for c in metrics.SUCCESS_COHORTS), 4)
+        self.assertEqual(result["conclusions"]["failure"], 1)
+        self.assertEqual(result["conclusions"]["skipped"], 1)
+
     def test_batch_metrics_rejects_wrong_identity_and_unverified_times(self):
         root = self._metrics_fixture()
         job = self._metrics_job
