@@ -93,7 +93,7 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             if bcon == "skipped":
                 if item["log"] is not None:
                     raise EvidenceError("skipped_native_step_has_evidence")
-                btime = None
+                btime = _step_seconds(item, "build", started, completed)
                 outcome = wpaperd.classify(item["job_name"], conclusion, ncon, "")
             elif bcon == "failure" and conclusion == "failure":
                 # The native pixel gate never ran because the selected pinned
