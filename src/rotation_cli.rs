@@ -447,10 +447,10 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     if apply && epoch_override.is_some() {
         bail!("--epoch is preview-only and cannot be combined with --apply");
     }
-    let (verified_profile, niri_snapshot) = if require_niri_outputs {
-        if !apply || choice != registry::RotationBackend::Noctalia {
-            bail!("--require-niri-outputs requires --apply with the Noctalia backend");
-        }
+    if require_niri_outputs && (!apply || choice != registry::RotationBackend::Noctalia) {
+        bail!("--require-niri-outputs requires --apply with the Noctalia backend");
+    }
+    let (verified_profile, niri_snapshot, verified_state) = if require_niri_outputs {
         // Reuse exactly the checked profile AND its private physical/layout
         // fingerprint. Hotplugged hardware can retain the same connector name.
         let profile = load_profile(profile_path)?;
@@ -463,15 +463,30 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
                 profile.outputs.iter().map(|output| output.name.as_str()),
             )?;
         }
+        // State and lock paths are part of this opt-in operation too.
+        // Reject obvious non-files/symlinks before querying a live niri
+        // session; keep the controller's later lock-time validation because
+        // another process may replace either target after this read.
+        let state = match state_override {
+            Some(path) => path.to_path_buf(),
+            None => default_state_path(choice)?,
+        };
+        let state_target = if state.is_absolute() {
+            state.clone()
+        } else {
+            std::env::current_dir()?.join(&state)
+        };
+        check_regular_or_absent(&state_target)?;
+        check_regular_or_absent(&state_lock_path(&state_target))?;
         let outputs = profile
             .outputs
             .iter()
             .map(|output| output.name.clone())
             .collect::<Vec<_>>();
         let snapshot = crate::niri_outputs::running_output_snapshot(&outputs)?;
-        (Some(profile), Some(snapshot))
+        (Some(profile), Some(snapshot), Some(state))
     } else {
-        (None, None)
+        (None, None, None)
     };
     // Keep the original baseline through the lock and each selected output.
     let niri_recheck: Option<NiriOutputRecheck> = niri_snapshot.map(|baseline| {
@@ -479,9 +494,15 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             crate::niri_outputs::recheck_output_snapshot(names, &baseline)
         }) as NiriOutputRecheck
     });
-    let state = match state_override {
-        Some(path) => path.to_path_buf(),
-        None => default_state_path(choice)?,
+    // Preserve the original non-niri validation order: its state path is
+    // resolved only after any selected desktop-profile preflight. Reuse the
+    // exact state path already checked before opt-in niri IPC.
+    let state = match verified_state {
+        Some(state) => state,
+        None => match state_override {
+            Some(path) => path.to_path_buf(),
+            None => default_state_path(choice)?,
+        },
     };
     // Preview remains offline and independent of any desktop session.
     // Keep the Box alive for exactly the duration of the borrowed trait port.
@@ -1264,6 +1285,77 @@ mod tests {
             assert!(!state.exists());
             assert!(!state_lock_path(&state).exists());
         }
+    }
+
+    #[test]
+    fn invalid_opt_in_niri_state_targets_fail_before_ipc() {
+        let (root, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state parent"))
+            .expect("make offline fixture directory");
+        let lock = state_lock_path(&state);
+        let sentinel = root.path().join("unrelated.txt");
+        fs::write(&sentinel, b"unchanged").expect("sentinel");
+
+        // No niri compositor, IPC process or real wallpaper is involved.
+        // A failed early preflight must identify the invalid target itself,
+        // not fail later while probing a live niri desktop.
+        let assert_invalid = |invalid_path: &Path| {
+            let error = run_rotation(RotationInvocation {
+                profile_path: &profile,
+                state_override: Some(&state),
+                epoch_override: None,
+                force: false,
+                apply: true,
+                interval_minutes: 60,
+                choice: registry::RotationBackend::Noctalia,
+                events_dir: None,
+                require_niri_outputs: true,
+            })
+            .expect_err("invalid state or lock target must fail before niri IPC");
+            assert!(
+                error
+                    .to_string()
+                    .contains("refusing non-regular or symlink state/lock path"),
+                "unexpected early target error: {}",
+                error
+            );
+            assert!(
+                error
+                    .to_string()
+                    .contains(invalid_path.display().to_string().as_str()),
+                "early error must identify the invalid state/lock target"
+            );
+            assert_eq!(
+                fs::read(&sentinel).expect("sentinel still exists"),
+                b"unchanged"
+            );
+        };
+
+        fs::create_dir(&state).expect("directory in place of state file");
+        assert_invalid(&state);
+        assert!(!lock.exists(), "preflight must not create a lock");
+        fs::remove_dir(&state).expect("reset state directory");
+
+        fs::create_dir(&lock).expect("directory in place of lock file");
+        assert_invalid(&lock);
+        assert!(!state.exists(), "preflight must not create state");
+        fs::remove_dir(&lock).expect("reset lock directory");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&sentinel, &state).expect("state symlink fixture");
+            assert_invalid(&state);
+            assert!(!lock.exists(), "symlink preflight must not create lock");
+            fs::remove_file(&state).expect("reset state symlink");
+
+            symlink(&sentinel, &lock).expect("lock symlink fixture");
+            assert_invalid(&lock);
+            assert!(!state.exists(), "symlink preflight must not create state");
+            fs::remove_file(&lock).expect("reset lock symlink");
+        }
+        assert!(!state.exists());
+        assert!(!lock.exists());
     }
 
     #[test]
