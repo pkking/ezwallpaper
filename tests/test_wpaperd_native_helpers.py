@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent / "e2e" / "sway"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from run import E2EFailure  # noqa: E402
 import ci_wpaperd_cache_report as cache_report  # noqa: E402
+import ci_wpaperd_cache_metrics as cache_metrics  # noqa: E402
 from wpaperd_native import (  # noqa: E402
     decode_ok, initial_paths_match, parse_cli_outcomes, parse_current, parse_inventory,
 )
@@ -208,6 +209,135 @@ class WpaperdNativeCacheReportTests(unittest.TestCase):
         self.assertIn("github.event_name == 'push'", sway)
         self.assertIn("needs.change-scope.outputs.wpaperd == 'true'", sway)
         self.assertNotIn("pull_request_target", workflow)
+
+
+
+class WpaperdSelectedNativeCacheMetricsTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        (self.root / "cold.log").write_text(
+            "2026-11-11T00:00:01.1Z \x1b[36;1m"
+            "printf 'wpaperd native cache HIT; skipping upstream compilation'\x1b[0m\n"
+            "2026-11-11T00:00:25.1Z wpaperd native cache MISS; compiled pinned source\n",
+            encoding="utf-8",
+        )
+        (self.root / "warm.log").write_text(
+            "wpaperd native cache HIT; skipping upstream compilation\n", encoding="utf-8"
+        )
+        (self.root / "conflict.log").write_text(
+            "wpaperd native cache HIT; skipping upstream compilation\n"
+            "wpaperd native cache MISS; compiled pinned source\n",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def row(run, log, event="pull_request", native_conclusion="success"):
+        return {
+            "run_id": run, "attempt": 1, "job_id": 1000 + run,
+            "event": event, "head_sha": "a" * 40,
+            "job_name": cache_report.SWAY_JOB, "conclusion": "success",
+            "native_step_conclusion": native_conclusion,
+            "build_step_conclusion": "success" if native_conclusion != "skipped" else "skipped",
+            "created_at": "2026-11-11T00:00:00Z",
+            "started_at": "2026-11-11T00:00:02Z",
+            "completed_at": "2026-11-11T00:00:50Z",
+            "build_started_at": ("2026-11-11T00:00:05Z" if native_conclusion != "skipped"
+                                 else None),
+            "build_completed_at": ("2026-11-11T00:00:25Z" if native_conclusion != "skipped"
+                                   else None),
+            "native_started_at": ("2026-11-11T00:00:27Z" if native_conclusion != "skipped"
+                                  else None),
+            "native_completed_at": ("2026-11-11T00:00:35Z" if native_conclusion != "skipped"
+                                    else None),
+            "log": log,
+        }
+
+    def test_batch_reports_only_successful_selected_native_pixel_hit_miss(self):
+        cold = self.row(1, "cold.log")
+        warm = self.row(2, "warm.log", event="push")
+        skipped = self.row(3, None, native_conclusion="skipped")
+        failed = {**self.row(4, "warm.log", native_conclusion="failure"),
+                  "conclusion": "failure"}
+        data = cache_metrics.summarize([cold, warm, skipped, failed], self.root)
+        self.assertEqual(data["sample_count"], 4)
+        self.assertEqual(
+            [row["verdict"] for row in data["runs"]],
+            ["verified_miss", "verified_hit", "skipped_or_not_reached", "unverified_hit"])
+        pr = data["cohorts"]["pull_request"]
+        self.assertEqual(pr["statuses"]["verified_miss"], 1)
+        self.assertEqual(pr["statuses"]["verified_hit"], 0)
+        self.assertEqual(pr["statuses"]["unverified_hit"], 1)
+        self.assertEqual(pr["statuses"]["skipped_or_not_reached"], 1)
+        self.assertEqual(pr["verified_hit_rate"], 0)
+        self.assertEqual(data["cohorts"]["push"]["verified_hit_rate"], 1)
+        self.assertEqual(
+            data["cohorts"]["all_events"]["latency"]["verified_hit"]["build_seconds"],
+            {"n": 1, "p50": 20, "p90": 20})
+        self.assertEqual(
+            data["cohorts"]["all_events"]["latency"]["verified_miss"]["pixel_seconds"],
+            {"n": 1, "p50": 8, "p90": 8})
+        self.assertEqual(
+            data["cohorts"]["all_events"]["latency"]["verified_hit"]["job_seconds"],
+            {"n": 1, "p50": 48, "p90": 48})
+        self.assertIsNone(pr["latency"]["verified_hit"]["build_seconds"]["p50"])
+        self.assertIsNone(cache_metrics.summarize([], self.root)["cohorts"]
+                          ["push"]["verified_hit_rate"])
+
+    def test_batch_refuses_ambiguous_wrong_or_out_of_order_evidence(self):
+        original = self.row(1, "warm.log")
+        failures = [
+            ([original, original], "duplicate"),
+            ([original, {**self.row(2, "warm.log"), "job_id": 1001}], "duplicate"),
+            ([{**original, "run_id": True}], "identity"),
+            ([{**original, "event": "workflow_dispatch"}], "run_identity"),
+            ([{**original, "job_name": "Rust quality"}], "unexpected_sway_job"),
+            ([{**original, "native_step_conclusion": "skipped"}], "skipped_native"),
+            ([{**original, "build_step_conclusion": "skipped"}], "skipped_native_step"),
+            ([{**original, "build_step_conclusion": "skipped",
+               "build_started_at": None, "build_completed_at": None}], "native_pixels"),
+            ([{**original, "native_started_at": "2026-11-11T00:00:24Z"}], "pixel_test"),
+            ([{**original, "native_completed_at": "2026-11-11T00:00:55Z"}], "outside_job"),
+            ([{**original, "created_at": "2026-11-11T00:00:03Z"}], "nonmonotonic"),
+            ([{**original, "log": "../warm.log"}], "unsafe"),
+            ([{**original, "log": "conflict.log"}], "ambiguous"),
+            ([{**original, "log": None}], "missing_wpaperd"),
+            ([{**original, "unrecognized": True}], "fields"),
+        ]
+        for rows, reason in failures:
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(cache_report.EvidenceError, reason):
+                    cache_metrics.summarize(rows, self.root)
+        (self.root / "linked.log").symlink_to(self.root / "warm.log")
+        with self.assertRaises(cache_report.EvidenceError):
+            cache_metrics.summarize([self.row(1, "linked.log")], self.root)
+
+    def test_batch_cli_rejects_duplicate_json_members_and_nonfinite_literals(self):
+        file = self.root / "manifest.json"
+        original = json.dumps([self.row(1, "warm.log")])
+        file.write_text(original, encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(cache_metrics.main(["--manifest", str(file)]), 0)
+        self.assertEqual(json.loads(out.getvalue())["cohorts"]["pull_request"]
+                         ["statuses"]["verified_hit"], 1)
+        invalid = (
+            original.replace('"conclusion": "success"',
+                             '"conclusion": "failure", "conclusion": "success"'),
+            original.replace('"job_id": 1001', '"job_id": NaN'),
+            "[] trailing data",
+        )
+        for raw in invalid:
+            with self.subTest(raw=raw[:60]):
+                file.write_text(raw, encoding="utf-8")
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as refusal:
+                        cache_metrics.main(["--manifest", str(file)])
+                self.assertEqual(refusal.exception.code, 2)
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn("refused:", stderr.getvalue())
 
 
 
