@@ -10,6 +10,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import ci_native_cache as cache  # noqa: E402
@@ -131,22 +132,24 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "cache_binary_integrity_failed"):
             self.restore()
 
-    def test_deeply_nested_manifest_fails_closed_without_restoring(self):
+    def test_parser_recursion_failure_fails_closed_without_restoring(self):
         self.seal()
-        # Within MAX_META_BYTES, but beyond CPython's JSON nesting limit.
-        (self.directory / "manifest.json").write_text("[" * 1200 + "0" + "]" * 1200)
-        with self.assertRaisesRegex(cache.CacheError, "invalid_cache_manifest_json"):
-            self.restore()
+        # A bounded manifest can still trigger a parser recursion failure on
+        # interpreters with lower recursion limits. Inject that failure directly
+        # rather than depending on a platform-specific JSON nesting threshold.
+        with mock.patch.object(cache.json, "loads", side_effect=RecursionError):
+            with self.assertRaisesRegex(cache.CacheError, "invalid_cache_manifest_json"):
+                self.restore()
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                status = cache.main([
+                    "restore", "--component", self.component, "--key", self.key,
+                    "--cache-dir", str(self.directory),
+                    "--target", str(self.root / "installed/noctalia"),
+                    "--sha-file", str(self.root / "artifacts/source-sha.txt"),
+                ])
         self.assertFalse((self.root / "installed/noctalia").exists())
         self.assertFalse((self.root / "artifacts/source-sha.txt").exists())
-        stdout, stderr = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            status = cache.main([
-                "restore", "--component", self.component, "--key", self.key,
-                "--cache-dir", str(self.directory),
-                "--target", str(self.root / "installed/noctalia"),
-                "--sha-file", str(self.root / "artifacts/source-sha.txt"),
-            ])
         self.assertEqual(status, 2)
         self.assertEqual(stdout.getvalue(), "")
         self.assertIn("refused: invalid_cache_manifest_json", stderr.getvalue())
