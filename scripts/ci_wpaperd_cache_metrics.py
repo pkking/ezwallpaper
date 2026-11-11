@@ -24,7 +24,8 @@ FIELDS = frozenset({
     "native_started_at", "native_completed_at", "log",
 })
 VERDICTS = ("verified_hit", "verified_miss", "unverified_hit",
-            "unverified_miss", "not_reached", "skipped_or_not_reached")
+            "unverified_miss", "not_reached", "skipped_or_not_reached",
+            "build_failed_before_native_pixels")
 
 
 def _step_seconds(item: dict, prefix: str, start, end) -> float | None:
@@ -88,11 +89,25 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         wall = round((completed - started).total_seconds(), 3)
         queue = round((started - created).total_seconds(), 3)
         if ncon == "skipped":
-            if bcon != "skipped" or item["log"] is not None:
-                raise EvidenceError("skipped_native_step_has_evidence")
-            btime = None
-            ptime = None
-            outcome = wpaperd.classify(item["job_name"], conclusion, ncon, "")
+            ptime = _step_seconds(item, "native", started, completed)
+            if bcon == "skipped":
+                if item["log"] is not None:
+                    raise EvidenceError("skipped_native_step_has_evidence")
+                btime = None
+                outcome = wpaperd.classify(item["job_name"], conclusion, ncon, "")
+            elif bcon == "failure" and conclusion == "failure":
+                # The native pixel gate never ran because the selected pinned
+                # build failed. Keep its independently timed failure without
+                # inventing a cache MISS or a verified screenshot.
+                if item["log"] is None:
+                    raise EvidenceError("missing_wpaperd_job_log")
+                btime = _step_seconds(item, "build", started, completed)
+                wpaperd.classify(
+                    item["job_name"], conclusion, ncon,
+                    native._load_log(base_dir, item["log"]))
+                outcome = {"cache": "build_failed_before_native_pixels"}
+            else:
+                raise EvidenceError("inconsistent_skipped_native_step")
         else:
             if item["log"] is None:
                 raise EvidenceError("missing_wpaperd_job_log")
