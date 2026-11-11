@@ -178,11 +178,15 @@ def restore(component: str, key: str, directory: Path, target: Path,
         # any symlink/previous existing target rather than following it.
         if target.exists() or target.is_symlink():
             raise CacheError("target_already_exists")
+        sha_file.parent.mkdir(parents=True, exist_ok=True)
+        if sha_file.exists() or sha_file.is_symlink():
+            raise CacheError("source_identity_already_exists")
         shutil.copy2(directory / "binary", target)
         if sha256_file(target) != meta["binary_sha256"]:
             raise CacheError("restored_binary_changed")
-        sha_file.parent.mkdir(parents=True, exist_ok=True)
-        sha_file.write_text(meta["source_sha"] + "\n", encoding="ascii")
+        # Exclusive creation also rejects a symlink introduced after preflight.
+        with sha_file.open("x", encoding="ascii") as handle:
+            handle.write(meta["source_sha"] + "\n")
     except OSError as exc:
         raise CacheError("cannot_restore_cached_binary") from exc
     return meta
