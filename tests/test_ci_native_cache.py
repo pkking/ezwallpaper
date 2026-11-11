@@ -65,6 +65,26 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
             self.restore()
 
+    def test_existing_identity_output_never_clobbered_on_restore(self):
+        self.seal()
+        target = self.root / "installed/noctalia"
+        sha_file = self.root / "artifacts/source-sha.txt"
+        sha_file.parent.mkdir(parents=True)
+        sha_file.write_text("previous identity\n")
+        with self.assertRaisesRegex(cache.CacheError, "source_identity_already_exists"):
+            self.restore()
+        self.assertEqual(sha_file.read_text(), "previous identity\n")
+        self.assertFalse(target.exists())
+
+        sha_file.unlink()
+        protected = self.root / "protected-source.txt"
+        protected.write_text("do not overwrite\n")
+        sha_file.symlink_to(protected)
+        with self.assertRaisesRegex(cache.CacheError, "source_identity_already_exists"):
+            self.restore()
+        self.assertEqual(protected.read_text(), "do not overwrite\n")
+        self.assertFalse(target.exists())
+
     def test_niri_seal_and_restore_preserves_exact_source_and_executable(self):
         # A separate pinned Rust toolchain and native IPC binary must never
         # accidentally inherit Noctalia's manifest/source identity.
@@ -237,6 +257,36 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaises(cache.CacheError):
             cache.inspect(component, key, cache_dir)
 
+    def test_noctalia_niri_restored_sha_is_fresh_and_matches_verified_checkout(self):
+        # The pinned upstream checkout writes upstream-commit.txt before the
+        # cache restore. Restore must not overwrite it, even on a valid hit.
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  noctalia-sway-visual-e2e:\n", 1)[1].split(
+            "\n  platform-tests:", 1)[0]
+        for component, directory in (
+            ("noctalia", "noctalia-sway-e2e"),
+            ("niri", "niri-noctalia-e2e"),
+        ):
+            with self.subTest(component=component):
+                verified = f"artifacts/{directory}/upstream-commit.txt"
+                restored = f"artifacts/{directory}/restored-upstream-commit.txt"
+                restore_cmd = f"scripts/ci_native_cache.py restore --component {component}"
+                self.assertIn(restore_cmd, job)
+                self.assertEqual(job.count(f"--sha-file {restored}"), 1)
+                self.assertNotIn(f"--sha-file {verified}", job)
+                self.assertIn(f"cmp {restored} \\", job)
+                self.assertIn(f"              {verified}", job)
+                self.assertLess(job.index(f"| tee {verified}"),
+                                job.index(restore_cmd))
+                self.assertLess(job.index(restore_cmd),
+                                job.index(f"cmp {restored}"))
+                hit = ("Noctalia" if component == "noctalia" else "niri")
+                self.assertLess(job.index(f"cmp {restored}"),
+                                job.index(f"{hit} native cache HIT; skipping upstream compilation"))
+        self.assertIn("Test actual native IPC and dual output rendered pixels", job)
+        self.assertIn("Verify real niri + Noctalia dual-output framebuffer", job)
+
     def test_wpaperd_workflow_only_saves_after_real_pixel_e2e_on_master(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
@@ -381,9 +431,9 @@ class PinnedNativeCacheTests(unittest.TestCase):
         self.assertIn("7fd585dd44ed67644977dd9561bb6e8b3837f8f7", job)
 
 
-# Existing CI runs this named cache-safety module. Include the new read-only
-# artifact comparison regressions here without editing ci.yml: changing the
-# workflow hash would invalidate all source-pinned native executable caches.
+# Existing CI runs this named cache-safety module. Include workflow/evidence
+# contract regressions here. Changes to ci.yml intentionally rekey native
+# executable caches because the workflow hash is part of their fingerprint.
 from test_cache_fingerprint_diff import NativeCacheFingerprintDiffTests  # noqa: E402,F401
 
 
