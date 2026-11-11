@@ -178,6 +178,20 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             "runs": rows}
 
 
+def _reject_duplicate_fields(pairs: list[tuple[str, object]]) -> dict:
+    """Do not let a later JSON member rewrite the recorded job conclusion."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise report.EvidenceError("duplicate_manifest_json_field")
+        result[key] = value
+    return result
+
+
+def _reject_nonfinite_number(_value: str) -> None:
+    raise report.EvidenceError("nonfinite_manifest_number")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
@@ -189,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
         raw = args.manifest.read_bytes()
         if len(raw) > MAX_MANIFEST_BYTES:
             raise report.EvidenceError("oversized_manifest")
-        data = json.loads(raw)
+        data = json.loads(raw, object_pairs_hook=_reject_duplicate_fields,
+                          parse_constant=_reject_nonfinite_number)
         result = summarize(data, args.manifest.parent)
     except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
         parser.exit(2, "refused: invalid_or_unreadable_manifest\n")
