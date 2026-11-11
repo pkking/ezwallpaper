@@ -76,20 +76,76 @@ def topology_from_json(data: bytes) -> dict[str, tuple[int, int]]:
         raise E2EFailure("invalid Sway dual-output topology JSON") from exc
 
 
-def owned_stop(proc: subprocess.Popen, name: str) -> None:
-    """Terminate exactly the process group created by this harness."""
-    if proc.poll() is not None:
-        return
+def live_owned_group_members(pgid: int) -> bool:
+    """Find live members (not zombies) of a test-owned Linux process group.
+
+    Waiting only on Popen's group leader can race with a child git clone
+    still populating the test-owned HOME while TemporaryDirectory removes it.
+    Procfs is inspected read-only; no PID outside the owned PGID is signalled.
+    """
+    procfs = Path("/proc")
+    if not procfs.is_dir():
+        raise E2EFailure("native Noctalia test requires Linux procfs for safe cleanup")
     try:
-        os.killpg(proc.pid, signal.SIGTERM)
+        entries = list(procfs.iterdir())
+    except OSError as exc:
+        raise E2EFailure("cannot enumerate test-owned process group") from exc
+    for entry in entries:
+        if not entry.name.isdecimal():
+            continue
+        try:
+            # /proc/<pid>/stat: (comm) state ppid pgrp session ...
+            # Split after the final ") " because process names can contain ')'.
+            marker, separator, details = (entry / "stat").read_text(
+                encoding="ascii"
+            ).rpartition(") ")
+            if not separator or not marker:
+                continue
+            fields = details.split()
+            if len(fields) >= 3 and fields[2] == str(pgid) and fields[0] not in ("Z", "X", "x"):
+                return True
+        except (OSError, UnicodeError):
+            # A PID can disappear while procfs is traversed.
+            continue
+    return False
+
+
+def owned_stop(proc: subprocess.Popen, name: str) -> None:
+    """Stop every live process in this harness-created session's group.
+
+    The shell parent can exit before its spawned plugin git subprocess does.
+    Retain a bounded TERM grace period and KILL only *this* owned PGID when
+    descendants survive. Never signal by executable name or search other
+    compositor/user groups.
+    """
+    if live_owned_group_members(proc.pid):
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    try:
         proc.wait(timeout=5)
-    except ProcessLookupError:
-        return
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
+        if live_owned_group_members(proc.pid):
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
         proc.wait(timeout=5)
-    if proc.poll() is None:
-        raise E2EFailure(f"test-owned {name} still running after cleanup")
+
+    deadline = time.monotonic() + 1
+    while live_owned_group_members(proc.pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if live_owned_group_members(proc.pid):
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + 3
+        while live_owned_group_members(proc.pid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+    if live_owned_group_members(proc.pid):
+        raise E2EFailure(f"test-owned {name} process group still running after cleanup")
 
 
 def wait_for_sway(proc: subprocess.Popen, runtime: Path, env: dict) -> dict:
