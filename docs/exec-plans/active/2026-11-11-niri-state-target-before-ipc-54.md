@@ -59,7 +59,7 @@ None: read-only argument/target validation order inside existing opt-in niri inv
 ## Evidence log
 
 - 2026-11-11: inspected master `src/rotation_cli.rs`, existing guard `check_regular_or_absent` and controller lock order. Latest #276 source CI 10/10 passed, #279 archive running. New branch no tests executed yet.
-- 2026-11-11: implementation `a2b4a27` resolves state before optional niri session preflight and tests state+lock entry using existing guard; offline regression `649366e` and format correction `cd912d0` cover directory and symlink targets, original sentinel unchanged, no state/lock publication; follow-up `b7839ee` preserves invalid niri mode guard priority before state-path resolution. Exact head CI PENDING; local cargo unavailable and no physical desktop contacted.
+- 2026-11-11: implementation `a2b4a27` resolves state before optional niri session preflight and tests state+lock entry using existing guard; offline regression `649366e` and pattern correction `cd912d0` cover directory and symlink targets, original sentinel unchanged, no state/lock publication; follow-up `b7839ee` preserves invalid niri mode guard priority before state-path resolution. CI run `43047685371` on former head `0f36399c` reported rustfmt discrepancies in two assertion lines; exact rustfmt-suggested changes applied in `1cf897f`. New final-head CI PENDING; local cargo unavailable and no physical desktop contacted.
 
 ## Deviations and discoveries
 
