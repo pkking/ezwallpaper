@@ -24,12 +24,12 @@ AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci
 No desktop mutation, external network, secrets, unsafe cache trust, changed CLI defaults, bypass of native E2E, or invented evidence.
 
 ## Acceptance criteria
-- [ ] Add a deterministic offline parser for explicit native cache restore/build step log markers, distinguishing hit, miss, unobserved, skipped and failed jobs and rejecting ambiguous observations; provide reproducible evidence for selected CI runs.
+- [x] Add a deterministic offline parser for explicit native cache restore/build step log markers, distinguishing hit, miss, unobserved, skipped and failed jobs and rejecting ambiguous observations; provide reproducible evidence for selected CI runs.
 - [ ] Offline fixtures cover component-specific markers, unselected/skipped/failed jobs, ambiguous events and positive selected native job. Exact-head applicable CI.
 - [ ] Review and exact-final-head applicable CI SUCCESS.
 
 ## Implementation slices
-- [ ] Implement minimal slice with negative and boundary regression.
+- [x] Implement minimal slice with negative and boundary regression.
 - [ ] Verify exact-head CI and review; squash merge only after all applicable checks succeed.
 - [ ] Archive completed plan in a separate follow-up PR after verified merge.
 
@@ -43,13 +43,14 @@ No desktop mutation, external network, secrets, unsafe cache trust, changed CLI 
 None: internal reliability/diagnostic behavior within accepted boundaries.
 
 ## Evidence log
+- 2026-11-11: Added an offline parser of actual selected native CI job logs (not shell echo source); distinguishes verified_hit/miss only on job SUCCESS, unverified_hit/miss on failures, skipped/not_reached; deterministic tests registered in existing cache test gate. CI pending.
 - 2026-11-11: inspected master bd7724235cde883125994cca8fdd7daca7dd81e8: #211 still OPEN; recent workflow logs contain cache restore markers and native job success/failure, but status alone is not a cache hit. A skipped job cannot be counted as warm cache evidence.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement the minimal cache log classification script and offline regressions on the current branch, open PR and check final-head CI.
+Open PR against current master, inspect final-head CI, correct failures, and verify reviews before squash merge.
 
 ## Completion
 Final commit: pending
