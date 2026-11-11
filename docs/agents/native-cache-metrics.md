@@ -45,4 +45,19 @@ The script refuses duplicate run attempts and job IDs, malformed/ambiguous logs,
 
 All five native job logs were read and matched against explicit emitted markers. The single failed warm Noctalia job did **not** demonstrate successful compositor pixels. Across this **selected nonrandom five-job sample**: four jobs succeeded; among successes, each component had 1 verified HIT, 3 verified MISS (**25% conditional hit fraction**); selected successful job wall nearest-rank P50 = **1,456 s**, P90 = **1,673 s**; job queue P50/P90 = **2 s**. This sample is affected by frequent workflow changes that intentionally change the cache key and is **not** the overall hit rate, a statistically stable performance baseline or proof of which key input caused the misses.
 
+## Separate warm versus cold job latency
+
+The aggregator now reports `successful_native_cache_cohorts` for `all_events`, `pull_request`, and `push`. It marks a successful native job `both_hit` only when **both** component markers are `verified_hit`, `both_miss` only when both are `verified_miss`, `mixed` for one hit and one miss, and `incomplete` if any successful component lacks an explicit marker. Failed/skipped jobs have `cache_cohort: null` and never contribute to successful wall/queue percentiles. These are **whole native-job** wall times; a component's own compile time cannot be derived by attributing the entire job to that component.
+
+For the five directly observed jobs above, among four successful native jobs:
+
+| Cohort | Selected successful jobs | Native-job wall P50 / P90 |
+|---|---:|---:|
+| `pull_request` both HIT | **0** | **UNASSESSED** (null) |
+| `pull_request` both MISS | 3 | 1,522 s / 1,673 s |
+| `push` both HIT | 1 | 170 s / 170 s (single observation) |
+| `push` both MISS | 0 | UNASSESSED (null) |
+
+**Important:** The 170-second both-HIT sample was on a trusted master `push`, not a pull request. It cannot validate the #211 **warm-cache PR P50 ≤8m** goal. A one-sample p50/p90 is descriptive only; no reliable cache hit rate or performance SLA is demonstrated. This grouping does not assert that the successful cold PRs are comparable to the warm master event, nor explain source/ABI fingerprint drift.
+
 Remaining open under #211: gather at least five comparable *warm* PR runs at unchanged workflow and fingerprints, enumerate cold-miss causes from separately validated fingerprint artifacts, and compare reliable P50/P90 with prior cold E2E runs. Physical niri GPU/4K/hotplug/lockscreen remains UNASSESSED under #59.
