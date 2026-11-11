@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -10,6 +11,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import ci_native_cache_report as report  # noqa: E402
+import ci_native_cache_metrics as metrics  # noqa: E402
 
 
 def output(component: str, decision: str) -> str:
@@ -86,6 +88,110 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn('"noctalia": "skipped"', out.getvalue())
 
+
+    def _metrics_fixture(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        (root / "warm.log").write_text(
+            'echo "Noctalia native cache MISS; compiled pinned source"\n'
+            + output("Noctalia", "hit") + "\n"
+            + output("niri", "hit") + "\n", encoding="utf-8")
+        (root / "cold.log").write_text(
+            output("Noctalia", "miss") + "\n" + output("niri", "miss") + "\n",
+            encoding="utf-8")
+        (root / "failed.log").write_text(
+            output("Noctalia", "hit") + "\n", encoding="utf-8")
+        return root
+
+    @staticmethod
+    def _metrics_job(run_id, log, conclusion="success",
+                     started="2026-11-11T00:00:02Z",
+                     completed="2026-11-11T00:00:12Z"):
+        return {
+            "run_id": run_id, "attempt": 1, "job_id": 1000 + run_id,
+            "event": "pull_request", "head_sha": "a" * 40,
+            "job_name": report.NATIVE_JOB, "conclusion": conclusion,
+            "created_at": "2026-11-11T00:00:00Z",
+            "started_at": started, "completed_at": completed, "log": log,
+        }
+
+    def test_batch_metrics_success_failed_skip_and_nearest_rank(self):
+        root = self._metrics_fixture()
+        job = self._metrics_job
+        records = [
+            job(1, "warm.log"),
+            job(2, "cold.log", completed="2026-11-11T00:00:42Z"),
+            job(3, "failed.log", conclusion="failure"),
+            job(4, None, conclusion="skipped", started=None, completed=None),
+        ]
+        observed = metrics.summarize(records, root)
+        noctalia = observed["components"]["noctalia"]
+        self.assertEqual(
+            (noctalia["verified_hit"], noctalia["verified_miss"],
+             noctalia["unverified_hit"], noctalia["skipped"]), (1, 1, 1, 1))
+        self.assertEqual(noctalia["verified_hit_rate"], .5)
+        self.assertEqual(observed["components"]["niri"]["not_reached"], 1)
+        self.assertEqual(observed["successful_job_wall_seconds"],
+                         {"n": 2, "p50": 10, "p90": 40})
+        self.assertEqual(observed["successful_job_queue_seconds"],
+                         {"n": 2, "p50": 2, "p90": 2})
+        self.assertIsNone(observed["runs"][-1]["wall_seconds"])
+        empty = metrics.summarize([], root)
+        self.assertIsNone(empty["components"]["niri"]["verified_hit_rate"])
+        self.assertIsNone(empty["successful_job_wall_seconds"]["p50"])
+
+    def test_batch_metrics_rejects_wrong_identity_and_unverified_times(self):
+        root = self._metrics_fixture()
+        job = self._metrics_job
+        invalid = [
+            ([job(1, None)], "missing_job_log"),
+            ([job(1, "warm.log"), job(1, "cold.log")], "duplicate"),
+            ([job(1, "warm.log"), {**job(2, "warm.log"), "job_id": 1001}], "duplicate"),
+            ([{**job(1, "warm.log"), "job_name": "Rust quality"}], "unexpected_native_job"),
+            ([{**job(1, "warm.log"), "run_id": True}], "invalid_or_duplicate"),
+            ([{**job(1, "warm.log"), "event": []}], "invalid_run_identity"),
+            ([{**job(1, "warm.log"), "conclusion": []}], "invalid_job_conclusion"),
+            ([{**job(1, "warm.log"), "unexpected": True}], "fields"),
+            ([{**job(1, "warm.log"), "started_at": "2026-11-10T23:59:58Z"}],
+             "nonmonotonic"),
+            ([{**job(1, "warm.log"), "completed_at": "wrong"}], "invalid_job_timestamp"),
+            ([job(1, "warm.log", conclusion="skipped", started=None, completed=None)],
+             "skipped_job"),
+        ]
+        for records, reason in invalid:
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(report.EvidenceError, reason):
+                    metrics.summarize(records, root)
+
+    def test_batch_metrics_refuses_untrusted_log_paths_and_ambiguous_markers(self):
+        root = self._metrics_fixture()
+        (root / "ambiguous.log").write_text(
+            output("Noctalia", "hit") + "\n" + output("Noctalia", "miss"),
+            encoding="utf-8")
+        (root / "alias.log").symlink_to(root / "warm.log")
+        (root / "alias-dir").symlink_to(root, target_is_directory=True)
+        for path in ("../warm.log", "/tmp/unrelated", "alias.log",
+                     "alias-dir/warm.log", "ambiguous.log"):
+            with self.subTest(path=path):
+                with self.assertRaises(report.EvidenceError):
+                    metrics.summarize([self._metrics_job(1, path)], root)
+
+    def test_batch_metrics_cli_reads_bounded_offline_manifest(self):
+        root = self._metrics_fixture()
+        manifest = root / "jobs.json"
+        manifest.write_text(json.dumps([self._metrics_job(1, "warm.log")]),
+                            encoding="utf-8")
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(metrics.main(["--manifest", str(manifest)]), 0)
+        parsed = json.loads(stdout.getvalue())
+        self.assertEqual(parsed["components"]["niri"]["verified_hit"], 1)
+        manifest.write_bytes(b"x" * (metrics.MAX_MANIFEST_BYTES + 1))
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as raised:
+                metrics.main(["--manifest", str(manifest)])
+        self.assertEqual(raised.exception.code, 2)
 
 if __name__ == "__main__":
     unittest.main()
