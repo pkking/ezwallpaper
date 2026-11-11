@@ -54,4 +54,4 @@ Archive this completed guide in a separate docs-only PR; require all applicable 
 ## Completion
 Final commit: `c4a96f59a200dacb20d0a35caab48e88281d9814` (PR #137 squash)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/41218180515 (final head `88806e95b2afc5fb9faf39f6b14e2ba32a314409`; 8 SUCCESS, 2 SKIPPED)
-Real niri E2E: UNASSESSED
+Remaining unassessed items: physical niri dual-output pixels, GPU/4K, hotplug and lockscreen remain UNASSESSED under #59; broader hourly rotation acceptance under #54 remains OPEN. Path-scoped skipped native jobs are not passing evidence.
