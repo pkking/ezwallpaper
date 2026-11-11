@@ -599,7 +599,9 @@ jobs:
             python3 scripts/ci_native_cache.py restore --component noctalia \
               --key "$NATIVE_CACHE_KEY" --cache-dir /tmp/ezw-native-cache/noctalia \
               --target /tmp/noctalia-v5.2.1/build-ci/noctalia \
-              --sha-file artifacts/noctalia-sway-e2e/upstream-commit.txt
+              --sha-file artifacts/noctalia-sway-e2e/restored-upstream-commit.txt
+            cmp artifacts/noctalia-sway-e2e/restored-upstream-commit.txt \
+              artifacts/noctalia-sway-e2e/upstream-commit.txt
             echo "Noctalia native cache HIT; skipping upstream compilation"
           else
             python3 scripts/ci_native_cache.py seal --component noctalia \
@@ -703,7 +705,9 @@ jobs:
             python3 scripts/ci_native_cache.py restore --component niri \
               --key "$NATIVE_CACHE_KEY" --cache-dir /tmp/ezw-native-cache/niri \
               --target /tmp/niri-virtual-3800/target/release/niri \
-              --sha-file artifacts/niri-noctalia-e2e/upstream-commit.txt
+              --sha-file artifacts/niri-noctalia-e2e/restored-upstream-commit.txt
+            cmp artifacts/niri-noctalia-e2e/restored-upstream-commit.txt \
+              artifacts/niri-noctalia-e2e/upstream-commit.txt
             echo "niri native cache HIT; skipping upstream compilation"
           else
             python3 scripts/ci_native_cache.py seal --component niri \
