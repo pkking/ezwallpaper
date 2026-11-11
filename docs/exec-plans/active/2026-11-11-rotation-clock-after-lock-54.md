@@ -10,7 +10,7 @@ Last checkpoint: 2026-11-11
 Sample the current UTC rotation bucket only after acquiring the per-profile state lock, preventing a queued hourly invocation from applying a stale pre-lock time bucket.
 
 ## Non-goals
-No CLI changes, cache changes, destructive state rewrite, or physical Wayland claim.
+No CLI changes, destructive state rewrite, or physical Wayland claim. Align CI-only workflow source evidence with merged #261 to keep required native pixel E2E passing.
 
 ## Must-read context
 AGENTS.md; docs/agents/workflow.md; docs/agents/testing.md; .github/workflows/ci.yml; src/rotation_cli.rs; crates/ezwallpaper-core/src/rotation.rs; Issue #54.
@@ -43,14 +43,16 @@ No desktop mutation, external network, secrets, unsafe cache trust, changed CLI 
 None: internal reliability/diagnostic behavior within accepted boundaries.
 
 ## Evidence log
+- 2026-11-11: master CI repair #261 merged as `9c4144ba9920a052bbd8153ace94c6ca7e1cd497`; its exact-head CI run 42958708842 completed 10 SUCCESS. Rotation branch still requires its own latest-head success.
 - 2026-11-11: Moved automatic UTC epoch sampling below lock_exclusive and added an offline delayed-lock/clock-boundary regression. Existing preview and simulated periods remain unchanged. CI pending.
 - 2026-11-11: inspected master bd7724235cde883125994cca8fdd7daca7dd81e8: run_with_backend_interval_scoped() computes epoch before lock_exclusive(); an invocation blocked across a UTC hour boundary can retain the prior bucket.
 
 ## Deviations and discoveries
-None.
+- #260 final head `d231b6603ee8da56b4fba0b7caf2273c0583ac8e` native run 42958294998 had 9 SUCCESS/1 native FAILURE because master CI's niri warm-hit path skipped the pinned source checkout yet required its SHA file; not a rotation regression.
+- Independent #261 fixed source pin checkout and completed 10/10 exact-head CI run 42958708842 (including native niri/Noctalia pixels), squash merged `9c4144ba9920a052bbd8153ace94c6ca7e1cd497`. Synchronize its reviewed CI with this branch and require a fresh exact-head run.
 
 ## Resume from here
-Open PR against current master, inspect final-head CI, correct failures, and verify reviews before squash merge.
+Synchronize the reviewed CI workflow from master onto PR #260, then verify all latest-head native and portable CI plus reviews, squash merge only on success.
 
 ## Completion
 Final commit: pending
