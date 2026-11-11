@@ -25,6 +25,7 @@ FIELDS = frozenset({"run_id", "attempt", "job_id", "event", "head_sha", "job_nam
                     "conclusion", "created_at", "started_at", "completed_at", "log"})
 STATUSES = ("verified_hit", "verified_miss", "unverified_hit",
             "unverified_miss", "not_reached", "skipped")
+SUCCESS_COHORTS = ("both_hit", "both_miss", "mixed", "incomplete")
 
 
 def _timestamp(value: str) -> datetime:
@@ -62,6 +63,22 @@ def _percentile(values: list[float], percentile: float) -> float | None:
     return round(sorted_values[math.ceil(percentile * len(values)) - 1], 3)
 
 
+def _distribution(values: list[float]) -> dict:
+    return {"n": len(values), "p50": _percentile(values, .5),
+            "p90": _percentile(values, .9)}
+
+
+def _success_cohort(components: dict[str, str]) -> str:
+    outcomes = tuple(components[component] for component in report.COMPONENTS)
+    if all(outcome == "verified_hit" for outcome in outcomes):
+        return "both_hit"
+    if all(outcome == "verified_miss" for outcome in outcomes):
+        return "both_miss"
+    if set(outcomes) == {"verified_hit", "verified_miss"}:
+        return "mixed"
+    return "incomplete"
+
+
 def summarize(items: list[dict], base_dir: Path) -> dict:
     if not isinstance(items, list) or len(items) > MAX_JOBS:
         raise report.EvidenceError("invalid_native_job_count")
@@ -71,6 +88,10 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
     wall_seconds: list[float] = []
     queue_seconds: list[float] = []
     event_counts = {"pull_request": 0, "push": 0}
+    cohort_walls = {scope: {name: [] for name in SUCCESS_COHORTS}
+                    for scope in ("all_events", "pull_request", "push")}
+    cohort_queues = {scope: {name: [] for name in SUCCESS_COHORTS}
+                     for scope in cohort_walls}
     conclusions = {c: 0 for c in report.CONCLUSIONS}
     rows = []
     for item in items:
@@ -117,21 +138,37 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             if conclusion == "success":
                 wall_seconds.append(elapsed)
                 queue_seconds.append(queued)
+        cohort = (_success_cohort(classified["components"])
+                  if conclusion == "success" else None)
+        if cohort is not None:
+            for scope in ("all_events", item["event"]):
+                cohort_walls[scope][cohort].append(elapsed)
+                cohort_queues[scope][cohort].append(queued)
         for component, status in classified["components"].items():
             totals[component][status] += 1
         rows.append({"run_id": run_id, "attempt": attempt, "job_id": job_id,
                      "head_sha": item["head_sha"], "event": item["event"],
                      "conclusion": conclusion, "queue_seconds": queued,
-                     "wall_seconds": elapsed, "components": classified["components"]})
+                     "wall_seconds": elapsed, "components": classified["components"],
+                     "cache_cohort": cohort})
     rates = {}
     for component, stats in totals.items():
         hit, miss = stats["verified_hit"], stats["verified_miss"]
         observed = hit + miss
         rates[component] = {**stats, "verified_observations": observed,
                             "verified_hit_rate": round(hit / observed, 4) if observed else None}
+    cohorts = {
+        scope: {
+            name: {"wall_seconds": _distribution(cohort_walls[scope][name]),
+                   "queue_seconds": _distribution(cohort_queues[scope][name])}
+            for name in SUCCESS_COHORTS
+        }
+        for scope in cohort_walls
+    }
     return {"schema": "native-cache-jobs-v1", "sample_count": len(rows),
             "events": event_counts, "conclusions": conclusions,
             "components": rates,
+            "successful_native_cache_cohorts": cohorts,
             "successful_job_wall_seconds": {"n": len(wall_seconds), "p50": _percentile(wall_seconds, .5),
                                             "p90": _percentile(wall_seconds, .9)},
             "successful_job_queue_seconds": {"n": len(queue_seconds), "p50": _percentile(queue_seconds, .5),
