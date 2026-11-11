@@ -1189,7 +1189,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn invalid_opt_in_niri_parameters_fail_before_ipc() {
         let (_dir, profile, state) = fixture();
