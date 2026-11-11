@@ -24,12 +24,12 @@ AGENTS.md; docs/agents/workflow.md; scripts/ci_native_cache.py; tests/test_ci_na
 Offline only; fail closed before binary restoration. Preserve strict source SHA, ABI fingerprint, checksum and workflow trust.
 
 ## Acceptance criteria
-- [ ] Deep JSON manifests reject with CacheError.
-- [ ] Offline regression proves no restored binary or SHA file.
+- [x] Parser recursion failure rejects with CacheError.
+- [x] Added deterministic offline regression asserting no restored binary or SHA file; CI execution pending.
 - [ ] Final exact-head CI applicable checks pass.
 
 ## Implementation slices
-- [ ] Bound parser recursion failure and add focused regression.
+- [x] Bound parser recursion failure and add focused regression.
 - [ ] Review exact-head CI, squash merge; separately archive this plan.
 
 ## Verification matrix
@@ -42,13 +42,14 @@ Offline only; fail closed before binary restoration. Preserve strict source SHA,
 None: internal untrusted input validation.
 
 ## Evidence log
+- 2026-11-11: implementation `scripts/ci_native_cache.py` maps RecursionError to CacheError; deterministic mocked-parser regression added to `tests/test_ci_native_cache.py`; not yet run in CI.
 - 2026-11-11: inspected master scripts/ci_native_cache.py inspect() JSON error handler; missing RecursionError catch.
 
 ## Deviations and discoveries
 None.
 
 ## Resume from here
-Implement RecursionError conversion in inspect() and focused offline regression; run tests, then open PR.
+Open PR against master, inspect exact-head offline CI and reviews; correct any failure before merge.
 
 ## Completion
 Final commit: pending
