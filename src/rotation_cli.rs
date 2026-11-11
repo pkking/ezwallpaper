@@ -377,6 +377,8 @@ fn state_lock_path(path: &Path) -> PathBuf {
 struct RotationClock {
     interval_minutes: u64,
     observed_seconds: Option<u64>,
+    #[cfg(test)]
+    observed_from: Option<fn() -> u64>,
 }
 
 impl RotationClock {
@@ -384,6 +386,8 @@ impl RotationClock {
         Self {
             interval_minutes,
             observed_seconds: None,
+            #[cfg(test)]
+            observed_from: None,
         }
     }
 
@@ -392,6 +396,16 @@ impl RotationClock {
         Self {
             interval_minutes,
             observed_seconds: Some(observed_seconds),
+            observed_from: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn sampled(interval_minutes: u64, observed_from: fn() -> u64) -> Self {
+        Self {
+            interval_minutes,
+            observed_seconds: None,
+            observed_from: Some(observed_from),
         }
     }
 }
@@ -672,13 +686,6 @@ fn run_with_backend_interval_scoped(
             profile.identity
         );
     }
-    let epoch = epoch_override.map_or_else(
-        || match clock.observed_seconds {
-            Some(seconds) => utc_bucket_for_seconds(seconds, interval_minutes),
-            None => current_utc_epoch(interval_minutes),
-        },
-        Ok,
-    )?;
     let state_path = if state_path.is_absolute() {
         state_path.to_path_buf()
     } else {
@@ -705,6 +712,23 @@ fn run_with_backend_interval_scoped(
     } else {
         None
     };
+    // Sample the actual UTC bucket only AFTER obtaining the state lock.
+    // A second hourly invocation can wait across a boundary; sampling on
+    // entry would apply a stale hour after the first invocation finishes.
+    // Preview has no lock and retains its explicitly supplied epoch.
+    let epoch = epoch_override.map_or_else(
+        || {
+            #[cfg(test)]
+            if let Some(read_now) = clock.observed_from {
+                return utc_bucket_for_seconds(read_now(), interval_minutes);
+            }
+            match clock.observed_seconds {
+                Some(seconds) => utc_bucket_for_seconds(seconds, interval_minutes),
+                None => current_utc_epoch(interval_minutes),
+            }
+        },
+        Ok,
+    )?;
     // Never trust an output snapshot taken before waiting for the state
     // lock: recheck the exact same validated profile connectors before any
     // wallpaper apply. Hardware can still hotplug after this observation.
@@ -1844,6 +1868,62 @@ mod tests {
         for invalid in [0, u64::MAX, u64::MAX / 60 + 1] {
             assert!(utc_bucket_for_seconds(123, invalid).is_err());
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn queued_rotation_samples_new_hour_after_acquiring_state_lock() {
+        use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+        static NOW: AtomicU64 = AtomicU64::new(3_599);
+        static READS: AtomicUsize = AtomicUsize::new(0);
+
+        fn sample_clock() -> u64 {
+            READS.fetch_add(1, Ordering::SeqCst);
+            NOW.load(Ordering::SeqCst)
+        }
+
+        NOW.store(3_599, Ordering::SeqCst);
+        READS.store(0, Ordering::SeqCst);
+        let (_root, profile, state) = fixture();
+        fs::create_dir_all(state.parent().expect("state parent")).expect("state parent");
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(state_lock_path(&state))
+            .expect("test lock");
+        file.lock_exclusive().expect("hold lock across UTC boundary");
+        let (tx, rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            tx.send(()).expect("worker started");
+            run_with_adapter_interval(
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::sampled(60, sample_clock),
+                |_, _| Ok(ApplyStatus::PathObserved),
+            )
+        });
+        rx.recv().expect("worker start signal");
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert_eq!(
+            READS.load(Ordering::SeqCst),
+            0,
+            "worker cannot sample the hour before acquiring the state lock"
+        );
+        NOW.store(3_600, Ordering::SeqCst);
+        fs2::FileExt::unlock(&file).expect("release lock after UTC hour advances");
+        let applied = worker
+            .join()
+            .expect("worker did not panic")
+            .expect("offline rotation");
+        assert_eq!(READS.load(Ordering::SeqCst), 1);
+        assert_eq!(applied.len(), 2);
+        assert!(applied.iter().all(|outcome| outcome.epoch == 1));
+        assert!(applied.iter().all(|outcome| outcome.applied_path_observed));
     }
 
     #[test]
