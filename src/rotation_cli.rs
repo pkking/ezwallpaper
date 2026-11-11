@@ -450,11 +450,7 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
     if require_niri_outputs && (!apply || choice != registry::RotationBackend::Noctalia) {
         bail!("--require-niri-outputs requires --apply with the Noctalia backend");
     }
-    let state = match state_override {
-        Some(path) => path.to_path_buf(),
-        None => default_state_path(choice)?,
-    };
-    let (verified_profile, niri_snapshot) = if require_niri_outputs {
+    let (verified_profile, niri_snapshot, verified_state) = if require_niri_outputs {
         // Reuse exactly the checked profile AND its private physical/layout
         // fingerprint. Hotplugged hardware can retain the same connector name.
         let profile = load_profile(profile_path)?;
@@ -471,6 +467,10 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
         // Reject obvious non-files/symlinks before querying a live niri
         // session; keep the controller's later lock-time validation because
         // another process may replace either target after this read.
+        let state = match state_override {
+            Some(path) => path.to_path_buf(),
+            None => default_state_path(choice)?,
+        };
         let state_target = if state.is_absolute() {
             state.clone()
         } else {
@@ -484,9 +484,9 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             .map(|output| output.name.clone())
             .collect::<Vec<_>>();
         let snapshot = crate::niri_outputs::running_output_snapshot(&outputs)?;
-        (Some(profile), Some(snapshot))
+        (Some(profile), Some(snapshot), Some(state))
     } else {
-        (None, None)
+        (None, None, None)
     };
     // Keep the original baseline through the lock and each selected output.
     let niri_recheck: Option<NiriOutputRecheck> = niri_snapshot.map(|baseline| {
@@ -494,6 +494,16 @@ pub fn run_rotation(request: RotationInvocation<'_>) -> Result<Vec<RotationOutco
             crate::niri_outputs::recheck_output_snapshot(names, &baseline)
         }) as NiriOutputRecheck
     });
+    // Preserve the original non-niri validation order: its state path is
+    // resolved only after any selected desktop-profile preflight. Reuse the
+    // exact state path already checked before opt-in niri IPC.
+    let state = match verified_state {
+        Some(state) => state,
+        None => match state_override {
+            Some(path) => path.to_path_buf(),
+            None => default_state_path(choice)?,
+        },
+    };
     // Preview remains offline and independent of any desktop session.
     // Keep the Box alive for exactly the duration of the borrowed trait port.
     if apply {
