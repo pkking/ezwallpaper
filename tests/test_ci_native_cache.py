@@ -65,6 +65,26 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
             self.restore()
 
+    def test_existing_identity_output_never_clobbered_on_restore(self):
+        self.seal()
+        target = self.root / "installed/noctalia"
+        sha_file = self.root / "artifacts/source-sha.txt"
+        sha_file.parent.mkdir(parents=True)
+        sha_file.write_text("previous identity\\n")
+        with self.assertRaisesRegex(cache.CacheError, "source_identity_already_exists"):
+            self.restore()
+        self.assertEqual(sha_file.read_text(), "previous identity\\n")
+        self.assertFalse(target.exists())
+
+        sha_file.unlink()
+        protected = self.root / "protected-source.txt"
+        protected.write_text("do not overwrite\\n")
+        sha_file.symlink_to(protected)
+        with self.assertRaisesRegex(cache.CacheError, "source_identity_already_exists"):
+            self.restore()
+        self.assertEqual(protected.read_text(), "do not overwrite\\n")
+        self.assertFalse(target.exists())
+
     def test_niri_seal_and_restore_preserves_exact_source_and_executable(self):
         # A separate pinned Rust toolchain and native IPC binary must never
         # accidentally inherit Noctalia's manifest/source identity.
