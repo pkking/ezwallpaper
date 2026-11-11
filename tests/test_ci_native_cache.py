@@ -257,6 +257,34 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaises(cache.CacheError):
             cache.inspect(component, key, cache_dir)
 
+    def test_noctalia_niri_restored_sha_is_fresh_and_matches_verified_checkout(self):
+        # The pinned upstream checkout writes upstream-commit.txt before the
+        # cache restore. Restore must not overwrite it, even on a valid hit.
+        ci = (Path(__file__).resolve().parents[1] /
+              ".github/workflows/ci.yml").read_text()
+        job = ci.split("  noctalia-sway-visual-e2e:\\n", 1)[1].split(
+            "\\n  platform-tests:", 1)[0]
+        for component, directory in (
+            ("noctalia", "noctalia-sway-e2e"),
+            ("niri", "niri-noctalia-e2e"),
+        ):
+            with self.subTest(component=component):
+                verified = f"artifacts/{directory}/upstream-commit.txt"
+                restored = f"artifacts/{directory}/restored-upstream-commit.txt"
+                restore_cmd = f"scripts/ci_native_cache.py restore --component {component}"
+                self.assertIn(restore_cmd, job)
+                self.assertEqual(job.count(f"--sha-file {restored}"), 1)
+                self.assertNotIn(f"--sha-file {verified}", job)
+                self.assertIn(f"cmp {restored} \\\n              {verified}", job)
+                self.assertLess(job.index(f"| tee {verified}"),
+                                job.index(restore_cmd))
+                self.assertLess(job.index(restore_cmd),
+                                job.index(f"cmp {restored}"))
+                self.assertLess(job.index(f"cmp {restored}"),
+                                job.index(f"native cache HIT; skipping upstream compilation"))
+        self.assertIn("Test actual native IPC and dual output rendered pixels", job)
+        self.assertIn("Verify real niri + Noctalia dual-output framebuffer", job)
+
     def test_wpaperd_workflow_only_saves_after_real_pixel_e2e_on_master(self):
         ci = (Path(__file__).resolve().parents[1] /
               ".github/workflows/ci.yml").read_text()
