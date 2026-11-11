@@ -1,7 +1,7 @@
 # Reject duplicate or nonfinite native cache job evidence JSON
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-11
 Last checkpoint: 2026-11-11
@@ -31,15 +31,15 @@ Parse *all* JSON objects with duplicate-key rejection, refuse NaN/Infinity liter
 
 ## Acceptance criteria
 
-- [ ] Duplicate top-level job fields (conclusion/log/IDs) and nested duplicate objects fail closed rather than silently choose later values.
-- [ ] Nonfinite JSON numeric literals, recursion errors and malformed JSON remain controlled failure, with no success-shaped report.
-- [ ] Valid bounded manifests, skipped/failed/selected cohort reports unchanged.
+- [x] Duplicate top-level job fields (conclusion/log/IDs) and nested duplicate objects fail closed rather than silently choose later values.
+- [x] Nonfinite JSON numeric literals, recursion errors and malformed JSON remain controlled failure, with no success-shaped report.
+- [x] Valid bounded manifests, skipped/failed/selected cohort reports unchanged.
 - [ ] Final-head applicable CI PASS, reviews clear, squash merge; archive separately.
 
 ## Implementation slices
 
-- [ ] Strengthen JSON decoder and reporting errors.
-- [ ] Add deterministic offline regression tests in existing selected-native cache suite.
+- [x] Strengthen JSON decoder and reporting errors.
+- [x] Add deterministic offline regression tests in existing selected-native cache suite.
 - [ ] Verify final-head CI and merge; archive in separate docs PR.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None. Pure offline safety of user-supplied analysis data; no new permission or p
 
 ## Evidence log
 
+- 2026-11-11: branch implementation and offline regression source committed; local Python tests NOT run (repo checkout unavailable in sandbox); final exact PR HEAD GitHub CI required. No production/desktop changes.
+
 - 2026-11-11: inspected default `json.loads` use on master `8c20462c` and existing tests. No branch changes or local execution before this plan.
 
 ## Deviations and discoveries
@@ -63,7 +65,7 @@ Pending.
 
 ## Resume from here
 
-Implement strict JSON parsing and regression in this branch, open PR with Issue/Plan lines, verify exact-final-head CI and review, squash merge only on all applicable successful checks.
+Open PR for this branch with Issue/Plan lines, verify all required final-head CI and reviews; repair failures before squash merge. If implementation succeeds, archive the plan in independent docs-only PR.
 
 ## Completion
 
