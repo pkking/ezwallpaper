@@ -315,6 +315,49 @@ class WpaperdSelectedNativeCacheMetricsTests(unittest.TestCase):
         self.assertEqual(all_events["verified_selected_distinct_head_shas"], 2)
         self.assertEqual(pr["statuses"]["unverified_hit"], 1)
         self.assertEqual(pr["statuses"]["skipped_or_not_reached"], 1)
+        self.assertEqual(
+            pr["independent_head_latency"]["verified_hit"]["job_seconds"]["n"], 1)
+        self.assertEqual(
+            all_events["independent_head_verdict_counts"],
+            {"verified_hit": 2, "verified_miss": 0},
+            "latest push of the same head replaces its earlier PR miss")
+
+    def test_independent_head_wpaperd_latency_selects_latest_verified_attempt(self):
+        first = self.row(61, "warm.log")
+        latest = {
+            **self.row(62, "cold.log"),
+            "completed_at": "2026-11-11T00:01:02Z",
+        }
+        other = {
+            **self.row(63, "warm.log"), "head_sha": "b" * 40,
+        }
+        failed = {
+            **self.row(64, "warm.log", native_conclusion="failure"),
+            "conclusion": "failure", "head_sha": "c" * 40,
+        }
+        records = [first, other, failed, latest]
+        observed = cache_metrics.summarize(records, self.root)
+        reversed_observed = cache_metrics.summarize(list(reversed(records)), self.root)
+        selected = observed["cohorts"]["pull_request"]
+        self.assertEqual(
+            selected["independent_head_latency"],
+            reversed_observed["cohorts"]["pull_request"]["independent_head_latency"],
+        )
+        self.assertEqual(selected["independent_head_verdict_counts"],
+                         {"verified_hit": 1, "verified_miss": 1})
+        self.assertEqual(
+            selected["independent_head_latency"]["verified_hit"]["job_seconds"],
+            {"n": 1, "p50": 48, "p90": 48})
+        self.assertEqual(
+            selected["independent_head_latency"]["verified_miss"]["job_seconds"],
+            {"n": 1, "p50": 60, "p90": 60})
+        self.assertEqual(
+            selected["latency"]["verified_hit"]["job_seconds"]["n"], 2,
+            "legacy job-level cohort remains unchanged")
+        self.assertEqual(
+            selected["independent_head_latency"]["verified_miss"]["pixel_seconds"],
+            {"n": 1, "p50": 8, "p90": 8})
+        self.assertIn("Latest successful", observed["independent_head_selection"])
 
     def test_batch_retains_failed_build_when_native_pixels_never_ran(self):
         # Real selected build failures skip the conditional native pixel step;
