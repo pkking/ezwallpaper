@@ -86,6 +86,50 @@ impl Orientation {
     }
 }
 
+/// Optional total of successfully transferred image bytes within *one*
+/// synchronous provider get_img call. Other calls and concurrent processes
+/// have independent budgets; this is not a global staging-space reservation.
+#[derive(Debug)]
+struct BatchDownloadBudget {
+    maximum: Option<u64>,
+    transferred: u64,
+}
+
+impl BatchDownloadBudget {
+    fn new(maximum: Option<u64>) -> Self {
+        Self {
+            maximum,
+            transferred: 0,
+        }
+    }
+
+    fn remaining_limit(&self, per_download_limit: u64) -> Result<u64> {
+        checked_download_limit(per_download_limit)?;
+        let remaining = match self.maximum {
+            Some(maximum) => maximum
+                .checked_sub(self.transferred)
+                .ok_or_else(|| anyhow::anyhow!("provider batch download budget exceeded"))?,
+            None => per_download_limit,
+        };
+        if remaining == 0 {
+            bail!("provider batch download budget exhausted");
+        }
+        Ok(remaining.min(per_download_limit))
+    }
+
+    fn record(&mut self, completed_bytes: u64) -> Result<()> {
+        let total = self
+            .transferred
+            .checked_add(completed_bytes)
+            .ok_or_else(|| anyhow::anyhow!("provider batch download byte counter overflow"))?;
+        if self.maximum.is_some_and(|maximum| total > maximum) {
+            bail!("provider batch download budget exceeded");
+        }
+        self.transferred = total;
+        Ok(())
+    }
+}
+
 pub trait GetImgUrl {
     fn get_img(&self, nums: u32) -> Result<Vec<WallPaper>>;
 }
@@ -627,6 +671,74 @@ mod tests {
         assert_eq!(fs::read(target).expect("original data"), b"do not truncate");
         fs::remove_dir_all(dir).expect("cleanup");
     }
+    #[test]
+    fn sequential_batch_budget_counts_actual_staged_bytes_and_refuses_overflow() {
+        let mut budget = BatchDownloadBudget::new(Some(5));
+        assert_eq!(budget.remaining_limit(4).expect("first cap"), 4);
+        budget.record(3).expect("first image exact actual bytes");
+        assert_eq!(budget.transferred, 3);
+        assert_eq!(budget.remaining_limit(4).expect("second cap"), 2);
+        // A caller must pass the remaining cap into the existing streaming
+        // writer: only the next valid bytes may be published.
+        let dir = tempfile::tempdir().expect("batch fixture");
+        let accepted = dir.path().join("accepted.jpg");
+        let accepted_bytes =
+            write_complete_download_with_limit(&accepted, &b"xy"[..], 2).expect("last two bytes");
+        budget.record(accepted_bytes).expect("within total");
+        assert_eq!(budget.transferred, 5);
+        assert!(budget.remaining_limit(4).is_err());
+        assert!(budget.record(1).is_err());
+        assert_eq!(budget.transferred, 5);
+        assert_eq!(fs::read(accepted).expect("published bytes"), b"xy");
+        assert_eq!(fs::read_dir(dir.path()).expect("no staged files").count(), 1);
+    }
+
+    #[test]
+    fn batch_budget_over_limit_or_failed_stream_never_publishes_new_item() {
+        let dir = tempfile::tempdir().expect("batch fixture");
+        let mut budget = BatchDownloadBudget::new(Some(4));
+        let initial = dir.path().join("first.jpg");
+        let transferred = write_complete_download_with_limit(
+            &initial,
+            &b"abc"[..],
+            budget.remaining_limit(4).expect("batch cap"),
+        )
+        .expect("first image");
+        budget.record(transferred).expect("record first");
+        let rejected = dir.path().join("second.jpg");
+        assert!(write_complete_download_with_limit(
+            &rejected,
+            &b"oversized"[..],
+            budget.remaining_limit(4).expect("one remaining byte"),
+        )
+        .is_err());
+        assert!(!rejected.exists());
+        assert_eq!(budget.transferred, 3);
+        assert_eq!(fs::read(&initial).expect("first complete"), b"abc");
+        let interrupted = dir.path().join("interrupted.jpg");
+        assert!(write_complete_download_with_limit(
+            &interrupted,
+            InterruptedStream { sent: false },
+            budget.remaining_limit(4).expect("retry capacity"),
+        )
+        .is_err());
+        assert!(!interrupted.exists());
+        assert_eq!(budget.transferred, 3);
+        let retried = write_complete_download_with_limit(
+            &rejected,
+            &b"z"[..],
+            budget.remaining_limit(4).expect("retry capacity"),
+        )
+        .expect("retry within budget");
+        budget.record(retried).expect("record retry");
+        assert_eq!(budget.transferred, 4);
+        assert_eq!(fs::read_dir(dir.path()).expect("two completed files").count(), 2);
+        let unlimited = BatchDownloadBudget::new(None);
+        assert_eq!(unlimited.remaining_limit(7).expect("legacy cap"), 7);
+        assert!(unlimited.remaining_limit(0).is_err());
+        assert!(checked_download_limit(0).is_err());
+    }
+
     #[test]
     fn stream_limit_stages_exact_bytes_and_reports_actual_transfer() {
         let dir = tempfile::tempdir().expect("isolated fixture");
