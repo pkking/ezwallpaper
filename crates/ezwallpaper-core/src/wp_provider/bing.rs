@@ -148,7 +148,11 @@ impl GetImgUrl for BingProvider {
             let cap = budget.remaining_limit(self.max_download_bytes)?;
             let (path, transferred) = download_image(&client, url, &self.dir, cap)?;
             budget.record(transferred)?;
-            wallpapers.push(WallPaper::new().with_type(WpType::FromLocal).with_path(path));
+            wallpapers.push(
+                WallPaper::new()
+                    .with_type(WpType::FromLocal)
+                    .with_path(path),
+            );
         }
         debug!("Bing batch staged {} bytes", budget.transferred);
         Ok(wallpapers)
@@ -173,10 +177,13 @@ fn download_image(
     let transferred =
         super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
     debug!("staged {} Bing image bytes", transferred);
-    Ok((file_path
-        .to_str()
-        .ok_or_else(|| anyhow!("download output path is not UTF-8"))?
-        .to_owned(), transferred))
+    Ok((
+        file_path
+            .to_str()
+            .ok_or_else(|| anyhow!("download output path is not UTF-8"))?
+            .to_owned(),
+        transferred,
+    ))
 }
 
 #[derive(Debug, Deserialize)]
