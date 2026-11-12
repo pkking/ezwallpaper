@@ -1,7 +1,7 @@
 # Distinct-head accounting for native cache E2E samples
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -37,7 +37,7 @@ Retain strict JSON/log/identity validation, no secrets, network or desktop acces
 
 ## Implementation slices
 
-- [ ] Add additive distinct-head counts to existing cohort output and deterministic boundary tests.
+- [x] Add additive distinct-head counts to existing cohort output and deterministic boundary tests.
 - [ ] Verify final exact-head CI, then separately archive after merge.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None: strictly additive offline metrics, no cache validation semantics changed.
 ## Evidence log
 
 - 2026-11-12: inspected master 2b2e9c819eace5e1a4f35eca35b90ca25ae8c47f; repository already has native HIT/MISS classifier and per-cohort distributions. Original master CI 43139151571 success; no new branch test results.
+
+- 2026-11-12: implementation commit ad8c094f450cdfe5d68f27e61bb8eb22dd9739ff authored; exact-head CI and offline command outcomes remain PENDING, not claimed successful.
 
 ## Deviations and discoveries
 
