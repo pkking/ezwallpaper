@@ -181,9 +181,32 @@ def restore(component: str, key: str, directory: Path, target: Path,
         sha_file.parent.mkdir(parents=True, exist_ok=True)
         if sha_file.exists() or sha_file.is_symlink():
             raise CacheError("source_identity_already_exists")
-        shutil.copy2(directory / "binary", target)
-        if sha256_file(target) != meta["binary_sha256"]:
-            raise CacheError("restored_binary_changed")
+        # Use exclusive creation even after the preflight: otherwise another
+        # process can replace the target with a symlink before copy2 opens it.
+        # All writes and the digest check use the *owned* descriptors, never
+        # a second path lookup that could point somewhere else.
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        with os.fdopen(os.open(directory / "binary", flags), "rb") as source:
+            source_mode = os.fstat(source.fileno()).st_mode
+            if not stat.S_ISREG(source_mode):
+                raise CacheError("unsafe_binary_file")
+            exclusive = (os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                         getattr(os, "O_NOFOLLOW", 0))
+            try:
+                target_fd = os.open(target, exclusive, 0o600)
+            except FileExistsError as exc:
+                raise CacheError("target_already_exists") from exc
+            with os.fdopen(target_fd, "wb") as destination:
+                digest = hashlib.sha256()
+                for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                    destination.write(chunk)
+                    digest.update(chunk)
+                destination.flush()
+                if digest.hexdigest() != meta["binary_sha256"]:
+                    raise CacheError("restored_binary_changed")
+                # The CI binary runs as a separate unprivileged E2E user;
+                # retain source executable bits without following target paths.
+                os.fchmod(destination.fileno(), stat.S_IMODE(source_mode))
         # Exclusive creation also rejects a symlink introduced after preflight.
         with sha_file.open("x", encoding="ascii") as handle:
             handle.write(meta["source_sha"] + "\n")
