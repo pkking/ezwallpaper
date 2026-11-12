@@ -1,7 +1,7 @@
 # Native Noctalia/niri executed runner-time accounting
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -37,7 +37,7 @@ Retain all current evidence validation, output fields, cache classifications and
 
 ## Implementation slices
 
-- [ ] Add additive, bounded runtime fields and negative/positive tests.
+- [x] Add additive, bounded runtime fields and negative/positive tests.
 - [ ] Verify exact-head CI and reviews; squash merge, archive separately after evidence.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None; read-only additive CI performance accounting.
 ## Evidence log
 
 - 2026-11-12: inspected master 7a8c04d667fb206e4b8241d0059b791bcf9d0162 and 2026-11-12-native-cache-distinct-head-metrics-211.md completed plan; no branch tests yet.
+
+- 2026-11-12: implementation source checkpoint d83392552d6f69eb16e93eade6b65d0529b5e73f; new branch quality and GitHub Actions checks still PENDING, no passing result assumed.
 
 ## Deviations and discoveries
 
