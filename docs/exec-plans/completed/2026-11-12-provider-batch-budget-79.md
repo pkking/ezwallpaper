@@ -1,7 +1,7 @@
 # Per-invocation provider batch transfer budget
 
 Issue: #79
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,24 +31,24 @@ Default behavior remains per-image 64 MiB and no additional batch cap. Public bu
 
 ## Acceptance criteria
 
-- [ ] All 3 providers accept opt-in max batch transfer bytes without changing default, API result types or CLI arguments.
-- [ ] Per-transfer cap is min(per-response cap, remaining batch budget) and accounted from actual completed streaming bytes, not Content-Length.
-- [ ] Zero/exhausted budgets reject before next image HTTP request; later rejected transfers never publish partial files; earlier completed files remain.
-- [ ] Deterministic offline exact-boundary, overflow, retry and accounting tests; full final-head applicable CI and reviews pass.
+- [x] All 3 providers accept opt-in max batch transfer bytes without changing default, API result types or CLI arguments.
+- [x] Per-transfer cap is min(per-response cap, remaining batch budget) and accounted from actual completed streaming bytes, not Content-Length.
+- [x] Zero/exhausted budgets reject before next image HTTP request; later rejected transfers never publish partial files; earlier completed files remain.
+- [x] Deterministic offline exact-boundary, overflow, retry and accounting tests; full final-head applicable CI and reviews pass.
 
 ## Implementation slices
 
 - [x] Shared bounded sequential budget and provider integration.
 - [x] Offline tests, explicit documentation of per-invocation versus concurrent scope.
-- [ ] Exact-head CI/reviews, squash merge, then independent plan archive.
+- [x] Exact-head CI/reviews, squash merge, then independent plan archive.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
-| Core | cargo test -p ezwallpaper-core | budget/stream fixtures | PENDING |
-| Rust | cargo fmt, clippy, cargo test | exact head CI | PENDING |
-| Platforms/native | Windows, macOS, Sway, selected native Noctalia/niri/wpaperd | exact head CI | PENDING |
+| Core | cargo test -p ezwallpaper-core | budget/stream fixtures | PASS: Rust Core tests in 43255404286 |
+| Rust | cargo fmt, clippy, cargo test | exact head CI | PASS: Rust quality and workspace tests, 43255404286 |
+| Platforms/native | Windows, macOS, Sway, selected native Noctalia/niri/wpaperd | exact head CI | PASS: Windows, macOS, Sway/wpaperd native; Noctalia/niri NOT SELECTED, 43255404286 |
 
 ## Decision gates
 
@@ -62,17 +62,19 @@ None: additive, opt-in Core API within Issue #79; no user-facing defaults, produ
 
 - 2026-11-12: initial PR #297 head a7f181df013777ca620a07564558475f20eb7038, Actions 43255076452: Rust tests and CLI smoke SUCCESS, Rust quality FAILED solely at Format (exact differences in 4 provider files). Applied all CI-provided rustfmt layouts in e706533fe6add1bb3440605887156bb986db7b6f, 8ca5cf6249c8bf08409c300074627d863600511c, 072dfd705dafaa7c10b13fe628c8872ac5a93273 and c475eec2806708baf303c75e0103cf6a60f87e61. This initial run is NOT final-head acceptance evidence; full new CI pending.
 
+- 2026-11-12: implementation PR #297 final head 48e83c9ec71595ac906268b4526e350f483e38ab, Actions https://github.com/pkking/ezwallpaper/actions/runs/43255404286 completed 8 SUCCESS/2 Noctalia scope-skipped. Sway/wpaperd native IPC + virtual two-output pixels SUCCESS; Noctalia/niri not selected. No blocking reviews or unresolved threads. Squash merged 195d6e873eb156c1dcff685ac1225c2d471f344d. Physical GPU/4K/hotplug/lockscreen not assessed.
+
 ## Deviations and discoveries
 
-Rust format-only failure fixed without weakening CI. Final-head revalidation pending.
+Rust format-only failure fixed without weakening CI; final-head run 43255404286 subsequently passed all applicable jobs.
 
 ## Resume from here
 
-Inspect branch head, run offline Core fixtures and all applicable exact-head Actions jobs. Never merge pending/failed checks.
+Source PR merged. Inspect this docs-only archive PR's final-head CI and reviews; merge only after all applicable checks succeed. Keep Issue #79 OPEN for outstanding broader acceptance.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending or scope-skipped; virtual displays do not imply physical monitors
+Final commit: 195d6e873eb156c1dcff685ac1225c2d471f344d (source PR #297 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43255404286 (exact final source head 48e83c9ec71595ac906268b4526e350f483e38ab; 8 SUCCESS, 2 scoped SKIPPED)
+E2E artifact: Sway/wpaperd native IPC + virtual two-output pixels SUCCESS; Noctalia/niri not selected; artifact bytes not independently inspected, not physical display evidence.
 Remaining unassessed items: cross-call concurrency/global staging reservation, persistent #57 GC budget and physical displays.
