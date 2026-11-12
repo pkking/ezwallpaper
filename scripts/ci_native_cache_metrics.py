@@ -86,6 +86,7 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
     seen_jobs: set[int] = set()
     totals = {c: {status: 0 for status in STATUSES} for c in report.COMPONENTS}
     wall_seconds: list[float] = []
+    executed_wall_seconds: list[float] = []
     queue_seconds: list[float] = []
     event_counts = {"pull_request": 0, "push": 0}
     cohort_walls = {scope: {name: [] for name in SUCCESS_COHORTS}
@@ -133,6 +134,7 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                                    ("started_at", "completed_at", "created_at"))
             queued = round((start - created).total_seconds(), 3)
             elapsed = round((end - start).total_seconds(), 3)
+            executed_wall_seconds.append(elapsed)
             if queued < 0 or elapsed < 0:
                 raise report.EvidenceError("nonmonotonic_job_timestamps")
             classified = report.classify(item["job_name"], conclusion,
@@ -170,6 +172,15 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         for scope in cohort_walls
     }
     return {"schema": "native-cache-jobs-v1", "sample_count": len(rows),
+            "observed_native_job_execution": {
+                "n": len(executed_wall_seconds),
+                "total_seconds": round(sum(executed_wall_seconds), 3),
+                "runner_minutes": round(sum(executed_wall_seconds) / 60.0, 3),
+            },
+            "runner_minutes_scope": (
+                "Sum of executed selected native-job wall time / 60, including "
+                "failed jobs; excludes queue, other CI jobs, and billed-minute adjustments"
+            ),
             "events": event_counts, "conclusions": conclusions,
             "components": rates,
             "successful_native_cache_cohorts": cohorts,
