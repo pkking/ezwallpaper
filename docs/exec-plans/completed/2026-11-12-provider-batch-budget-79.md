@@ -66,7 +66,7 @@ None: additive, opt-in Core API within Issue #79; no user-facing defaults, produ
 
 ## Deviations and discoveries
 
-Rust format-only failure fixed without weakening CI. Final-head revalidation pending.
+Rust format-only failure fixed without weakening CI; final-head run 43255404286 subsequently passed all applicable jobs.
 
 ## Resume from here
 
