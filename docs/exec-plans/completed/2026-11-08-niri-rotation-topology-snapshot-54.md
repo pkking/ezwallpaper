@@ -75,4 +75,4 @@ Archive this plan in a separate completion PR. Verify that its final-head CI and
 Final commit: bdea153e4e594ed16c25f97948d20a6654d04dd3 (PR #219)
 CI run: https://github.com/pkking/ezwallpaper/actions/runs/42489888054 (10/10 SUCCESS at final head 70af56a485d48828d45fc834c0a9d5cd76575995)
 E2E artifact: original CI run 42489888054; native virtual Sway/Noctalia checks succeeded, not physical-display proof
-Remaining unassessed: physical GPU/4K, hotplug after final check, identical/no-serial replacement, lockscreen and SDDM/Plymouth.
+Remaining unassessed items: physical GPU/4K, hotplug after final check, identical/no-serial replacement, lockscreen and SDDM/Plymouth.
