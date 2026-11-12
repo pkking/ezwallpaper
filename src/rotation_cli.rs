@@ -2076,11 +2076,14 @@ mod tests {
             };
 
             assert_eq!(outcomes.len(), 2);
-            assert_eq!(outcomes[0].decision, if hour == 7 {
-                RotationDecision::AlreadyApplied
-            } else {
-                RotationDecision::Select
-            });
+            assert_eq!(
+                outcomes[0].decision,
+                if hour == 7 {
+                    RotationDecision::AlreadyApplied
+                } else {
+                    RotationDecision::Select
+                }
+            );
             assert_eq!(
                 outcomes[1].decision,
                 if hour == 12 {
@@ -2109,7 +2112,10 @@ mod tests {
                 }
                 previous_ids.insert(
                     name.clone(),
-                    saved_output.last_content_id.clone().expect("acknowledged digest"),
+                    saved_output
+                        .last_content_id
+                        .clone()
+                        .expect("acknowledged digest"),
                 );
             }
 
