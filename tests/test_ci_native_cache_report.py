@@ -134,12 +134,19 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertEqual(observed["components"]["niri"]["not_reached"], 1)
         self.assertEqual(observed["successful_job_wall_seconds"],
                          {"n": 2, "p50": 10, "p90": 40})
+        self.assertEqual(observed["observed_native_job_execution"], {
+            "n": 3, "total_seconds": 60.0, "runner_minutes": 1.0,
+        })
+        self.assertIn("excludes queue", observed["runner_minutes_scope"])
         self.assertEqual(observed["successful_job_queue_seconds"],
                          {"n": 2, "p50": 2, "p90": 2})
         self.assertIsNone(observed["runs"][-1]["wall_seconds"])
         empty = metrics.summarize([], root)
         self.assertIsNone(empty["components"]["niri"]["verified_hit_rate"])
         self.assertIsNone(empty["successful_job_wall_seconds"]["p50"])
+        self.assertEqual(empty["observed_native_job_execution"], {
+            "n": 0, "total_seconds": 0, "runner_minutes": 0.0,
+        })
 
 
     def test_batch_metrics_cohorts_do_not_conflate_master_hits_with_warm_prs(self):
