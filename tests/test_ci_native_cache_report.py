@@ -193,7 +193,7 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertEqual(result["conclusions"]["skipped"], 1)
         self.assertEqual(
             result["successful_independent_head_cohorts"]["all_events"][
-                "both_hit"]["wall_seconds"]["n"], 1)
+                "incomplete"]["wall_seconds"]["n"], 1)
 
     def test_batch_metrics_distinct_heads_do_not_count_pr_reruns_twice(self):
         root = self._metrics_fixture()
