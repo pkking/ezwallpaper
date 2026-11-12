@@ -1,7 +1,7 @@
 # Two-output 24-hour offline rotation recovery regression
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,22 +31,22 @@ No desktop apply, no mock-to-physical claim; the proposed state is committed onl
 
 ## Acceptance criteria
 
-- [ ] 24 successive UTC hours for two independent outputs; each acknowledged tick is non-repeating and duplicate ticks are idempotent.
-- [ ] Simulated failed apply, temporarily empty pool, restart and backward clock do not falsely advance durable state.
-- [ ] Offline Core test and all applicable final-head CI succeed.
+- [x] 24 successive UTC hours for two independent outputs; each acknowledged tick is non-repeating and duplicate ticks are idempotent.
+- [x] Simulated failed apply, temporarily empty pool, restart and backward clock do not falsely advance durable state.
+- [x] Offline Core test and all applicable final-head CI succeed.
 
 ## Implementation slices
 
 - [x] Add focused Core-only deterministic regression test.
-- [ ] Verify exact-head required CI; record results, then separately archive after merge.
+- [x] Verify exact-head required CI; record results, then separately archive after merge.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Core unit | cargo test -p ezwallpaper-core two_outputs_24_hour | simulated outcomes | PENDING |
-| Rust quality | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI logs | PENDING |
-| All applicable | .github/workflows/ci.yml PR exact-head | 10 actual statuses, no failure/pending | PENDING |
+| Core unit | cargo test -p ezwallpaper-core two_outputs_24_hour | simulated outcomes | PASS: Rust tests and CLI smoke, CI 43152311506 |
+| Rust quality | cargo fmt --all -- --check; cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::unwrap_used | CI logs | PASS: Rust quality, CI 43152311506 |
+| All applicable | .github/workflows/ci.yml PR exact-head | 8 SUCCESS, 2 unselected native checks SKIPPED | PASS: CI 43152311506 |
 
 ## Decision gates
 
@@ -58,17 +58,19 @@ None: deterministic tests inside existing accepted boundaries.
 
 - 2026-11-12: implementation commit 97f3507185e6bae99e88b351d38bcb7620539e25 authored; exact-head CI and offline command outcomes remain PENDING, not claimed successful.
 
+- 2026-11-12: PR #285 final head d404c50937aaecd2884b20cd11646a80f39eb934, CI 43152311506 completed: 8 SUCCESS, 2 native Noctalia checks SKIPPED by scope; Windows, macOS, Rust, Sway, contract and plan checks passed. No reviews or unresolved review threads; squash merged as 34f4a5bd87b4bdd42f23dd8c7e1da895c1dd40bc. This is an offline Core proof only.
+
 ## Deviations and discoveries
 
 None.
 
 ## Resume from here
 
-Run the new Core-only test and inspect the complete exact-head PR Actions result; fix failures without relaxing gates.
+Implementation PR #285 is merged; verify this docs-only archive PR's final-head CI and merge only if all applicable checks succeed. Issue #54 stays OPEN.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable for the pure planner regression; existing native gates remain mandatory when selected
+Final commit: 34f4a5bd87b4bdd42f23dd8c7e1da895c1dd40bc (PR #285 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43152311506 (head d404c50937aaecd2884b20cd11646a80f39eb934; 8 SUCCESS, 2 scope-skipped)
+E2E artifact: Sway headless visual E2E SUCCESS in 43152311506; artifacts not independently inspected; Noctalia/niri job NOT SELECTED for this pure Core test change
 Remaining unassessed items: physical GPU, hotplug, lockscreen and niri/Noctalia physical pixels.
