@@ -2009,6 +2009,148 @@ mod tests {
     }
 
     #[test]
+    fn two_outputs_24h_cli_transaction_recovery_offline() {
+        let (root, profile, state) = fixture();
+        let mut previous_ids = BTreeMap::new();
+        for hour in 0_i64..24 {
+            let seconds = (hour as u64) * 3_600;
+            if hour == 12 {
+                // A disconnected local pool must not advance that output's
+                // state; no network fetch or real desktop is involved.
+                for name in ["c.png", "d.png"] {
+                    fs::remove_file(root.path().join("portrait").join(name))
+                        .expect("remove disposable portrait asset");
+                }
+            } else if hour == 13 {
+                for (name, content) in [("c.png", "portrait-0"), ("d.png", "portrait-1")] {
+                    fs::write(root.path().join("portrait").join(name), content)
+                        .expect("restore disposable portrait asset");
+                }
+            }
+
+            let mut calls = Vec::new();
+            let first = run_with_adapter_interval(
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, seconds),
+                |name, path| {
+                    calls.push((name.to_owned(), path.to_path_buf()));
+                    if hour == 7 && name == "HDMI-A-1" {
+                        bail!("simulated second-output IPC failure");
+                    }
+                    Ok(ApplyStatus::PathObserved)
+                },
+            );
+            let outcomes = if hour == 7 {
+                assert!(first.is_err(), "second-output failure must be reported");
+                assert_eq!(calls.len(), 2);
+                let partial: SavedState =
+                    serde_json::from_slice(&fs::read(&state).expect("partial state"))
+                        .expect("partial JSON");
+                assert_eq!(partial.outputs["DP-1"].last_epoch, Some(hour));
+                assert_eq!(partial.outputs["HDMI-A-1"].last_epoch, Some(hour - 1));
+                calls.clear();
+                let retried = run_with_adapter_interval(
+                    &profile,
+                    &state,
+                    None,
+                    false,
+                    true,
+                    RotationClock::simulated(60, seconds),
+                    |name, path| {
+                        calls.push((name.to_owned(), path.to_path_buf()));
+                        Ok(ApplyStatus::PathObserved)
+                    },
+                )
+                .expect("retry only unacknowledged output");
+                assert_eq!(calls.len(), 1);
+                assert_eq!(calls[0].0, "HDMI-A-1");
+                assert_eq!(retried[0].decision, RotationDecision::AlreadyApplied);
+                assert_eq!(retried[1].decision, RotationDecision::Select);
+                retried
+            } else {
+                first.expect("offline two-output hourly transaction")
+            };
+
+            assert_eq!(outcomes.len(), 2);
+            assert_eq!(outcomes[0].decision, if hour == 7 {
+                RotationDecision::AlreadyApplied
+            } else {
+                RotationDecision::Select
+            });
+            assert_eq!(
+                outcomes[1].decision,
+                if hour == 12 {
+                    RotationDecision::EmptyPool
+                } else {
+                    RotationDecision::Select
+                }
+            );
+            assert!(!outcomes.iter().any(|result| result.visually_verified));
+            let saved: SavedState = serde_json::from_slice(&fs::read(&state).expect("state file"))
+                .expect("durable state JSON");
+            assert_eq!(saved.outputs["DP-1"].last_epoch, Some(hour));
+            assert_eq!(
+                saved.outputs["HDMI-A-1"].last_epoch,
+                Some(if hour == 12 { hour - 1 } else { hour })
+            );
+            for (name, saved_output) in &saved.outputs {
+                if let Some(before) = previous_ids.get(name) {
+                    if !(hour == 12 && name == "HDMI-A-1") {
+                        assert_ne!(
+                            saved_output.last_content_id.as_ref(),
+                            Some(before),
+                            "acknowledged wallpaper must change on {name} at UTC hour {hour}"
+                        );
+                    }
+                }
+                previous_ids.insert(
+                    name.clone(),
+                    saved_output.last_content_id.clone().expect("acknowledged digest"),
+                );
+            }
+
+            let repeated = run_with_adapter_interval(
+                &profile,
+                &state,
+                None,
+                false,
+                true,
+                RotationClock::simulated(60, seconds),
+                |_, _| panic!("same bucket must not issue a second apply"),
+            )
+            .expect("idempotent same-hour retry");
+            assert_eq!(repeated[0].decision, RotationDecision::AlreadyApplied);
+            assert_eq!(
+                repeated[1].decision,
+                if hour == 12 {
+                    RotationDecision::EmptyPool
+                } else {
+                    RotationDecision::AlreadyApplied
+                }
+            );
+            if hour == 18 {
+                let rollback = run_with_adapter_interval(
+                    &profile,
+                    &state,
+                    None,
+                    false,
+                    true,
+                    RotationClock::simulated(60, seconds - 3_600),
+                    |_, _| panic!("clock rollback must never reapply"),
+                )
+                .expect("backward UTC clock");
+                assert!(rollback
+                    .iter()
+                    .all(|result| result.decision == RotationDecision::AlreadyApplied));
+            }
+        }
+    }
+
+    #[test]
     fn simultaneous_hourly_invocations_acknowledge_each_output_once() {
         use std::sync::{Arc, Barrier};
         use std::thread;
