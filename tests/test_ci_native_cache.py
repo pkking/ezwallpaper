@@ -65,6 +65,41 @@ class PinnedNativeCacheTests(unittest.TestCase):
         with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
             self.restore()
 
+    def test_exclusive_restore_rejects_symlink_inserted_after_preflight(self):
+        self.seal()
+        target = self.root / "installed/noctalia"
+        protected = self.root / "unrelated-private-file"
+        protected.write_bytes(b"do-not-overwrite")
+        actual_open = cache.os.open
+
+        def replace_just_before_open(path, flags, mode=0o777):
+            if Path(path) == target and flags & os.O_EXCL:
+                target.symlink_to(protected)
+            return actual_open(path, flags, mode)
+
+        with mock.patch.object(cache.os, "open", side_effect=replace_just_before_open):
+            with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
+                self.restore()
+        self.assertEqual(protected.read_bytes(), b"do-not-overwrite")
+        self.assertTrue(target.is_symlink())
+        self.assertFalse((self.root / "artifacts/source-sha.txt").exists())
+
+    def test_exclusive_restore_rejects_regular_target_inserted_after_preflight(self):
+        self.seal()
+        target = self.root / "installed/noctalia"
+        actual_open = cache.os.open
+
+        def replace_just_before_open(path, flags, mode=0o777):
+            if Path(path) == target and flags & os.O_EXCL:
+                target.write_bytes(b"keep-existing")
+            return actual_open(path, flags, mode)
+
+        with mock.patch.object(cache.os, "open", side_effect=replace_just_before_open):
+            with self.assertRaisesRegex(cache.CacheError, "target_already_exists"):
+                self.restore()
+        self.assertEqual(target.read_bytes(), b"keep-existing")
+        self.assertFalse((self.root / "artifacts/source-sha.txt").exists())
+
     def test_existing_identity_output_never_clobbered_on_restore(self):
         self.seal()
         target = self.root / "installed/noctalia"
