@@ -1,7 +1,7 @@
 # Native Noctalia/niri independent-head latency cohorts
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -38,8 +38,8 @@ Original job-level distributions, fields, verified status and all strict timesta
 
 ## Implementation slices
 
-- [ ] Implement additive independent-head sampler.
-- [ ] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
+- [x] Implement additive independent-head sampler.
+- [x] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
 - [ ] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
 
 ## Verification matrix
@@ -58,7 +58,12 @@ None; strictly additive, offline evidence accounting. No runtime behavior, CLI, 
 
 - 2026-11-12: inspected master 7a998bc4f46ce4dbee9dcf826d0e091ad766da42, master CI 43257192988 SUCCESS, open issues and active/completed plan directories; no new branch CI observed.
 
+- 2026-11-12: source and fixtures committed (a6b18355263ec57fb6d2bcdf4ae93e0e0be640f2, fc2422434c8c3dbe647baf01894364c0926b6800, 79b32629ff98cd2d68855c82af430e67f87b34cc); final-head CI and reviews remain PENDING and no local command exit code was observed.
+
 ## Deviations and discoveries
+
+An existing optional-step loop shadowed job elapsed seconds and corrupted per-run wall_seconds; fixed without changing the job-level definition.
+
 
 None.
 
