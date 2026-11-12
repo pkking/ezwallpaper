@@ -17,6 +17,7 @@ pub struct BingProvider {
     time_offset: i32,
     dir: String,
     max_download_bytes: u64,
+    max_batch_download_bytes: Option<u64>,
 }
 
 impl BingProvider {
@@ -27,6 +28,7 @@ impl BingProvider {
             time_offset: 0,
             dir: ".".to_string(),
             max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
+            max_batch_download_bytes: None,
         }
     }
 
@@ -52,6 +54,13 @@ impl BingProvider {
 
     pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
         self.max_download_bytes = super::checked_download_limit(bytes)?;
+        Ok(self)
+    }
+
+    /// Total completed image bytes within one sequential get_img invocation.
+    /// No shared quota is enforced across independent calls/processes.
+    pub fn with_max_batch_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_batch_download_bytes = Some(super::checked_download_limit(bytes)?);
         Ok(self)
     }
 
@@ -131,14 +140,18 @@ impl GetImgUrl for BingProvider {
         if urls.len() > nums as usize {
             bail!("Bing returned more images than requested");
         }
-        urls.iter()
-            .map(|url| {
-                let path = download_image(&client, url, &self.dir, self.max_download_bytes)?;
-                Ok(WallPaper::new()
-                    .with_type(WpType::FromLocal)
-                    .with_path(path))
-            })
-            .collect()
+        let mut budget = super::BatchDownloadBudget::new(self.max_batch_download_bytes);
+        let mut wallpapers = Vec::with_capacity(urls.len());
+        for url in &urls {
+            // Fail before the next HTTP request if this batch has no bytes
+            // left. The stream hard-cap remains authoritative after request.
+            let cap = budget.remaining_limit(self.max_download_bytes)?;
+            let (path, transferred) = download_image(&client, url, &self.dir, cap)?;
+            budget.record(transferred)?;
+            wallpapers.push(WallPaper::new().with_type(WpType::FromLocal).with_path(path));
+        }
+        debug!("Bing batch staged {} bytes", budget.transferred);
+        Ok(wallpapers)
     }
 }
 
@@ -147,7 +160,7 @@ fn download_image(
     url: &Url,
     dir: &str,
     max_bytes: u64,
-) -> Result<String> {
+) -> Result<(String, u64)> {
     let file_name = url
         .query_pairs()
         .find(|(key, _)| key == "id")
@@ -163,7 +176,7 @@ fn download_image(
     Ok(file_path
         .to_str()
         .ok_or_else(|| anyhow!("download output path is not UTF-8"))?
-        .to_owned())
+        .to_owned(), transferred))
 }
 
 #[derive(Debug, Deserialize)]
