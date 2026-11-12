@@ -58,6 +58,8 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         for scope in scopes
     }
     totals = {scope: {verdict: 0 for verdict in VERDICTS} for scope in scopes}
+    verified_heads = {scope: {verdict: set() for verdict in ("verified_hit", "verified_miss")}
+                      for scope in scopes}
     rows = []
     for item in items:
         if not isinstance(item, dict) or set(item) != FIELDS:
@@ -127,6 +129,7 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         for scope in ("all_events", item["event"]):
             totals[scope][verdict] += 1
             if verdict in durations[scope]:
+                verified_heads[scope][verdict].add(item["head_sha"])
                 if btime is None or ptime is None:
                     raise EvidenceError("verified_cache_missing_step_times")
                 dist = durations[scope][verdict]
@@ -144,6 +147,14 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         stats[scope] = {
             "statuses": totals[scope],
             "verified_selected_observations": h + m,
+            "distinct_head_shas": {
+                verdict: len(verified_heads[scope][verdict])
+                for verdict in ("verified_hit", "verified_miss")
+            },
+            "verified_selected_distinct_head_shas": len(
+                verified_heads[scope]["verified_hit"] |
+                verified_heads[scope]["verified_miss"]
+            ),
             "verified_hit_rate": round(h / (h + m), 4) if h + m else None,
             "latency": {
                 name: {key: native._distribution(values)
