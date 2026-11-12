@@ -1,7 +1,7 @@
 # Optional exact-step native Noctalia/niri duration evidence
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -37,8 +37,8 @@ Existing job manifest without steps remains valid. Optional successful-job exact
 
 ## Implementation slices
 
-- [ ] Extend offline metric schema and validation for optional step timings.
-- [ ] Deterministic warm/miss/mixed step and negative fixtures.
+- [x] Extend offline metric schema and validation for optional step timings.
+- [x] Deterministic warm/miss step and negative fixtures; existing mixed cohort remains supported.
 - [ ] Exact-head CI/reviews, squash merge, archive separately.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None: additive offline diagnostics only; no runtime/cache trust/physical interac
 ## Evidence log
 
 - 2026-11-12: source and workflow inspected at ccccadb6b87975f5b8e7eecb76d0b160d1107693; current job-level metrics validated; no branch checks run.
+
+- 2026-11-12: source implementation and offline fixture commits authored in isolated branch; no local cargo/network available, CI result not yet known. No passing claim before final-head GitHub checks.
 
 ## Deviations and discoveries
 
