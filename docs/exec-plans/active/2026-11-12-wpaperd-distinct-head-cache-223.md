@@ -1,7 +1,7 @@
 # Trusted wpaperd cache: distinct-PR-head sample accounting
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -37,7 +37,7 @@ Keep exact schema fields backward compatible. Never count unverified, failed, sk
 
 ## Implementation slices
 
-- [ ] Add additive verified distinct-head counts and offline regression test.
+- [x] Add additive verified distinct-head counts and offline regression test.
 - [ ] Inspect CI result, reviews, archive plan separately after successful implementation merge.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None: additive read-only CI evidence fields; no runtime or privileged change.
 ## Evidence log
 
 - 2026-11-12: source inspection at master 0fe7d1d266316bd9bb6036e50157c4ab0c5c7930. No branch tests executed yet.
+
+- 2026-11-12: source change commits 347cfe024d7cff472c87af4032585bdf31fb1683 and f2f59dad8929d3a036cd3436dbcfcb2e7ed12171; offline and exact-head CI checks not yet observed.
 
 ## Deviations and discoveries
 
