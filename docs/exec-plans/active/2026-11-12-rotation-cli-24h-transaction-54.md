@@ -59,9 +59,11 @@ None. Pure regression tests under existing approved Core/CLI boundary.
 
 - 2026-11-12: implementation source checkpoint 2dd27652f6edf98fb1145494c4eade4ebcb4148a; new branch quality and GitHub Actions checks still PENDING, no passing result assumed.
 
+- 2026-11-12: PR #291 initial head 7eb8d223fd5f18baa4cc0cbbc3e9b8cdeef848a3, CI run 43167294184: Rust tests & CLI smoke SUCCESS, Rust quality FAILURE at Format (two exact rustfmt layout differences). Corrected formatting in source commit 7aecb0f75e2a4682fc78246133ba2972deaa35bd. A full new final-head CI is required; initial run is not acceptance evidence.
+
 ## Deviations and discoveries
 
-None.
+Initial Rust format-only failure repaired; no check suppression.
 
 ## Resume from here
 
