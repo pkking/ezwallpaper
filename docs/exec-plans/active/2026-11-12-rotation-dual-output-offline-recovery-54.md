@@ -1,7 +1,7 @@
 # Two-output 24-hour offline rotation recovery regression
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -37,7 +37,7 @@ No desktop apply, no mock-to-physical claim; the proposed state is committed onl
 
 ## Implementation slices
 
-- [ ] Add focused Core-only deterministic regression test.
+- [x] Add focused Core-only deterministic regression test.
 - [ ] Verify exact-head required CI; record results, then separately archive after merge.
 
 ## Verification matrix
@@ -55,6 +55,8 @@ None: deterministic tests inside existing accepted boundaries.
 ## Evidence log
 
 - 2026-11-12: inspected master 2b2e9c819eace5e1a4f35eca35b90ca25ae8c47f, Issues, AGENTS.md, workflow and existing planner tests. Original master CI 43139151571 success; new branch tests not yet run.
+
+- 2026-11-12: implementation commit 97f3507185e6bae99e88b351d38bcb7620539e25 authored; exact-head CI and offline command outcomes remain PENDING, not claimed successful.
 
 ## Deviations and discoveries
 
