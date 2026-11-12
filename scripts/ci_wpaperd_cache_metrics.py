@@ -60,6 +60,9 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
     totals = {scope: {verdict: 0 for verdict in VERDICTS} for scope in scopes}
     verified_heads = {scope: {verdict: set() for verdict in ("verified_hit", "verified_miss")}
                       for scope in scopes}
+    # One latest successful selected job per head, regardless of how many
+    # attempts or whether its verified cache status changed on a rerun.
+    latest_verified_heads = {scope: {} for scope in scopes}
     rows = []
     for item in items:
         if not isinstance(item, dict) or set(item) != FIELDS:
@@ -136,6 +139,14 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                 for name, value in (("job_seconds", wall), ("queue_seconds", queue),
                                     ("build_seconds", btime), ("pixel_seconds", ptime)):
                     dist[name].append(value)
+                ordering = (run, attempt, job)
+                old = latest_verified_heads[scope].get(item["head_sha"])
+                if old is None or ordering > old["ordering"]:
+                    latest_verified_heads[scope][item["head_sha"]] = {
+                        "ordering": ordering, "verdict": verdict,
+                        "job_seconds": wall, "queue_seconds": queue,
+                        "build_seconds": btime, "pixel_seconds": ptime,
+                    }
         rows.append({"run_id": run, "attempt": attempt, "job_id": job,
                      "head_sha": item["head_sha"], "event": item["event"],
                      "verdict": verdict, "job_seconds": wall,
@@ -143,6 +154,16 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                      "pixel_seconds": ptime})
     stats = {}
     for scope in scopes:
+        per_head = latest_verified_heads[scope].values()
+        independent = {}
+        for verdict in ("verified_hit", "verified_miss"):
+            samples = [record for record in per_head
+                       if record["verdict"] == verdict]
+            independent[verdict] = {
+                metric: native._distribution([record[metric] for record in samples])
+                for metric in ("job_seconds", "queue_seconds",
+                               "build_seconds", "pixel_seconds")
+            }
         h, m = totals[scope]["verified_hit"], totals[scope]["verified_miss"]
         stats[scope] = {
             "statuses": totals[scope],
@@ -156,6 +177,11 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                 verified_heads[scope]["verified_miss"]
             ),
             "verified_hit_rate": round(h / (h + m), 4) if h + m else None,
+            "independent_head_latency": independent,
+            "independent_head_verdict_counts": {
+                verdict: independent[verdict]["job_seconds"]["n"]
+                for verdict in ("verified_hit", "verified_miss")
+            },
             "latency": {
                 name: {key: native._distribution(values)
                        for key, values in durations[scope][name].items()}
@@ -169,6 +195,11 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         "build_duration": "pinned build-or-cache-validation step; excludes pixel test",
         "pixel_duration": "independent native wpaperd IPC and two-output framebuffer step",
         "coverage": "user-supplied selected native jobs, not population coverage",
+        "independent_head_selection": (
+            "Latest successful selected native pixel job per exact head SHA and "
+            "event scope by (run_id, attempt, job_id); verified HIT/MISS "
+            "changes on rerun replace the head's earlier cohort"
+        ),
         "runs": rows,
     }
 
