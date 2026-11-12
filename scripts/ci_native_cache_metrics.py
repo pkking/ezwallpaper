@@ -151,6 +151,9 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         for scope in cohort_walls
     }
     conclusions = {c: 0 for c in report.CONCLUSIONS}
+    # Only one successful selected job per exact revision contributes to an
+    # independent-head percentile. A later rerun may change HIT/MISS status.
+    latest_heads = {scope: {} for scope in cohort_walls}
     rows = []
     for item in items:
         if (not isinstance(item, dict)
@@ -212,6 +215,14 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                 cohort_walls[scope][cohort].append(elapsed)
                 cohort_queues[scope][cohort].append(queued)
                 cohort_heads[scope][cohort].add(item["head_sha"])
+                ordering = (run_id, attempt, job_id)
+                old = latest_heads[scope].get(item["head_sha"])
+                if old is None or ordering > old["ordering"]:
+                    latest_heads[scope][item["head_sha"]] = {
+                        "ordering": ordering, "cohort": cohort,
+                        "wall_seconds": elapsed, "queue_seconds": queued,
+                        "step_seconds": step_seconds,
+                    }
                 if step_seconds is not None:
                     for name, elapsed in step_seconds.items():
                         if elapsed is not None:
@@ -238,6 +249,29 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
         }
         for scope in cohort_walls
     }
+    # Job-level distributions above remain untouched. This second view uses
+    # the latest successful attempt for each head, independent of input order.
+    independent = {}
+    for scope, by_head in latest_heads.items():
+        independent[scope] = {}
+        for cohort in SUCCESS_COHORTS:
+            samples = [record for record in by_head.values()
+                       if record["cohort"] == cohort]
+            independent[scope][cohort] = {
+                "distinct_head_shas": len(samples),
+                "wall_seconds": _distribution(
+                    [record["wall_seconds"] for record in samples]),
+                "queue_seconds": _distribution(
+                    [record["queue_seconds"] for record in samples]),
+                "step_seconds": {
+                    step: _distribution([
+                        record["step_seconds"][step] for record in samples
+                        if record["step_seconds"] is not None
+                        and record["step_seconds"][step] is not None
+                    ])
+                    for step in STEP_NAMES
+                },
+            }
     return {"schema": "native-cache-jobs-v1", "sample_count": len(rows),
             "observed_native_job_execution": {
                 "n": len(executed_wall_seconds),
@@ -251,6 +285,12 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             "events": event_counts, "conclusions": conclusions,
             "components": rates,
             "successful_native_cache_cohorts": cohorts,
+            "successful_independent_head_cohorts": independent,
+            "independent_head_selection": (
+                "Latest successful selected native job per exact head SHA and "
+                "event scope by (run_id, attempt, job_id); later failed jobs "
+                "remain job-level evidence, not successful samples"
+            ),
             "successful_native_step_seconds": {
                 scope: {
                     cohort: {
