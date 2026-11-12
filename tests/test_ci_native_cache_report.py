@@ -301,6 +301,8 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         )
         self.assertIsNone(result["runs"][0]["step_seconds"]["noctalia_build"])
         self.assertEqual(result["runs"][1]["step_seconds"]["niri_pixels"], 2)
+        self.assertEqual(result["runs"][0]["wall_seconds"], 10)
+        self.assertEqual(result["runs"][1]["wall_seconds"], 40)
         self.assertEqual(
             result["successful_independent_head_cohorts"]["pull_request"][
                 "both_miss"]["step_seconds"]["noctalia_build"],
