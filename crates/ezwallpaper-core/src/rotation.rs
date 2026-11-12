@@ -280,6 +280,97 @@ mod tests {
     }
 
     #[test]
+    fn two_outputs_24_hour_offline_rotation_recovers_without_false_acknowledgment() {
+        let landscape = vec![id("a"), id("b"), id("c")];
+        let portrait = vec![id("d"), id("e"), id("f")];
+        let mut landscape_state = RotationState::default();
+        let mut portrait_state = RotationState::default();
+
+        for hour in 0_i64..24 {
+            let previous_landscape = landscape_state.last_content_id.clone();
+            let first = plan_rotation("DP-1", hour, &landscape, &landscape_state, false)
+                .expect("landscape proposal");
+            assert_eq!(first.decision, RotationDecision::Select);
+            assert_ne!(first.content_id, previous_landscape);
+            assert_eq!(
+                first,
+                plan_rotation("DP-1", hour, &landscape, &landscape_state, false)
+                    .expect("unacknowledged proposal is repeatable")
+            );
+            landscape_state = first.proposed_state.expect("landscape apply acknowledged");
+            let duplicate = plan_rotation("DP-1", hour, &landscape, &landscape_state, false)
+                .expect("duplicate hourly invocation");
+            assert_eq!(duplicate.decision, RotationDecision::AlreadyApplied);
+            assert!(duplicate.proposed_state.is_none());
+
+            // Offline depletion affects only this output; it cannot advance
+            // the acknowledged epoch or alter the other output's shuffle bag.
+            if hour == 12 {
+                let before = portrait_state.clone();
+                let empty = plan_rotation("HDMI-A-1", hour, &[], &portrait_state, false)
+                    .expect("temporarily unavailable portrait pool");
+                assert_eq!(empty.decision, RotationDecision::EmptyPool);
+                assert!(empty.proposed_state.is_none());
+                assert_eq!(portrait_state, before);
+                assert_eq!(landscape_state.last_epoch, Some(hour));
+                continue;
+            }
+
+            let previous_portrait = portrait_state.last_content_id.clone();
+            let second = plan_rotation("HDMI-A-1", hour, &portrait, &portrait_state, false)
+                .expect("portrait proposal");
+            assert_eq!(second.decision, RotationDecision::Select);
+            assert_ne!(second.content_id, previous_portrait);
+            assert_ne!(second.content_id, landscape_state.last_content_id);
+
+            if hour == 7 {
+                // A backend failure or interruption does not persist a
+                // proposed change. Retrying the same hour reuses the choice.
+                let before = portrait_state.clone();
+                assert_eq!(
+                    second,
+                    plan_rotation("HDMI-A-1", hour, &portrait, &portrait_state, false)
+                        .expect("retry after simulated apply failure")
+                );
+                assert_eq!(portrait_state, before);
+            }
+            portrait_state = second.proposed_state.expect("portrait apply acknowledged");
+            let duplicate = plan_rotation("HDMI-A-1", hour, &portrait, &portrait_state, false)
+                .expect("duplicate portrait hourly invocation");
+            assert_eq!(duplicate.decision, RotationDecision::AlreadyApplied);
+            assert!(duplicate.proposed_state.is_none());
+
+            if hour == 15 {
+                // A new process reads the state the previous process wrote.
+                landscape_state = serde_json::from_str(
+                    &serde_json::to_string(&landscape_state).expect("serialize landscape"),
+                )
+                .expect("restore landscape");
+                portrait_state = serde_json::from_str(
+                    &serde_json::to_string(&portrait_state).expect("serialize portrait"),
+                )
+                .expect("restore portrait");
+            }
+            if hour == 18 {
+                for (output, pool, state) in [
+                    ("DP-1", &landscape, &landscape_state),
+                    ("HDMI-A-1", &portrait, &portrait_state),
+                ] {
+                    let rollback = plan_rotation(output, hour - 1, pool, state, false)
+                        .expect("backward UTC clock");
+                    assert_eq!(rollback.decision, RotationDecision::AlreadyApplied);
+                    assert!(rollback.proposed_state.is_none());
+                }
+            }
+        }
+
+        assert_eq!(landscape_state.last_epoch, Some(23));
+        assert_eq!(portrait_state.last_epoch, Some(23));
+        assert!(landscape_state.cycle > 1);
+        assert!(portrait_state.cycle > 1);
+    }
+
+    #[test]
     fn rejects_malformed_ids_state_and_output() {
         let good = id("a");
         assert!(plan_rotation(
