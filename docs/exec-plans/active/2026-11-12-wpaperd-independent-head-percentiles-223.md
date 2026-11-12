@@ -1,7 +1,7 @@
 # Wpaperd independently sampled native latency cohorts
 
 Issue: #223
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -38,8 +38,8 @@ Original job-level distributions, fields, verified status and all strict timesta
 
 ## Implementation slices
 
-- [ ] Implement additive independent-head sampler.
-- [ ] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
+- [x] Implement additive independent-head sampler.
+- [x] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
 - [ ] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
 
 ## Verification matrix
@@ -58,7 +58,12 @@ None; strictly additive, offline evidence accounting. No runtime behavior, CLI, 
 
 - 2026-11-12: inspected master 7a998bc4f46ce4dbee9dcf826d0e091ad766da42, master CI 43257192988 SUCCESS, open issues and active/completed plan directories; no new branch CI observed.
 
+- 2026-11-12: source and fixtures committed (26a63b2b936c29042fad919341968735467b7309, 53d23df8d39813e8fe42a3463c6d70813354b838); final-head CI and reviews remain PENDING and no local command exit code was observed.
+
 ## Deviations and discoveries
+
+One SHA can switch from verified MISS on PR to verified HIT on a later push; the independent all-events view selects one last verified observation.
+
 
 None.
 
