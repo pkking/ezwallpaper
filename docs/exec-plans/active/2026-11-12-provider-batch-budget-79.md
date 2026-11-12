@@ -1,7 +1,7 @@
 # Per-invocation provider batch transfer budget
 
 Issue: #79
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -38,8 +38,8 @@ Default behavior remains per-image 64 MiB and no additional batch cap. Public bu
 
 ## Implementation slices
 
-- [ ] Shared bounded sequential budget and provider integration.
-- [ ] Offline tests, explicit documentation of per-invocation versus concurrent scope.
+- [x] Shared bounded sequential budget and provider integration.
+- [x] Offline tests, explicit documentation of per-invocation versus concurrent scope.
 - [ ] Exact-head CI/reviews, squash merge, then independent plan archive.
 
 ## Verification matrix
@@ -57,6 +57,8 @@ None: additive, opt-in Core API within Issue #79; no user-facing defaults, produ
 ## Evidence log
 
 - 2026-11-12: confirmed `master` ccccadb6b87975f5b8e7eecb76d0b160d1107693; Open PR=0; 85 active/84 completed plans. Existing stream hard cap checked in source; new branch tests not run.
+
+- 2026-11-12: source implementation and offline fixture commits authored in isolated branch; no local cargo/network available, CI result not yet known. No passing claim before final-head GitHub checks.
 
 ## Deviations and discoveries
 
