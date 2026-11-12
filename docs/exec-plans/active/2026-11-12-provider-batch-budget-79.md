@@ -60,9 +60,11 @@ None: additive, opt-in Core API within Issue #79; no user-facing defaults, produ
 
 - 2026-11-12: source implementation and offline fixture commits authored in isolated branch; no local cargo/network available, CI result not yet known. No passing claim before final-head GitHub checks.
 
+- 2026-11-12: initial PR #297 head a7f181df013777ca620a07564558475f20eb7038, Actions 43255076452: Rust tests and CLI smoke SUCCESS, Rust quality FAILED solely at Format (exact differences in 4 provider files). Applied all CI-provided rustfmt layouts in e706533fe6add1bb3440605887156bb986db7b6f, 8ca5cf6249c8bf08409c300074627d863600511c, 072dfd705dafaa7c10b13fe628c8872ac5a93273 and c475eec2806708baf303c75e0103cf6a60f87e61. This initial run is NOT final-head acceptance evidence; full new CI pending.
+
 ## Deviations and discoveries
 
-None.
+Rust format-only failure fixed without weakening CI. Final-head revalidation pending.
 
 ## Resume from here
 
