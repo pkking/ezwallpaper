@@ -26,6 +26,15 @@ FIELDS = frozenset({"run_id", "attempt", "job_id", "event", "head_sha", "job_nam
 STATUSES = ("verified_hit", "verified_miss", "unverified_hit",
             "unverified_miss", "not_reached", "skipped")
 SUCCESS_COHORTS = ("both_hit", "both_miss", "mixed", "incomplete")
+# GitHub Actions job-step names from the existing, unchanged native E2E.
+# These are optional audit evidence, not executable or cache trust inputs.
+STEP_NAMES = {
+    "noctalia_build": "Build pinned upstream native Noctalia v5.2.1",
+    "noctalia_pixels": "Test actual native IPC and dual output rendered pixels",
+    "niri_build": "Build exact unmerged niri virtual-output PR",
+    "niri_pixels": "Verify real niri + Noctalia dual-output framebuffer",
+}
+STEP_FIELDS = frozenset({"name", "conclusion", "started_at", "completed_at"})
 
 
 def _timestamp(value: str) -> datetime:
@@ -79,6 +88,47 @@ def _success_cohort(components: dict[str, str]) -> str:
     return "incomplete"
 
 
+def _verified_step_seconds(steps: list[dict], job_start: datetime,
+                           job_end: datetime, components: dict[str, str]) -> dict:
+    """Accept only the complete exact native job step sequence for a successful run."""
+    if not isinstance(steps, list) or len(steps) != len(STEP_NAMES):
+        raise report.EvidenceError("incomplete_native_step_evidence")
+    observed = {}
+    for step in steps:
+        if not isinstance(step, dict) or set(step) != STEP_FIELDS:
+            raise report.EvidenceError("invalid_native_step_fields")
+        name = step["name"]
+        if not isinstance(name, str) or name not in STEP_NAMES.values() or name in observed:
+            raise report.EvidenceError("unknown_or_duplicate_native_step")
+        conclusion = step["conclusion"]
+        if conclusion not in ("success", "skipped"):
+            raise report.EvidenceError("unverified_native_step")
+        started = _timestamp(step["started_at"])
+        finished = _timestamp(step["completed_at"])
+        if not job_start <= started <= finished <= job_end:
+            raise report.EvidenceError("native_step_outside_job_clock")
+        observed[name] = (conclusion, round((finished - started).total_seconds(), 3))
+
+    durations = {}
+    for alias, name in STEP_NAMES.items():
+        conclusion, elapsed = observed[name]
+        if alias.endswith("_pixels"):
+            if conclusion != "success":
+                raise report.EvidenceError("native_pixel_step_not_verified")
+            durations[alias] = elapsed
+            continue
+        component = alias.split("_", 1)[0]
+        verified = components[component]
+        expected = {"verified_hit": "skipped", "verified_miss": "success"}.get(
+            verified
+        )
+        if expected is None or conclusion != expected:
+            raise report.EvidenceError("native_cache_step_conflicts_with_log")
+        # A cache-hit's intentionally skipped build has no measured duration.
+        durations[alias] = elapsed if conclusion == "success" else None
+    return durations
+
+
 def summarize(items: list[dict], base_dir: Path) -> dict:
     if not isinstance(items, list) or len(items) > MAX_JOBS:
         raise report.EvidenceError("invalid_native_job_count")
@@ -95,10 +145,16 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                      for scope in cohort_walls}
     cohort_heads = {scope: {name: set() for name in SUCCESS_COHORTS}
                     for scope in cohort_walls}
+    cohort_steps = {
+        scope: {cohort: {name: [] for name in STEP_NAMES}
+                for cohort in SUCCESS_COHORTS}
+        for scope in cohort_walls
+    }
     conclusions = {c: 0 for c in report.CONCLUSIONS}
     rows = []
     for item in items:
-        if not isinstance(item, dict) or set(item) != FIELDS:
+        if (not isinstance(item, dict)
+                or set(item) not in (FIELDS, FIELDS | {"steps"})):
             raise report.EvidenceError("invalid_native_job_fields")
         run_id, attempt, job_id = (item[k] for k in ("run_id", "attempt", "job_id"))
         if (any(type(x) is not int or x < 1 for x in (run_id, attempt, job_id))
@@ -142,6 +198,13 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             if conclusion == "success":
                 wall_seconds.append(elapsed)
                 queue_seconds.append(queued)
+        step_seconds = None
+        if "steps" in item:
+            if conclusion != "success":
+                raise report.EvidenceError("step_evidence_requires_successful_job")
+            step_seconds = _verified_step_seconds(
+                item["steps"], start, end, classified["components"]
+            )
         cohort = (_success_cohort(classified["components"])
                   if conclusion == "success" else None)
         if cohort is not None:
@@ -149,13 +212,17 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                 cohort_walls[scope][cohort].append(elapsed)
                 cohort_queues[scope][cohort].append(queued)
                 cohort_heads[scope][cohort].add(item["head_sha"])
+                if step_seconds is not None:
+                    for name, elapsed in step_seconds.items():
+                        if elapsed is not None:
+                            cohort_steps[scope][cohort][name].append(elapsed)
         for component, status in classified["components"].items():
             totals[component][status] += 1
         rows.append({"run_id": run_id, "attempt": attempt, "job_id": job_id,
                      "head_sha": item["head_sha"], "event": item["event"],
                      "conclusion": conclusion, "queue_seconds": queued,
                      "wall_seconds": elapsed, "components": classified["components"],
-                     "cache_cohort": cohort})
+                     "cache_cohort": cohort, "step_seconds": step_seconds})
     rates = {}
     for component, stats in totals.items():
         hit, miss = stats["verified_hit"], stats["verified_miss"]
@@ -184,6 +251,20 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             "events": event_counts, "conclusions": conclusions,
             "components": rates,
             "successful_native_cache_cohorts": cohorts,
+            "successful_native_step_seconds": {
+                scope: {
+                    cohort: {
+                        name: _distribution(cohort_steps[scope][cohort][name])
+                        for name in STEP_NAMES
+                    }
+                    for cohort in SUCCESS_COHORTS
+                }
+                for scope in cohort_steps
+            },
+            "step_timing_scope": (
+                "Optional exact successful-job Actions step timestamps only; "
+                "skipped cache-hit builds excluded, never counted as zero seconds"
+            ),
             "successful_job_wall_seconds": {"n": len(wall_seconds), "p50": _percentile(wall_seconds, .5),
                                             "p90": _percentile(wall_seconds, .9)},
             "successful_job_queue_seconds": {"n": len(queue_seconds), "p50": _percentile(queue_seconds, .5),
