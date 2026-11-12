@@ -1,7 +1,7 @@
 # Offline two-output 24-hour CLI transaction regression
 
 Issue: #54
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -38,7 +38,7 @@ Only temporary directories and a fake exact-path adapter; preserve state v1, per
 
 ## Implementation slices
 
-- [ ] Add one deterministic, offline CLI controller integration regression.
+- [x] Add one deterministic, offline CLI controller integration regression.
 - [ ] Validate exact-head CI and review; squash merge, then archive in an independent PR.
 
 ## Verification matrix
@@ -56,6 +56,8 @@ None. Pure regression tests under existing approved Core/CLI boundary.
 ## Evidence log
 
 - 2026-11-12: inspected master 7a8c04d667fb206e4b8241d0059b791bcf9d0162, current open PRs/Issues, active/completed plans, AGENTS.md and workflow; source-level tests identified a gap between isolated CLI cases and the pure-planner 24-hour check. Branch tests not yet executed.
+
+- 2026-11-12: implementation source checkpoint 2dd27652f6edf98fb1145494c4eade4ebcb4148a; new branch quality and GitHub Actions checks still PENDING, no passing result assumed.
 
 ## Deviations and discoveries
 
