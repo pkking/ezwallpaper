@@ -16,6 +16,7 @@ pub struct WallhavenProvider {
     min_size: Option<(u32, u32)>,
     page: u32,
     max_download_bytes: u64,
+    max_batch_download_bytes: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +54,7 @@ impl WallhavenProvider {
             min_size: None,
             page: 1,
             max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
+            max_batch_download_bytes: None,
         }
     }
 
@@ -92,6 +94,12 @@ impl WallhavenProvider {
 
     pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
         self.max_download_bytes = super::checked_download_limit(bytes)?;
+        Ok(self)
+    }
+
+    /// Additive limit for this sequential provider batch only.
+    pub fn with_max_batch_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_batch_download_bytes = Some(super::checked_download_limit(bytes)?);
         Ok(self)
     }
 
@@ -165,6 +173,7 @@ impl GetImgUrl for WallhavenProvider {
         let client = http_client()?;
         let mut wallpapers = Vec::with_capacity(nums as usize);
         let mut seen = BTreeSet::new();
+        let mut budget = super::BatchDownloadBudget::new(self.max_batch_download_bytes);
         // Wallhaven returns at most 24 per page. Fetch no more than 3 pages.
         for page in self.page..=(self.page + 2).min(20) {
             if wallpapers.len() >= nums as usize {
@@ -181,19 +190,16 @@ impl GetImgUrl for WallhavenProvider {
                 .collect();
             let validated_names = self.preflight_downloads(&chosen, &seen)?;
             for url in chosen {
+                // No bytes left in this call: refuse before the next request.
+                let cap = budget.remaining_limit(self.max_download_bytes)?;
                 let file_name = image_filename(&url)?;
                 let path = super::safe_download_path(&self.dir, file_name)?;
                 let mut response = request_with_retry(client.get(url))?;
-                super::reject_excess_content_length(
-                    response.content_length(),
-                    self.max_download_bytes,
-                )?;
+                super::reject_excess_content_length(response.content_length(), cap)?;
                 debug!("downloading Wallhaven image to {:?}", path);
-                let transferred = super::write_complete_download_with_limit(
-                    &path,
-                    &mut response,
-                    self.max_download_bytes,
-                )?;
+                let transferred =
+                    super::write_complete_download_with_limit(&path, &mut response, cap)?;
+                budget.record(transferred)?;
                 debug!("staged {} Wallhaven image bytes", transferred);
                 wallpapers.push(
                     WallPaper::new().with_type(WpType::FromLocal).with_path(
@@ -209,6 +215,7 @@ impl GetImgUrl for WallhavenProvider {
                 break;
             }
         }
+        debug!("Wallhaven batch staged {} bytes", budget.transferred);
         Ok(wallpapers)
     }
 }

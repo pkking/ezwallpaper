@@ -20,6 +20,7 @@ pub struct PexelProvider {
     page: u32,
     min_size: Option<(u32, u32)>,
     max_download_bytes: u64,
+    max_batch_download_bytes: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +60,7 @@ impl PexelProvider {
             page: 1,
             min_size: None,
             max_download_bytes: super::DEFAULT_DOWNLOAD_LIMIT,
+            max_batch_download_bytes: None,
         }
     }
 
@@ -111,6 +113,12 @@ impl PexelProvider {
 
     pub fn with_max_download_bytes(mut self, bytes: u64) -> Result<Self> {
         self.max_download_bytes = super::checked_download_limit(bytes)?;
+        Ok(self)
+    }
+
+    /// Additive limit for this sequential provider batch only.
+    pub fn with_max_batch_download_bytes(mut self, bytes: u64) -> Result<Self> {
+        self.max_batch_download_bytes = Some(super::checked_download_limit(bytes)?);
         Ok(self)
     }
 
@@ -176,6 +184,7 @@ impl GetImgUrl for PexelProvider {
         let client = http_client()?;
         let mut wallpapers = Vec::with_capacity(nums as usize);
         let mut seen = BTreeSet::new();
+        let mut budget = super::BatchDownloadBudget::new(self.max_batch_download_bytes);
         // Bounded pagination: at most three pages, fail closed on empty/exhausted pages.
         for page in self.page..=(self.page + 2).min(20) {
             if wallpapers.len() >= nums as usize {
@@ -196,7 +205,9 @@ impl GetImgUrl for PexelProvider {
                 .collect();
             let validated_names = self.preflight_downloads(&chosen, &seen)?;
             for url in chosen {
-                let path = download_image(&client, &url, &self.dir, self.max_download_bytes)?;
+                let cap = budget.remaining_limit(self.max_download_bytes)?;
+                let (path, transferred) = download_image(&client, &url, &self.dir, cap)?;
+                budget.record(transferred)?;
                 wallpapers.push(
                     WallPaper::new()
                         .with_type(WpType::FromLocal)
@@ -208,6 +219,7 @@ impl GetImgUrl for PexelProvider {
                 break;
             }
         }
+        debug!("Pexels batch staged {} bytes", budget.transferred);
         Ok(wallpapers)
     }
 }
@@ -224,7 +236,7 @@ fn download_image(
     url: &Url,
     dir: &str,
     max_bytes: u64,
-) -> Result<String> {
+) -> Result<(String, u64)> {
     let name = image_filename(url)?;
     let path = super::safe_download_path(dir, name)?;
     let mut response = request_with_retry(client.get(url.clone()))?;
@@ -232,10 +244,12 @@ fn download_image(
     debug!("downloading Pexels image to {:?}", path);
     let transferred = super::write_complete_download_with_limit(&path, &mut response, max_bytes)?;
     debug!("staged {} Pexels image bytes", transferred);
-    Ok(path
-        .to_str()
-        .ok_or_else(|| anyhow!("non-UTF8 download path"))?
-        .to_owned())
+    Ok((
+        path.to_str()
+            .ok_or_else(|| anyhow!("non-UTF8 download path"))?
+            .to_owned(),
+        transferred,
+    ))
 }
 
 #[cfg(test)]

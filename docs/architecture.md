@@ -57,6 +57,12 @@ ADR 0003 governs `crates/ezwallpaper-core/src/store.rs`. `WallpaperStore::init(r
 
 Future content decoding, orientation-aware transformations and virtual/physical pixel verification remain Issue #53/#59. Hourly no-repeat selection is Issue #54; this provider work does not imply that repeated Bing fetches change image content.
 
+## Optional sequential provider batch byte budget (Issue #79)
+
+Bing, Pexels and Wallhaven retain the existing **64 MiB per-response streaming cap** by default. A Core caller may additionally set `with_max_batch_download_bytes(positive_u64)` on any of the three builders. During one synchronous `get_img(count)` invocation, each completed image contributes its **actual transferred bytes** to the cumulative counter. Before the next image request the effective stream limit is `min(per_download_limit, remaining_batch_bytes)`. An exhausted budget rejects a further download; an oversized, empty or interrupted stream is never published and its temporary stage is removed. Already completed images from earlier in the same batch remain published on a later-image failure, matching existing per-file behavior.
+
+This is **not** a global or concurrently shared in-flight reservation: a second `get_img` invocation, a different provider or another process has a separate budget. It also does not count interrupted staging attempts toward future calls. The legacy CLI `--max-download-bytes` still sets only the per-response cap; there is no implicit Core-owned-store retention or Issue #57 500 MB GC limit applied to temporary downloads. No CLI flag, JSON manifest, default, automatic deletion or physical display behavior changes.
+
 
 ## Explicit recursive local catalog (ADR 0007)
 
