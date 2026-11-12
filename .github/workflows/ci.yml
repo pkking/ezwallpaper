@@ -33,6 +33,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_ci_integration_scope.py' -v
       - name: Test pinned native binary cache validation (no network)
         run: python3 -m unittest discover -s tests -p 'test_ci_native_cache.py' -v
+      - name: Test native cache cohort evidence accounting (no network)
+        run: python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v
       - name: Detect Noctalia/Niri and wpaperd integration impact
         id: filter
         env:
