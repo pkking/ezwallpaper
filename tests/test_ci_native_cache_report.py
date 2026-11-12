@@ -214,6 +214,106 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         # Successful executions remain observable, but two attempts from one
         # PR head never become two independent tested revisions.
 
+    @staticmethod
+    def _native_steps(noctalia_build="skipped", niri_build="skipped"):
+        def entry(alias, conclusion, start, end):
+            return {
+                "name": metrics.STEP_NAMES[alias], "conclusion": conclusion,
+                "started_at": f"2026-11-11T00:00:{start:02d}Z",
+                "completed_at": f"2026-11-11T00:00:{end:02d}Z",
+            }
+
+        return [
+            entry("noctalia_build", noctalia_build, 3,
+                  23 if noctalia_build == "success" else 3),
+            entry("noctalia_pixels", "success", 24 if noctalia_build == "success" else 4,
+                  25 if noctalia_build == "success" else 5),
+            entry("niri_build", niri_build, 26 if noctalia_build == "success" else 6,
+                  37 if niri_build == "success" else
+                  (26 if noctalia_build == "success" else 6)),
+            entry("niri_pixels", "success", 38 if niri_build == "success" else
+                  (27 if noctalia_build == "success" else 8),
+                  40 if niri_build == "success" else
+                  (29 if noctalia_build == "success" else 9)),
+        ]
+
+    def test_optional_real_step_times_preserve_old_manifest_and_skip_semantics(self):
+        root = self._metrics_fixture()
+        warm = {
+            **self._metrics_job(71, "warm.log"),
+            "steps": self._native_steps(),
+        }
+        cold = {
+            **self._metrics_job(72, "cold.log",
+                                completed="2026-11-11T00:00:42Z"),
+            "head_sha": "b" * 40,
+            "steps": self._native_steps("success", "success"),
+        }
+        result = metrics.summarize([warm, cold], root)
+        step = result["successful_native_step_seconds"]["pull_request"]
+        self.assertEqual(
+            step["both_hit"]["noctalia_build"],
+            {"n": 0, "p50": None, "p90": None},
+        )
+        self.assertEqual(
+            step["both_hit"]["niri_pixels"],
+            {"n": 1, "p50": 1, "p90": 1},
+        )
+        self.assertEqual(
+            step["both_miss"]["noctalia_build"],
+            {"n": 1, "p50": 20, "p90": 20},
+        )
+        self.assertEqual(
+            step["both_miss"]["niri_build"],
+            {"n": 1, "p50": 11, "p90": 11},
+        )
+        self.assertIsNone(result["runs"][0]["step_seconds"]["noctalia_build"])
+        self.assertEqual(result["runs"][1]["step_seconds"]["niri_pixels"], 2)
+        self.assertEqual(result["successful_job_wall_seconds"]["n"], 2)
+        self.assertIn("skipped cache-hit builds excluded", result["step_timing_scope"])
+        legacy = metrics.summarize([self._metrics_job(73, "warm.log")], root)
+        self.assertIsNone(legacy["runs"][0]["step_seconds"])
+        self.assertEqual(
+            legacy["successful_native_step_seconds"]["pull_request"]["both_hit"][
+                "noctalia_pixels"]["n"], 0,
+        )
+
+    def test_optional_native_step_timestamps_reject_missing_or_forged_evidence(self):
+        root = self._metrics_fixture()
+        warm = {**self._metrics_job(81, "warm.log"),
+                "steps": self._native_steps()}
+        bad = []
+        missing = self._native_steps()[:-1]
+        bad.append((missing, "incomplete_native_step"))
+        duplicate = self._native_steps()
+        duplicate[1] = dict(duplicate[0])
+        bad.append((duplicate, "unknown_or_duplicate"))
+        forged_build = self._native_steps()
+        forged_build[0] = {**forged_build[0], "conclusion": "success"}
+        bad.append((forged_build, "native_cache_step_conflicts"))
+        skipped_pixels = self._native_steps()
+        skipped_pixels[1] = {**skipped_pixels[1], "conclusion": "skipped"}
+        bad.append((skipped_pixels, "native_pixel_step_not_verified"))
+        after_job = self._native_steps()
+        after_job[-1] = {
+            **after_job[-1],
+            "completed_at": "2026-11-11T00:00:13Z",
+        }
+        bad.append((after_job, "native_step_outside_job_clock"))
+        wrong_fields = self._native_steps()
+        wrong_fields[0] = {**wrong_fields[0], "untrusted": True}
+        bad.append((wrong_fields, "invalid_native_step_fields"))
+        for steps, reason in bad:
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(report.EvidenceError, reason):
+                    metrics.summarize([{**warm, "steps": steps}], root)
+        with self.assertRaisesRegex(report.EvidenceError,
+                                    "step_evidence_requires_successful_job"):
+            metrics.summarize([{
+                **self._metrics_job(82, "failed.log", conclusion="failure"),
+                "steps": self._native_steps(),
+            }], root)
+
     def test_batch_metrics_rejects_wrong_identity_and_unverified_times(self):
         root = self._metrics_fixture()
         job = self._metrics_job
