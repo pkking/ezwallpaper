@@ -1,7 +1,7 @@
 # Optional exact-step native Noctalia/niri duration evidence
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,22 +31,22 @@ Existing job manifest without steps remains valid. Optional successful-job exact
 
 ## Acceptance criteria
 
-- [ ] Backward-compatible optional step evidence for exact known four Noctalia/niri native steps.
-- [ ] Build vs native rendered-pixel duration cohorts report n, P50/P90, explicitly preserving missing/skipped samples.
-- [ ] Duplicate/malformed/contradictory/out-of-window evidence fails closed; offline tests and full final-head applicable CI pass.
+- [x] Backward-compatible optional step evidence for exact known four Noctalia/niri native steps.
+- [x] Build vs native rendered-pixel duration cohorts report n, P50/P90, explicitly preserving missing/skipped samples.
+- [x] Duplicate/malformed/contradictory/out-of-window evidence fails closed; offline tests and full final-head applicable CI pass.
 
 ## Implementation slices
 
 - [x] Extend offline metric schema and validation for optional step timings.
 - [x] Deterministic warm/miss step and negative fixtures; existing mixed cohort remains supported.
-- [ ] Exact-head CI/reviews, squash merge, archive separately.
+- [x] Exact-head CI/reviews, squash merge, archive separately.
 
 ## Verification matrix
 
 | Scope | Gate | Evidence | Status |
 |---|---|---|---|
-| Python offline | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | cohort timing fixtures | PENDING |
-| CI | Rust/Windows/macOS/Agent/Sway and selected native | all applicable exact-head statuses | PENDING |
+| Python offline | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | cohort timing fixtures | PASS: change-scope native cache evidence tests, 43255084172 |
+| CI | Rust/Windows/macOS/Agent/Sway and selected native | all applicable exact-head statuses | PASS: Rust, Windows, macOS, Agent, Sway; two Noctalia jobs SKIPPED, 43255084172 |
 
 ## Decision gates
 
@@ -58,17 +58,19 @@ None: additive offline diagnostics only; no runtime/cache trust/physical interac
 
 - 2026-11-12: source implementation and offline fixture commits authored in isolated branch; no local cargo/network available, CI result not yet known. No passing claim before final-head GitHub checks.
 
+- 2026-11-12: implementation PR #298 final head 7489d0dafb9084f53d8f1d5674557a42ea9148f1, Actions https://github.com/pkking/ezwallpaper/actions/runs/43255084172 completed 8 SUCCESS/2 Noctalia scope-skipped. offline native metrics fixtures SUCCESS; Sway/swaybg framebuffer SUCCESS, native wpaperd/Noctalia jobs NOT SELECTED. No blocking reviews or unresolved threads. Squash merged 0fc884a857d6906f23baf9c3ac5fc6f1fcb02a0e. Physical GPU/4K/hotplug/lockscreen not assessed.
+
 ## Deviations and discoveries
 
 None.
 
 ## Resume from here
 
-Run the new offline fixture tests through CI and review every applicable final-head check; do not merge on previous SHA evidence.
+Source PR merged. Inspect this docs-only archive PR's final-head CI and reviews; merge only after all applicable checks succeed. Keep Issue #211 OPEN for outstanding broader acceptance.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not selected unless change-scope explicitly requires; no physical pixel claim
+Final commit: 0fc884a857d6906f23baf9c3ac5fc6f1fcb02a0e (source PR #298 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43255084172 (exact final source head 7489d0dafb9084f53d8f1d5674557a42ea9148f1; 8 SUCCESS, 2 scoped SKIPPED)
+E2E artifact: offline native metrics fixtures SUCCESS; Sway/swaybg framebuffer SUCCESS, native wpaperd/Noctalia jobs NOT SELECTED; artifact bytes not independently inspected, not physical display evidence.
 Remaining unassessed items: five independent comparable warm PR heads, cache fingerprint/queue/billed minutes, physical GPU/4K/hotplug/lockscreen.
