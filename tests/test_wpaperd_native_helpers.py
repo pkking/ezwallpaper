@@ -285,6 +285,37 @@ class WpaperdSelectedNativeCacheMetricsTests(unittest.TestCase):
         self.assertIsNone(cache_metrics.summarize([], self.root)["cohorts"]
                           ["push"]["verified_hit_rate"])
 
+    def test_batch_distinct_heads_do_not_inflate_from_same_sha_reruns(self):
+        records = [
+            self.row(41, "warm.log"),
+            self.row(42, "warm.log"),
+            {**self.row(43, "cold.log"), "head_sha": "b" * 40},
+            {**self.row(44, "warm.log", event="push"), "head_sha": "b" * 40},
+            {**self.row(45, "warm.log", native_conclusion="failure"),
+             "conclusion": "failure", "head_sha": "c" * 40},
+            self.row(46, None, native_conclusion="skipped"),
+        ]
+        result = cache_metrics.summarize(records, self.root)
+        pr = result["cohorts"]["pull_request"]
+        push = result["cohorts"]["push"]
+        all_events = result["cohorts"]["all_events"]
+
+        self.assertEqual(pr["statuses"]["verified_hit"], 2)
+        self.assertEqual(pr["distinct_head_shas"], {
+            "verified_hit": 1, "verified_miss": 1,
+        })
+        self.assertEqual(pr["verified_selected_distinct_head_shas"], 2)
+        self.assertEqual(push["distinct_head_shas"]["verified_hit"], 1)
+        self.assertEqual(push["verified_selected_distinct_head_shas"], 1)
+        self.assertEqual(all_events["distinct_head_shas"], {
+            "verified_hit": 2, "verified_miss": 1,
+        })
+        # One SHA can be a hit in one run and a miss in another; do not
+        # sum those buckets to invent extra independent source revisions.
+        self.assertEqual(all_events["verified_selected_distinct_head_shas"], 2)
+        self.assertEqual(pr["statuses"]["unverified_hit"], 1)
+        self.assertEqual(pr["statuses"]["skipped_or_not_reached"], 1)
+
     def test_batch_retains_failed_build_when_native_pixels_never_ran(self):
         # Real selected build failures skip the conditional native pixel step;
         # they are neither cache MISSES nor unselected successful Sway jobs.
