@@ -224,9 +224,9 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                         "step_seconds": step_seconds,
                     }
                 if step_seconds is not None:
-                    for name, elapsed in step_seconds.items():
-                        if elapsed is not None:
-                            cohort_steps[scope][cohort][name].append(elapsed)
+                    for name, step_duration in step_seconds.items():
+                        if step_duration is not None:
+                            cohort_steps[scope][cohort][name].append(step_duration)
         for component, status in classified["components"].items():
             totals[component][status] += 1
         rows.append({"run_id": run_id, "attempt": attempt, "job_id": job_id,
