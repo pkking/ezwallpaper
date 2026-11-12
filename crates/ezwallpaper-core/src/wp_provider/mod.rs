@@ -737,6 +737,12 @@ mod tests {
         assert_eq!(unlimited.remaining_limit(7).expect("legacy cap"), 7);
         assert!(unlimited.remaining_limit(0).is_err());
         assert!(checked_download_limit(0).is_err());
+        assert!(bing::BingProvider::new()
+            .with_max_batch_download_bytes(0).is_err());
+        assert!(pexel::PexelProvider::new()
+            .with_max_batch_download_bytes(0).is_err());
+        assert!(wallhaven::WallhavenProvider::new()
+            .with_max_batch_download_bytes(0).is_err());
     }
 
     #[test]
