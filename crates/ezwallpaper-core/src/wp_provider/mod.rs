@@ -690,7 +690,10 @@ mod tests {
         assert!(budget.record(1).is_err());
         assert_eq!(budget.transferred, 5);
         assert_eq!(fs::read(accepted).expect("published bytes"), b"xy");
-        assert_eq!(fs::read_dir(dir.path()).expect("no staged files").count(), 1);
+        assert_eq!(
+            fs::read_dir(dir.path()).expect("no staged files").count(),
+            1
+        );
     }
 
     #[test]
@@ -732,17 +735,25 @@ mod tests {
         .expect("retry within budget");
         budget.record(retried).expect("record retry");
         assert_eq!(budget.transferred, 4);
-        assert_eq!(fs::read_dir(dir.path()).expect("two completed files").count(), 2);
+        assert_eq!(
+            fs::read_dir(dir.path())
+                .expect("two completed files")
+                .count(),
+            2
+        );
         let unlimited = BatchDownloadBudget::new(None);
         assert_eq!(unlimited.remaining_limit(7).expect("legacy cap"), 7);
         assert!(unlimited.remaining_limit(0).is_err());
         assert!(checked_download_limit(0).is_err());
         assert!(bing::BingProvider::new()
-            .with_max_batch_download_bytes(0).is_err());
+            .with_max_batch_download_bytes(0)
+            .is_err());
         assert!(pexel::PexelProvider::new()
-            .with_max_batch_download_bytes(0).is_err());
+            .with_max_batch_download_bytes(0)
+            .is_err());
         assert!(wallhaven::WallhavenProvider::new()
-            .with_max_batch_download_bytes(0).is_err());
+            .with_max_batch_download_bytes(0)
+            .is_err());
     }
 
     #[test]
