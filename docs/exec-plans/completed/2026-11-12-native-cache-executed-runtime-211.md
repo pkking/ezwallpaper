@@ -1,7 +1,7 @@
 # Native Noctalia/niri executed runner-time accounting
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,22 +31,22 @@ Retain all current evidence validation, output fields, cache classifications and
 
 ## Acceptance criteria
 
-- [ ] Expose executed native-job count and total elapsed seconds, including failed jobs, and precise minute estimate.
-- [ ] Skipped jobs contribute zero; duplicate job identities remain rejected; successful-only metrics and cohorts unchanged.
-- [ ] Offline deterministic fixtures and all applicable exact-head CI pass, including newly enforced native cache-report offline tests.
+- [x] Expose executed native-job count and total elapsed seconds, including failed jobs, and precise minute estimate.
+- [x] Skipped jobs contribute zero; duplicate job identities remain rejected; successful-only metrics and cohorts unchanged.
+- [x] Offline deterministic fixtures and all applicable exact-head CI pass, including newly enforced native cache-report offline tests.
 
 ## Implementation slices
 
 - [x] Add additive, bounded runtime fields and negative/positive tests.
-- [ ] Verify exact-head CI and reviews; squash merge, archive separately after evidence.
+- [x] Verify exact-head CI and reviews; squash merge, archive separately after evidence.
 
 ## Verification matrix
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline metrics | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | fake-job counts and metrics | PENDING |
-| Quality and plan | PR exact-head CI | all applicable jobs SUCCESS | PENDING |
-| Native selected tests | CI path selector | real selected outcomes or explicitly SKIPPED | PENDING |
+| Offline metrics | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | fake-job counts and metrics | PASS: Classify affected integration tests, 43167299781 |
+| Quality and plan | PR exact-head CI | all applicable jobs SUCCESS | PASS: 8 SUCCESS, 2 scope-skipped, 43167299781 |
+| Native selected tests | CI path selector | real selected outcomes or explicitly SKIPPED | Sway/swaybg real framebuffer SUCCESS; Noctalia/niri and native wpaperd SKIPPED (not selected) |
 
 ## Decision gates
 
@@ -58,17 +58,19 @@ None; read-only additive CI performance accounting.
 
 - 2026-11-12: implementation source checkpoint d83392552d6f69eb16e93eade6b65d0529b5e73f; new branch quality and GitHub Actions checks still PENDING, no passing result assumed.
 
+- 2026-11-12: PR #292 final head c825537132879395c63a5745bd3f43f4f76b1a88, CI 43167299781 completed 8 SUCCESS and 2 Noctalia checks SKIPPED. Actual Sway framebuffer passed; native wpaperd not selected. Agent plan, offline native metrics, Rust/Windows/macOS checks passed; reviews and threads empty. Squash merged as 06ec21175372db0ece24827b3250e7ec283cca0f.
+
 ## Deviations and discoveries
 
 None.
 
 ## Resume from here
 
-Run the new offline metrics tests and inspect all applicable exact-head Actions jobs/reviews; do not merge with pending checks.
+Implementation PR #292 merged; verify this archive PR's own final-head applicable CI and review before squash merge. Keep #211 OPEN for real warm/cold performance evidence.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending or not selected
+Final commit: 06ec21175372db0ece24827b3250e7ec283cca0f (#292 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43167299781 (final implementation head c825537132879395c63a5745bd3f43f4f76b1a88; 8 SUCCESS, 2 Noctalia jobs SKIPPED)
+E2E artifact: real isolated Sway/swaybg framebuffer job SUCCESS; Noctalia/niri and wpaperd native steps NOT SELECTED, and artifact bytes not independently inspected.
 Remaining unassessed items: representative warm/cold P50/P90, queue wait, cache miss root cause and physical displays.
