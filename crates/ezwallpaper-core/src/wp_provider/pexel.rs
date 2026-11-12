@@ -244,7 +244,7 @@ fn download_image(
     debug!("downloading Pexels image to {:?}", path);
     let transferred = super::write_complete_download_with_limit(&path, &mut response, max_bytes)?;
     debug!("staged {} Pexels image bytes", transferred);
-    Ok(path
+    Ok((path
         .to_str()
         .ok_or_else(|| anyhow!("non-UTF8 download path"))?
         .to_owned(), transferred))
