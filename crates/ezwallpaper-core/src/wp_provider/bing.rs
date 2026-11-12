@@ -173,7 +173,7 @@ fn download_image(
     let transferred =
         super::write_complete_download_with_limit(&file_path, &mut response, max_bytes)?;
     debug!("staged {} Bing image bytes", transferred);
-    Ok(file_path
+    Ok((file_path
         .to_str()
         .ok_or_else(|| anyhow!("download output path is not UTF-8"))?
         .to_owned(), transferred))
