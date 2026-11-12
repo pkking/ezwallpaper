@@ -92,6 +92,8 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
                     for scope in ("all_events", "pull_request", "push")}
     cohort_queues = {scope: {name: [] for name in SUCCESS_COHORTS}
                      for scope in cohort_walls}
+    cohort_heads = {scope: {name: set() for name in SUCCESS_COHORTS}
+                    for scope in cohort_walls}
     conclusions = {c: 0 for c in report.CONCLUSIONS}
     rows = []
     for item in items:
@@ -144,6 +146,7 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
             for scope in ("all_events", item["event"]):
                 cohort_walls[scope][cohort].append(elapsed)
                 cohort_queues[scope][cohort].append(queued)
+                cohort_heads[scope][cohort].add(item["head_sha"])
         for component, status in classified["components"].items():
             totals[component][status] += 1
         rows.append({"run_id": run_id, "attempt": attempt, "job_id": job_id,
@@ -160,7 +163,8 @@ def summarize(items: list[dict], base_dir: Path) -> dict:
     cohorts = {
         scope: {
             name: {"wall_seconds": _distribution(cohort_walls[scope][name]),
-                   "queue_seconds": _distribution(cohort_queues[scope][name])}
+                   "queue_seconds": _distribution(cohort_queues[scope][name]),
+                   "distinct_head_shas": len(cohort_heads[scope][name])}
             for name in SUCCESS_COHORTS
         }
         for scope in cohort_walls

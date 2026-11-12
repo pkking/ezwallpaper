@@ -185,6 +185,28 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertEqual(result["conclusions"]["failure"], 1)
         self.assertEqual(result["conclusions"]["skipped"], 1)
 
+    def test_batch_metrics_distinct_heads_do_not_count_pr_reruns_twice(self):
+        root = self._metrics_fixture()
+        job = self._metrics_job
+        records = [
+            job(41, "warm.log"),
+            job(42, "warm.log", completed="2026-11-11T00:00:22Z"),
+            {**job(43, "warm.log"), "head_sha": "b" * 40},
+            {**job(44, "warm.log"), "event": "push", "head_sha": "b" * 40},
+            {**job(45, "failed.log", conclusion="failure"), "head_sha": "c" * 40},
+            job(46, None, conclusion="skipped", started=None, completed=None),
+        ]
+        result = metrics.summarize(records, root)
+        cohorts = result["successful_native_cache_cohorts"]
+        self.assertEqual(cohorts["pull_request"]["both_hit"]["wall_seconds"]["n"], 3)
+        self.assertEqual(cohorts["pull_request"]["both_hit"]["distinct_head_shas"], 2)
+        self.assertEqual(cohorts["push"]["both_hit"]["distinct_head_shas"], 1)
+        self.assertEqual(cohorts["all_events"]["both_hit"]["distinct_head_shas"], 2)
+        self.assertEqual(cohorts["pull_request"]["both_miss"]["distinct_head_shas"], 0)
+        self.assertEqual(result["components"]["noctalia"]["verified_hit"], 4)
+        # Successful executions remain observable, but two attempts from one
+        # PR head never become two independent tested revisions.
+
     def test_batch_metrics_rejects_wrong_identity_and_unverified_times(self):
         root = self._metrics_fixture()
         job = self._metrics_job
