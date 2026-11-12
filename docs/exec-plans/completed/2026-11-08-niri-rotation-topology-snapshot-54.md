@@ -1,10 +1,10 @@
 # 2026-11-08: Pin niri output topology throughout an opt-in rotation
 
 Issue: #54
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-08
-Last checkpoint: 2026-11-08
+Last checkpoint: 2026-11-11
 
 ## Objective
 
@@ -47,9 +47,9 @@ Never log, persist, return or publish physical monitor serial. Reject malformed 
 
 | Scope | Command / gate | Evidence | Status |
 |---|---|---|---|
-| Target Rust | cargo test -p ezwallpaper --bin ezwallpaper niri_outputs | niri parsing/identity tests | UNASSESSED |
-| Rotation tests | cargo test --workspace --all-targets | lock-held and per-output test outcomes | UNASSESSED |
-| Full quality | GitHub Actions | Rust fmt/Clippy, Windows, macOS, Sway, Noctalia/niri, plan | PENDING |
+| Target Rust | cargo test -p ezwallpaper --bin ezwallpaper niri_outputs | Covered by final-head Rust tests and CLI smoke in CI 42489888054 | PASS |
+| Rotation tests | cargo test --workspace --all-targets | Final-head Rust tests and CLI smoke in CI 42489888054 | PASS |
+| Full quality | GitHub Actions | All 10 applicable jobs at PR #219 final head 70af56a485d48828d45fc834c0a9d5cd76575995 | PASS |
 
 ## Decision gates
 
@@ -57,20 +57,22 @@ None. Fail-closed tightening of an existing explicitly opt-in niri preflight; no
 
 ## Evidence log
 
+- 2026-11-11: Rechecked merged PR #219 and final head 70af56a485d48828d45fc834c0a9d5cd76575995. GitHub Actions run 42489888054: all 10 jobs SUCCESS (Rust quality, tests, Windows, macOS, Sway, Noctalia native, live safety, agent checks). No submitted reviews or unresolved review threads. Squash commit bdea153e4e594ed16c25f97948d20a6654d04dd3; trusted master push run 42490194513 SUCCESS. These are CI virtual-output results, not physical hotplug proof.
+
 - 2026-11-08: inspected master, both niri/rotation preflight functions, offline fixtures and pinned upstream niri v26.04 IPC definition. No branch tests executed yet.
 - 2026-11-08: implemented validated private snapshot, lock-held/JIT comparison in src/niri_outputs.rs and src/rotation_cli.rs (commits 3b5338a, e596256). Added negative and positive pure snapshot fixtures 931289e. No tests executed locally; CI PENDING.
 
 ## Deviations and discoveries
 
-None.
+- The original plan's pending CI and untested-branch notes are historical checkpoints, not current implementation status. PR #219 merged as bdea153e4e594ed16c25f97948d20a6654d04dd3. Physical panel/GPU/hotplug-after-check evidence remains unassessed.
 
 ## Resume from here
 
-Open Issue #54-linked PR from `agent/issue-54-niri-topology-snapshot-20261108`; inspect final-head Rust fmt/Clippy/tests, Windows, macOS, Sway and niri/Noctalia native E2E. Repair failures before merge.
+Archive this plan in a separate completion PR. Verify that its final-head CI and reviews pass before merging; keep Issue #54 open for remaining rotation requirements.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending
-Remaining unassessed: physical GPU/4K, hotplug after final check, identical/no-serial replacement, lockscreen and SDDM/Plymouth.
+Final commit: bdea153e4e594ed16c25f97948d20a6654d04dd3 (PR #219)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/42489888054 (10/10 SUCCESS at final head 70af56a485d48828d45fc834c0a9d5cd76575995)
+E2E artifact: original CI run 42489888054; native virtual Sway/Noctalia checks succeeded, not physical-display proof
+Remaining unassessed items: physical GPU/4K, hotplug after final check, identical/no-serial replacement, lockscreen and SDDM/Plymouth.
