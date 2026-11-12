@@ -1,7 +1,7 @@
 # Native CI cache restore: exclusive executable target creation
 
 Issue: #211
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -38,7 +38,7 @@ CI runs in disposable /tmp, but use only test-owned disposable files. Ensure reg
 
 ## Implementation slices
 
-- [ ] Add fd-based exclusive restore and race-regression fixture.
+- [x] Add fd-based exclusive restore and race-regression fixture.
 - [ ] Run complete exact-head CI and review; squash merge then separate docs-only archive PR.
 
 ## Verification matrix
@@ -56,6 +56,8 @@ None: tighten existing destination safety within agreed cache trust boundary.
 ## Evidence log
 
 - 2026-11-12: reviewed master fc203e6dfaa76741dc0f46f2f82c47f8639629dc, 0 open PRs, active/completed plans and existing cache checks. Implementation/CI not yet run.
+
+- 2026-11-12: source commits b95269f067c3bcbb718638fa9a91560fd343cdb7 and 1e81f85923cb0e27b230ae923c912c3892576597; target uses O_CREAT|O_EXCL and FD digest; source uses O_NOFOLLOW where supported. Both race fixtures operate only under temporary test directories. Exact-head CI still pending.
 
 ## Deviations and discoveries
 
