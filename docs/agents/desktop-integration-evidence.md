@@ -226,6 +226,59 @@ The original red/blue, simultaneous red/blue, green/blue rotation, removal and r
 
 **Classification:** `VIRTUAL_FRACTIONAL_SCALE_VERIFIED` **only** for unmerged experimental niri commit above and native Noctalia v5.2.1 CI conditions. No physical display was used. Physical mixed-DPI scaling, real 4K/GPU/portrait monitors, physical hotplug, released niri virtual outputs, session restarts, lockscreen/PAM, SDDM/Plymouth all remain **UNASSESSED**. Keep [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) OPEN and require independently consented physical evidence before broader support claims.
 
+## G-01 read-only real UTC-hour systemd timer evidence
+
+The real `rotate next --apply` native virtual-pixel CI establishes a
+single live UTC bucket with a manual `--force` recovery; it **does not
+demonstrate an hour elapsed** or that the user-owned systemd timer actually
+triggered. To collect distinct, real-session evidence without modifying a
+wallpaper, install the repository's opt-in
+[`ezwallpaper-rotation.timer`](../examples/ezwallpaper-rotation.timer)
+and [oneshot service](../examples/ezwallpaper-rotation.service) *only by
+the operator*. Enable a single wallpaper scheduler, and check the user
+manager has the correct Wayland/niri/Noctalia session environment.
+
+Once a scheduled hourly run succeeds, capture a private snapshot inside
+that live niri session. Repeat after the **next actual UTC hour** and a
+second successful timer trigger. Do not use `--force`, `--epoch`, fake
+clock, `systemctl start` or a service override to manufacture a result:
+
+```sh
+python3 scripts/inspect_hourly_rotation_evidence.py capture \
+  --profile ~/.config/ezwallpaper/rotation.json \
+  --state ~/.local/state/ezwallpaper/rotation-v1.json \
+  --output-a DP-1 --output-b HDMI-A-1 \
+  --artifact ./hour-a-private.json --confirm-read-only
+# After the next real UTC hour's timer fires and both wallpapers change:
+python3 scripts/inspect_hourly_rotation_evidence.py capture \
+  --profile ~/.config/ezwallpaper/rotation.json \
+  --state ~/.local/state/ezwallpaper/rotation-v1.json \
+  --output-a DP-1 --output-b HDMI-A-1 \
+  --artifact ./hour-b-private.json --confirm-read-only
+python3 scripts/inspect_hourly_rotation_evidence.py verify \
+  --first ./hour-a-private.json --second ./hour-b-private.json
+```
+
+The **capture path is read-only except for a new private 0600 artifact**.
+It requires the current niri IPC topology, exact native Noctalia
+`wallpaper-get` paths, source-byte SHA256 matching each saved content ID,
+two outputs already acknowledged in the current UTC bucket, an active
+user timer, a successful last service invocation, and monotonic timestamps
+consistent with the current hour. The pair verifier refuses a fabricated
+second success based only on different clock strings or JSON files: both
+outputs must advance adjacent UTC buckets and content IDs, with distinct
+systemd timer-trigger and service-start timestamps on the same boot.
+
+A `status=OBSERVED_TWO_REAL_UTC_HOURS` report is **local corroborating
+evidence**, not cryptographically authenticated systemd causality.
+Only the user-controlled live session can yield a genuine report; the
+offline CI fixture proves parser and command restrictions, not hourly
+operation. No screenshots or physical pixels are captured, no wallpapers
+or units are started, and no absolute image paths or monitor serials
+are exported. Do not publish even the private snapshot files without
+checking their metadata. G-02 physical GPU/4K/hotplug/lockscreen remain
+a separately consented scope.
+
 ## G-02 target 4K + portrait preflight (manual, opt-in only)
 
 The existing `scripts/verify_noctalia_live.py` tests two real *user-named*
