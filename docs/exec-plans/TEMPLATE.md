@@ -10,6 +10,18 @@ Last checkpoint: YYYY-MM-DD
 
 Define externally observable result.
 
+## Goal alignment
+
+Epic: #60
+Goal: G-XX
+Contribution type: USER_JOURNEY / BLOCKER / SECURITY / MAINTENANCE
+Gap: Actual user-journey acceptance gap.
+Before: Evidence-supported observed result at the baseline commit.
+After: Expected observable result of this implementation.
+Evidence plan: Named test/CI run and actual compositor/hardware scope.
+Priority rationale: Explain prioritization against still-open P0 gates.
+Remaining unassessed: Explicit out-of-scope hardware/environment results.
+
 ## Non-goals
 
 List explicitly excluded work.
