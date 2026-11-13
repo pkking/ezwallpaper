@@ -92,6 +92,84 @@ def validate_plan(root: Path, relative: str, issue: int) -> str:
     return "completed"
 
 
+GOAL_FIELDS = (
+    "Epic", "Goal", "Contribution type", "Gap", "Acceptance criterion",
+    "Before", "After", "Evidence plan", "Priority rationale",
+    "Remaining unassessed",
+)
+GOAL_TYPES = {"USER_JOURNEY", "BLOCKER", "SECURITY", "MAINTENANCE"}
+MEANINGFUL_GOAL_FIELDS = (
+    "Gap", "Acceptance criterion", "Before", "After",
+    "Evidence plan", "Priority rationale", "Remaining unassessed",
+)
+
+
+def goal_field(body: str, field: str) -> str:
+    lines = re.findall(rf"(?m)^{re.escape(field)}:.*$", body)
+    if len(lines) != 1:
+        raise IntegrityError(f"PR must have exactly one {field}: goal field")
+    value = lines[0].split(":", 1)[1].strip()
+    if (not value or re.search(r"<[^>]+>", value) or
+            value.lower() in {"pending", "tbd", "todo", "unknown", "n/a", "none"}):
+        raise IntegrityError(f"PR {field}: goal field is missing or a placeholder")
+    return value
+
+
+def validate_goal_alignment(root: Path, body: str, plan_relative: str) -> str:
+    """Validate traceable user-outcome declarations, not their semantic truth.
+
+    The checked-out repository defines the known goal IDs. GitHub's protected
+    branch Ruleset must independently require this check, as an untrusted PR
+    can edit its own validator and workflow in the same branch.
+    """
+    values = {name: goal_field(body, name) for name in GOAL_FIELDS}
+    for field in MEANINGFUL_GOAL_FIELDS:
+        if len(values[field]) < 20:
+            raise IntegrityError(f"PR {field}: must describe a specific outcome/evidence")
+    kind = values["Contribution type"]
+    if kind not in GOAL_TYPES:
+        raise IntegrityError("Invalid contribution type")
+    epic, gate = values["Epic"], values["Goal"]
+    if epic == "#60":
+        catalog = root / "docs/agents/goal-gates.md"
+        try:
+            known = set(re.findall(
+                r"(?m)^\\|\\s*(G-[0-9]{2})\\s*\\|",
+                catalog.read_text(encoding="utf-8"),
+            ))
+        except OSError as exc:
+            raise IntegrityError(f"Missing goal gate catalog: {exc}") from exc
+        if not known or gate not in known:
+            raise IntegrityError(f"Unknown Epic #60 acceptance gate: {gate}")
+        if re.findall(r"(?m)^Approved goal issue:.*$", body):
+            raise IntegrityError("Epic #60 work must not declare an independent goal")
+    elif epic == "independent" and gate == "INDEPENDENT":
+        approval = goal_field(body, "Approved goal issue")
+        if re.fullmatch(r"#[1-9][0-9]*", approval) is None:
+            raise IntegrityError("Independent goal must link its approved Issue")
+    else:
+        raise IntegrityError("Epic and Goal must be #60/G-XX or independent/INDEPENDENT")
+
+    blocking = re.findall(r"(?m)^Blocking issue:.*$", body)
+    if kind == "BLOCKER":
+        issue = goal_field(body, "Blocking issue")
+        if re.fullmatch(r"#[1-9][0-9]*", issue) is None:
+            raise IntegrityError("BLOCKER must reference a concrete blocking Issue")
+    elif blocking:
+        raise IntegrityError("Blocking issue is only valid on a BLOCKER PR")
+
+    # Older archived plans remain legal. Resumed active plans must explicitly
+    # adopt goal alignment on their next implementation PR.
+    plan_text = (root / plan_relative).read_text(encoding="utf-8")
+    declared_goals = re.findall(r"(?m)^Goal:\\s*(\\S+)\\s*$", plan_text)
+    if plan_relative.startswith("docs/exec-plans/active/"):
+        if "## Goal alignment" not in plan_text or declared_goals != [gate]:
+            raise IntegrityError("Active plan goal must match the PR goal")
+    elif declared_goals and declared_goals != [gate]:
+        raise IntegrityError("Archived plan goal does not match the PR goal")
+    return gate
+
+
 def validate_issue(repository: str, issue: int, token: str) -> None:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise IntegrityError("Invalid GitHub repository")
@@ -123,6 +201,7 @@ def validate_event(event: dict, root: Path, repository: str, token: str,
         raise IntegrityError("PR body is missing")
     issue, relative = parse_metadata(body)
     state = validate_plan(root, relative, issue)
+    validate_goal_alignment(root, body, relative)
     if changed_files is not None and relative not in changed_files:
         raise IntegrityError("PR must update its own linked execution plan")
     if online:
