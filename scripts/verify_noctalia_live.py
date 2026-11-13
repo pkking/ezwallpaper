@@ -296,6 +296,35 @@ def niri_output_geometry(runner, outputs: tuple[str, ...]) -> dict[str, dict]:
     return geometry
 
 
+
+def require_g02_topology(geometry: dict[str, dict], outputs: tuple[str, str]) -> None:
+    """Exact Epic G-02 target mode/scale only; NOT hardware provenance.
+
+    A portrait monitor may use a native 1080x1920 mode or a rotated
+    1920x1080 mode. Verify effective rotated pixels and niri logical size
+    rather than falsely rejecting the latter legitimate configuration.
+    """
+    expected = (
+        (3840, 2160, 1.5, 2560, 1440),
+        (1080, 1920, 1.0, 1080, 1920),
+    )
+    for output, (width, height, scale, logical_width, logical_height) in zip(outputs, expected):
+        actual = geometry.get(output)
+        if actual is None:
+            raise VerificationError("g02_target_topology_mismatch")
+        transform = actual.get("transform")
+        rotated = transform in ("90", "270", "Flipped90", "Flipped270")
+        effective_width = actual["physical_height"] if rotated else actual["physical_width"]
+        effective_height = actual["physical_width"] if rotated else actual["physical_height"]
+        if (
+            (effective_width, effective_height) != (width, height)
+            or actual["scale"] != scale
+            or (actual["logical_width"], actual["logical_height"]) != (logical_width, logical_height)
+        ):
+            raise VerificationError("g02_target_topology_mismatch")
+
+
+
 def current_wallpaper(runner, output: str) -> str:
     response = call(runner, ["noctalia", "msg", "wallpaper-get", output], "wallpaper_get_failed")
     # Exactly one path record, optionally terminated by ONE LF or CRLF.
@@ -370,6 +399,7 @@ def verify_dual(
     ask,
     *,
     confirmed: bool,
+    require_g02_mode: bool = False,
 ) -> tuple[dict, int]:
     """Injected command runner/ask keep all unit tests strictly offline."""
     preconditions(outputs, env, confirmed)
@@ -380,6 +410,8 @@ def verify_dual(
     # A Wayland session label is not output evidence. Query this niri
     # compositor before asking to mutate the desktop; never infer pixels.
     geometry = niri_output_geometry(runner, outputs)
+    if require_g02_mode:
+        require_g02_topology(geometry, outputs)
 
     # Snapshot every output BEFORE creating a fixture or changing anything.
     originals = {}
@@ -413,6 +445,10 @@ def verify_dual(
         "schema_version": 1, "desktop": "niri + Noctalia v5",
         "status": "FAILED", "pixel_threshold": MATCH_THRESHOLD,
         "outputs": [], "restoration": {}, "error": None,
+        "g02_mode_preflight": "MATCH" if require_g02_mode else "NOT_REQUESTED",
+        # Only the human's independently reviewed real session can establish
+        # physical provenance. Correct geometry alone cannot.
+        "physical_hardware_verified": False,
         # Only retain geometry in a shareable result; the internally checked
         # make/model/serial can identify a real user's physical monitor.
         "niri_output_geometry": {
@@ -554,6 +590,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-b", required=True)
     parser.add_argument("--artifact-dir", required=True, type=Path, help="New private directory; screenshots can contain personal data")
     parser.add_argument("--confirm-live-change", action="store_true")
+    parser.add_argument(
+        "--require-g02-topology", action="store_true",
+        help="Before ANY apply, require 3840x2160 at scale 1.5 and effective portrait 1080x1920 at scale 1.0; not proof of physical hardware",
+    )
     args = parser.parse_args(argv)
     if not args.confirm_live_change or not sys.stdin.isatty() or not sys.stderr.isatty():
         print("refused: explicit_live_change_and_interactive_tty_required", file=sys.stderr)
@@ -565,7 +605,7 @@ def main(argv: list[str] | None = None) -> int:
         result, status = verify_dual(
             (args.output_a, args.output_b), args.binary, args.artifact_dir,
             dict(os.environ), subprocess.run, lambda message: input(message),
-            confirmed=True,
+            confirmed=True, require_g02_mode=args.require_g02_topology,
         )
     except (VerificationError, OSError) as exc:
         print(f"refused: {exc}", file=sys.stderr)

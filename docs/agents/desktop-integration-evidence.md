@@ -226,6 +226,46 @@ The original red/blue, simultaneous red/blue, green/blue rotation, removal and r
 
 **Classification:** `VIRTUAL_FRACTIONAL_SCALE_VERIFIED` **only** for unmerged experimental niri commit above and native Noctalia v5.2.1 CI conditions. No physical display was used. Physical mixed-DPI scaling, real 4K/GPU/portrait monitors, physical hotplug, released niri virtual outputs, session restarts, lockscreen/PAM, SDDM/Plymouth all remain **UNASSESSED**. Keep [Issue #59](https://github.com/pkking/ezwallpaper/issues/59) OPEN and require independently consented physical evidence before broader support claims.
 
+## G-02 target 4K + portrait preflight (manual, opt-in only)
+
+The existing `scripts/verify_noctalia_live.py` tests two real *user-named*
+niri outputs, and its positive `PIXEL_VERIFIED` result alone does not identify
+physical hardware. For **Epic #60 G-02**, first work in a disposable,
+unprivileged interactive niri+Noctalia session with the normal rotation
+timer and Noctalia background automation **manually disabled**. Inspect the
+output names and confirm there is an independent recovery method.
+
+Run with an additional strict mode gate; the helper still requires an
+interactive terminal, an explicit `--confirm-live-change` flag, then typing
+`APPLY` before either wallpaper changes:
+
+```sh
+python3 scripts/verify_noctalia_live.py \
+  --binary ./target/debug/ezwallpaper \
+  --output-a DP-1 --output-b HDMI-A-1 \
+  --artifact-dir ./noctalia-g02-private-new \
+  --require-g02-topology --confirm-live-change
+```
+
+This checks the actual niri IPC values **before creating any artifact or
+setting wallpaper**: output A must be an effective 3840×2160 landscape mode
+at scale 1.5 (logical 2560×1440); output B must be an effective
+1080×1920 portrait mode at scale 1.0 (logical 1080×1920), including valid
+90°/270° transforms on native 1920×1080 mode. A wrong scale/mode,
+inactive connector, unsupported transform or malformed IPC fails closed
+before mutation; unrelated outputs are not modified. After opt-in, the
+existing code records the per-output IPC paths, screenshot ratios, recovery
+manifest, and independently verifies both restored original wallpapers.
+
+`g02_mode_preflight=MATCH` means **target geometry observed**, not a trusted
+hardware attestation. The script deliberately emits
+`physical_hardware_verified=false`: an appropriately configured virtual
+display can mimic the same dimensions. Only a user inspecting the real
+monitor/GPU session, pixels, scaling and restoration may attach actual
+physical evidence and mark G-02 `PHYSICAL_VERIFIED`; real plug/unplug
+and lockscreen are independent opt-in tests. Do not publish the private
+PPM frames or recovery paths without reviewing them for sensitive content.
+
 ## niri + Noctalia v5: opt-in dual-output pixel test
 
 **Monitor identity and placement safety (test-only):** niri v26.04's actual `niri-ipc/src/lib.rs` `Output` includes `make`, `model`, optional `serial`; `LogicalOutput` includes signed `x/y` coordinates (v26.04 lines 1204–1263). When published, the opt-in verifier validates and retains these fields **only in its in-process output snapshot** to detect same-resolution monitor replacement or logical placement changes before fixture apply **and** restoration. `result.json` records dimensions, scale, transform and optional logical x/y, but deliberately omits make/model/serial to avoid leaking physical monitor identifiers. Missing/unknown serial is **not** proof of display identity; an indistinguishable replacement with the same available fields or a hotplug immediately after the recheck cannot be ruled out. A changed identity triggers `TOPOLOGY_CHANGED`, preventing automatic restoration on that connector and retaining `recovery.json` for operator decision. The offline fake tests verify this decision logic, not real hardware hotplug or persistent serial behavior.
