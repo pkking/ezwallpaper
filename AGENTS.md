@@ -30,6 +30,17 @@ This is the authoritative map for coding agents, not a substitute for inspecting
 
 For work interrupted at any step, keep the plan in active/ and record the exact tested commit, what failed, and the next action. Conversation memory is not an authoritative record. Documentation typo-only edits may omit a detailed plan locally but PRs still require Issue/Plan for consistent CI enforcement.
 
+## Outcome-first delivery contract (Epic #60)
+
+- Before starting work, read [the user-journey goal gates](docs/agents/goal-gates.md) and [Epic #60](https://github.com/pkking/ezwallpaper/issues/60); identify the *highest-priority unfinished acceptance gate*, not merely an open implementation Issue. Product work must map to a specific gate (G-01..G-06), or to an independently approved goal with a linked Issue and priority rationale.
+- Prioritize G-01 (real niri+Noctalia controller-to-rendered-pixels hourly journey) and G-02 (opt-in physical dual-output evidence). G-03 is the next user-facing integration. G-05 CI performance and isolated test expansion are support work, not substitutes for the product journey.
+- A PR must identify its gate, exact user-visible gap, `Before` and `After` behavior, the acceptance criterion, expected verification, unassessed evidence, contribution type and priority rationale. A list of code changes, passing mocks or green CI checks alone is not a user outcome.
+- Permitted contribution types: `USER_JOURNEY`, `BLOCKER`, `SECURITY`, `MAINTENANCE`. A `BLOCKER` must link the concrete Issue and failure evidence preventing a named gate; a credible `SECURITY` fix may take priority. `MAINTENANCE` includes required post-merge plan archiving and must explain why it is necessary now. Never weaken safety gates to prioritize features.
+- After **three merged implementation PRs for the same goal** (excluding docs-only plan archival), inspect the parent gate and record what new end-to-end evidence exists before creating the next implementation slice. If the capability is already `IMPLEMENTED`, prefer elevating it to `VIRTUAL_VERIFIED` or `PHYSICAL_VERIFIED` rather than adding another low-risk unit test.
+- Do not repeatedly create new PRs solely to satisfy extra self-invented edge cases or improve metrics once the linked gate is otherwise unblocked. An urgent evidenced regression, security exposure or actual failing CI is an exception, not a blank authorization to stall user-facing acceptance.
+- Physical displays, released niri, lockscreen, SDDM and Plymouth remain independently `UNASSESSED` until their own opt-in evidence is obtained. Never promote a virtual framebuffer test into a hardware claim. Human review must judge outcome alignment; structural CI alone cannot.
+- All new PRs use the `Goal alignment` fields in `.github/PULL_REQUEST_TEMPLATE.md`. The required `Agent plan integrity` job validates their structure and known goal IDs. Repository administrator-managed Rulesets remain necessary because a PR branch may otherwise alter its own CI validator.
+
 ## Agent evidence discipline
 - FACT: observed in source, a specific command output, CI run, artifact or official API specification.
 - ASSUMPTION: labeled in plan or ADR and not claimed as verified.

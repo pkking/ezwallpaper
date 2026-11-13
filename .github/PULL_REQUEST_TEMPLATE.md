@@ -3,6 +3,23 @@
 Issue: #N
 Plan: docs/exec-plans/active/<work-id>.md
 
+## Goal alignment
+
+Epic: <#60 or independent>
+Goal: <G-01..G-06, G-00 for governance, or INDEPENDENT>
+Contribution type: <USER_JOURNEY | BLOCKER | SECURITY | MAINTENANCE>
+Gap: <specific measurable acceptance gap>
+Acceptance criterion: <exact Issue/goal gate outcome to demonstrate>
+Before: <observed behavior and relevant source/CI revision>
+After: <expected new observable behavior, not just code changes>
+Evidence plan: <tests, native scope, artifacts and proof level>
+Priority rationale: <why this work is next relative to unfinished P0 gates>
+Remaining unassessed: <physical or environmental outcomes not established>
+
+<!-- BLOCKER only: add "Blocking issue: #N" for the observed failure. -->
+<!-- Independent goal only: add "Approved goal issue: #N" plus human approval rationale. -->
+<!-- Archive PRs: Contribution type MAINTENANCE; explain the preceding merged PR and its exact-head CI. -->
+
 ## User-visible outcome
 
 Describe the observable behavior (or explain why this is governance-only).

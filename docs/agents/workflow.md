@@ -6,6 +6,18 @@ A non-trivial change must map to exactly one GitHub Issue and one execution plan
 
 All PRs include the two exact top-level metadata lines shown in .github/PULL_REQUEST_TEMPLATE.md. The validator requires a real open Issue, a matching plan, and that each PR actually edits its linked plan so implementation progress cannot be detached from the reviewed diff. The first governance PR must follow the same rule.
 
+## Goal and priority gate before new work
+
+Source of truth: [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) and [goal-gates.md](goal-gates.md). Read them before selecting an Issue. The Epic defines the desired user scenario; the Issue defines observable acceptance; the execution plan records implementation and evidence. A PR may pass all CI while still **not** moving its product goal closer to completion.
+
+For each new PR, add a structured `Goal alignment` section with `Epic`, `Goal`, `Contribution type`, `Gap`, `Acceptance criterion`, `Before`, `After`, `Evidence plan`, `Priority rationale`, and `Remaining unassessed`. Use a defined `G-XX` goal gate, or independently approved `INDEPENDENT` with a linked goal Issue. The existing `Issue` and `Plan` lines remain singular and mandatory. The linked plan should contain the same goal, with measurable behavior and a precise test scope.
+
+Choose the highest unverified **P0 acceptance gate** first. For a `BLOCKER` PR, reference `Blocking issue: #N` and an observed failure stopping that gate. For a `SECURITY` PR, cite the concrete risk; urgent safety fixes need not wait for a feature review. `MAINTENANCE` is permitted for obligatory docs-only archiving and necessary governance, not as a way to accumulate unrelated PRs. If a support change such as CI cache metrics is not blocking an acceptance gate, explicitly justify why it should happen before G-01/G-02.
+
+**After three merged implementation PRs for the same goal**, before opening a fourth, record a scenario-level review: current proof status, new user-facing acceptance evidence, remaining blocker and next higher-level test. Do not count post-merge plan archive PRs as new implementations. A missing physical/environmental prerequisite is `BLOCKED_EVIDENCE`, not permission to call the goal complete.
+
+The `Agent plan integrity` CI checks structured goal IDs and required non-placeholder declarations. It **cannot** automatically prove the stated gap was actually closed, the independent goal was human-approved, or a hardware test occurred. Reviewers must compare claimed evidence with artifacts and the exact final commit. The protected master Ruleset must retain the required integrity checks; updates to the validator in the PR branch are not independently tamper-proof.
+
 ## Plan states
 
 PLANNING -> IMPLEMENTING -> VERIFYING -> COMPLETED
