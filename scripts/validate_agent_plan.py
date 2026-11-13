@@ -134,7 +134,7 @@ def validate_goal_alignment(root: Path, body: str, plan_relative: str) -> str:
         catalog = root / "docs/agents/goal-gates.md"
         try:
             known = set(re.findall(
-                r"(?m)^\\|\\s*(G-[0-9]{2})\\s*\\|",
+                r"(?m)^\|\s*(G-[0-9]{2})\s*\|",
                 catalog.read_text(encoding="utf-8"),
             ))
         except OSError as exc:
@@ -161,7 +161,7 @@ def validate_goal_alignment(root: Path, body: str, plan_relative: str) -> str:
     # Older archived plans remain legal. Resumed active plans must explicitly
     # adopt goal alignment on their next implementation PR.
     plan_text = (root / plan_relative).read_text(encoding="utf-8")
-    declared_goals = re.findall(r"(?m)^Goal:\\s*(\\S+)\\s*$", plan_text)
+    declared_goals = re.findall(r"(?m)^Goal:\s*(\S+)\s*$", plan_text)
     if plan_relative.startswith("docs/exec-plans/active/"):
         if "## Goal alignment" not in plan_text or declared_goals != [gate]:
             raise IntegrityError("Active plan goal must match the PR goal")
