@@ -1,7 +1,7 @@
 # Real niri+Noctalia rotation controller to dual pixels
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-13
 Last checkpoint: 2026-11-13
@@ -50,8 +50,8 @@ Only test-owned niri, Noctalia and disposable HOME. Require `--require-niri-outp
 
 ## Implementation slices
 
-- [ ] Add one integrated native controller-to-two-pixel journey to the existing niri harness (no production code).
-- [ ] Add deterministic offline contract tests and document precise evidence boundary.
+- [x] Add one integrated native controller-to-two-pixel journey to the existing niri harness (no production code).
+- [x] Add deterministic offline contract tests and document precise evidence boundary.
 - [ ] Verify exact-head CI, review, then squash merge and archive the plan in a separate CI-verified docs-only PR.
 
 ## Verification matrix
@@ -69,6 +69,8 @@ None: this is purely isolated evidence for a pre-approved P0 journey and retains
 ## Evidence log
 
 - 2026-11-13: inspected current master, source CLI `--epoch` apply prohibition, previous niri harness, #59 acceptance and Epic G-01; test work not yet run.
+
+- 2026-11-13: implementation e65d98a68354e2e7c76f0cbd1d19f8091b24293e and pure helper tests 2d90b4ee01c3179bc998a8c6a9886380007bc60a; no checked native results yet. The real native test reuses current live UTC bucket for idempotence and --force recovery; it does not override the apply epoch or assert 24 real elapsed hours.
 
 ## Deviations and discoveries
 
