@@ -191,6 +191,9 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
                 for c in metrics.SUCCESS_COHORTS), 4)
         self.assertEqual(result["conclusions"]["failure"], 1)
         self.assertEqual(result["conclusions"]["skipped"], 1)
+        self.assertEqual(
+            result["successful_independent_head_cohorts"]["all_events"][
+                "incomplete"]["wall_seconds"]["n"], 1)
 
     def test_batch_metrics_distinct_heads_do_not_count_pr_reruns_twice(self):
         root = self._metrics_fixture()
@@ -213,6 +216,35 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         self.assertEqual(result["components"]["noctalia"]["verified_hit"], 4)
         # Successful executions remain observable, but two attempts from one
         # PR head never become two independent tested revisions.
+
+    def test_independent_head_percentiles_use_latest_successful_revision(self):
+        root = self._metrics_fixture()
+        job = self._metrics_job
+        first = job(51, "warm.log")
+        rerun = job(52, "cold.log", completed="2026-11-11T00:00:42Z")
+        second = {**job(53, "warm.log"), "head_sha": "b" * 40}
+        failed = {**job(54, "failed.log", conclusion="failure"),
+                  "head_sha": "c" * 40}
+        records = [first, second, rerun, failed]
+        report_a = metrics.summarize(records, root)
+        report_b = metrics.summarize(list(reversed(records)), root)
+        a = report_a["successful_independent_head_cohorts"]
+        b = report_b["successful_independent_head_cohorts"]
+        self.assertEqual(a, b, "manifest order must not determine chosen rerun")
+        pr = a["pull_request"]
+        self.assertEqual(pr["both_hit"]["wall_seconds"],
+                         {"n": 1, "p50": 10, "p90": 10})
+        self.assertEqual(pr["both_miss"]["wall_seconds"],
+                         {"n": 1, "p50": 40, "p90": 40})
+        self.assertEqual(pr["both_hit"]["distinct_head_shas"], 1)
+        self.assertEqual(pr["both_miss"]["distinct_head_shas"], 1)
+        self.assertEqual(
+            report_a["successful_native_cache_cohorts"]["pull_request"][
+                "both_hit"]["wall_seconds"]["n"], 2,
+            "legacy job-level distributions stay untouched")
+        self.assertEqual(pr["both_hit"]["step_seconds"]["noctalia_build"]["n"], 0)
+        self.assertEqual(a["push"]["both_hit"]["wall_seconds"]["n"], 0)
+        self.assertIn("Latest successful", report_a["independent_head_selection"])
 
     @staticmethod
     def _native_steps(noctalia_build="skipped", niri_build="skipped"):
@@ -269,6 +301,13 @@ class NativeCacheLogClassifierTests(unittest.TestCase):
         )
         self.assertIsNone(result["runs"][0]["step_seconds"]["noctalia_build"])
         self.assertEqual(result["runs"][1]["step_seconds"]["niri_pixels"], 2)
+        self.assertEqual(result["runs"][0]["wall_seconds"], 10)
+        self.assertEqual(result["runs"][1]["wall_seconds"], 40)
+        self.assertEqual(
+            result["successful_independent_head_cohorts"]["pull_request"][
+                "both_miss"]["step_seconds"]["noctalia_build"],
+            {"n": 1, "p50": 20, "p90": 20},
+        )
         self.assertEqual(result["successful_job_wall_seconds"]["n"], 2)
         self.assertIn("skipped cache-hit builds excluded", result["step_timing_scope"])
         legacy = metrics.summarize([self._metrics_job(73, "warm.log")], root)
