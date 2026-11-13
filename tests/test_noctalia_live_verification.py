@@ -226,6 +226,69 @@ class NoctaliaLiveVerificationTests(unittest.TestCase):
                 self.assertTrue(recovery.exists())
                 self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
 
+    def test_g02_target_modes_pass_before_live_fixture_and_never_claim_hardware(self):
+        fake = FakeDesktop(self.originals, inventory=json.dumps(
+            niri_identified_inventory(self.outputs)
+        ))
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            fake, lambda _: "APPLY", confirmed=True, require_g02_mode=True,
+        )
+        self.assertEqual(status, 0)
+        self.assertEqual(result["g02_mode_preflight"], "MATCH")
+        self.assertFalse(result["physical_hardware_verified"])
+        self.assertEqual(fake.wallpapers, self.originals)
+
+    def test_g02_wrong_modes_scales_and_orientation_never_mutate(self):
+        baseline = niri_identified_inventory(self.outputs)
+        failures = []
+        wrong_left = json.loads(json.dumps(baseline))
+        wrong_left["DP-1"]["modes"][0]["width"] = 2560
+        wrong_left["DP-1"]["logical"]["width"] = 1707
+        failures.append(wrong_left)
+        wrong_scale = json.loads(json.dumps(baseline))
+        wrong_scale["DP-1"]["logical"]["scale"] = 1.25
+        wrong_scale["DP-1"]["logical"]["width"] = 3072
+        wrong_scale["DP-1"]["logical"]["height"] = 1728
+        failures.append(wrong_scale)
+        wrong_portrait = json.loads(json.dumps(baseline))
+        wrong_portrait["HDMI-A-1"]["modes"][0].update(width=1920, height=1080)
+        wrong_portrait["HDMI-A-1"]["logical"].update(width=1920, height=1080)
+        failures.append(wrong_portrait)
+        wrong_scale_right = json.loads(json.dumps(baseline))
+        wrong_scale_right["HDMI-A-1"]["logical"]["scale"] = 1.25
+        wrong_scale_right["HDMI-A-1"]["logical"]["width"] = 864
+        wrong_scale_right["HDMI-A-1"]["logical"]["height"] = 1536
+        failures.append(wrong_scale_right)
+        for index, inventory in enumerate(failures):
+            with self.subTest(index=index):
+                fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+                with self.assertRaisesRegex(
+                    verifier.VerificationError, "g02_target_topology_mismatch"
+                ):
+                    verifier.verify_dual(
+                        self.outputs, "ezwallpaper", self.root / f"proof-{index}",
+                        self.env, fake, lambda _: "APPLY",
+                        confirmed=True, require_g02_mode=True,
+                    )
+                self.assertFalse(fake.writes)
+                self.assertFalse((self.root / f"proof-{index}").exists())
+                self.assertEqual(fake.wallpapers, self.originals)
+
+    def test_g02_portrait_rotated_landscape_native_mode_is_accepted(self):
+        inventory = niri_identified_inventory(self.outputs)
+        portrait = inventory["HDMI-A-1"]
+        portrait["modes"][0].update(width=1920, height=1080)
+        portrait["logical"]["transform"] = "90"
+        fake = FakeDesktop(self.originals, inventory=json.dumps(inventory))
+        result, status = verifier.verify_dual(
+            self.outputs, "ezwallpaper", self.root / "proof", self.env,
+            fake, lambda _: "APPLY", confirmed=True, require_g02_mode=True,
+        )
+        self.assertEqual(status, 0)
+        self.assertEqual(result["g02_mode_preflight"], "MATCH")
+        self.assertFalse(result["physical_hardware_verified"])
+
     def test_success_quantifies_two_distinct_outputs_and_restores_originals(self):
         fake = FakeDesktop(self.originals)
         result, status = self.verify(fake)
