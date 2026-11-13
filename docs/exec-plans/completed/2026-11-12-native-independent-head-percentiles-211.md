@@ -1,7 +1,7 @@
 # Native Noctalia/niri independent-head latency cohorts
 
 Issue: #211
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,24 +31,24 @@ Original job-level distributions, fields, verified status and all strict timesta
 
 ## Acceptance criteria
 
-- [ ] Report additive per-head n, P50/P90 for job wall, queue and measured build/pixel steps.
-- [ ] Repeated attempts and manifest reorder do not inflate head sample count or change percentiles; latest verified hit/miss cohort wins.
-- [ ] Failed, skipped and unselected native checks are never counted as independent successful native samples.
-- [ ] All applicable final-head GitHub Actions CI and reviews pass without weakening gate selection.
+- [x] Report additive per-head n, P50/P90 for job wall, queue and measured build/pixel steps.
+- [x] Repeated attempts and manifest reorder do not inflate head sample count or change percentiles; latest verified hit/miss cohort wins.
+- [x] Failed, skipped and unselected native checks are never counted as independent successful native samples.
+- [x] All applicable final-head GitHub Actions CI and reviews pass without weakening gate selection.
 
 ## Implementation slices
 
 - [x] Implement additive independent-head sampler.
 - [x] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
-- [ ] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
+- [x] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | distinct-head fixtures | PENDING |
-| CI | Rust, Windows, macOS, Agent, Sway and selected native | exact-head applicable jobs | PENDING |
-| Reviews | no blocking review threads | actual PR review records | PENDING |
+| Offline | python3 -m unittest discover -s tests -p 'test_ci_native_cache_report.py' -v | distinct-head fixtures | PASS: CI Rust tests / change-scope Python native cache-report fixtures on 43264109204 |
+| CI | Rust, Windows, macOS, Agent, Sway and selected native | exact-head applicable jobs | PASS: 8 SUCCESS, 2 Noctalia NOT SELECTED, run 43264109204 after macOS job rerun |
+| Reviews | no blocking review threads | actual PR review records | PASS: no blocking reviews or unresolved threads on #301 final head |
 
 ## Decision gates
 
@@ -60,6 +60,8 @@ None; strictly additive, offline evidence accounting. No runtime behavior, CLI, 
 
 - 2026-11-12: source and fixtures committed (a6b18355263ec57fb6d2bcdf4ae93e0e0be640f2, fc2422434c8c3dbe647baf01894364c0926b6800, 79b32629ff98cd2d68855c82af430e67f87b34cc); final-head CI and reviews remain PENDING and no local command exit code was observed.
 
+- 2026-11-12: #301 final head 34700f76dcbcd7ce3333098a99488ed8f064e480, Actions 43264109204 initial attempt had macOS job CANCELLED. That specific job was rerun, completed SUCCESS, overall run SUCCESS (8 success, 2 Noctalia skipped). Rust, Sway, Windows, Agent and offline native metrics succeeded. No blocking review/thread. Squash merged 771f461fe38445ba71667d4fa0bf04965552a022. Actual physical desktop and native Noctalia selected E2E NOT assessed by this metrics-only PR.
+
 ## Deviations and discoveries
 
 An existing optional-step loop shadowed job elapsed seconds and corrupted per-run wall_seconds; fixed without changing the job-level definition.
@@ -69,11 +71,11 @@ None.
 
 ## Resume from here
 
-Inspect the implementation PR's final head and exact-head CI, fix any failures, then merge only if all applicable checks and reviews pass. Archive completed plan independently; keep Issue #211 OPEN.
+Implementation PR #301 squash merged. Verify this independent docs-only archive PR's own exact-head applicable CI and review before merging. Keep Issue #211 OPEN.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending or native correctly scope-skipped; virtual displays are not physical display evidence
+Final commit: 771f461fe38445ba71667d4fa0bf04965552a022 (#301 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43264109204 (final head 34700f76dcbcd7ce3333098a99488ed8f064e480, 8 SUCCESS / 2 Noctalia scope-SKIPPED after macOS rerun)
+E2E artifact: real Sway/swaybg dual-virtual framebuffer SUCCESS; native wpaperd and Noctalia/niri NOT SELECTED; artifact bytes not separately inspected; virtual displays are not physical display evidence
 Remaining unassessed items: five comparable independent warm-cache heads / default-branch provenance and physical monitors.
