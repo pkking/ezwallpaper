@@ -1,7 +1,7 @@
 # Outcome-led agent development governance
 
 Issue: #305
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-13
 Last checkpoint: 2026-11-13
@@ -42,17 +42,17 @@ Preserve exactly one Issue and Plan metadata line in PR. Maintain valid post-mer
 
 ## Acceptance criteria
 
-- [ ] Goal gate document lists P0/P1/P2 acceptance states with exact Issue links and evidence boundary, aligned with Epic #60.
-- [ ] Agent contract and workflow require explicit goal justification and review every three implementation PRs per goal.
-- [ ] Issue/PR/plan templates capture expected outcome, acceptance, status, and verification traceability.
-- [ ] CI validates new PR goal fields, known gate ID, coherent Epic/independent mode and BLOCKER reference; offline tests cover valid and invalid payloads.
+- [x] Goal gate document lists P0/P1/P2 acceptance states with exact Issue links and evidence boundary, aligned with Epic #60.
+- [x] Agent contract and workflow require explicit goal justification and review every three implementation PRs per goal.
+- [x] Issue/PR/plan templates capture expected outcome, acceptance, status, and verification traceability.
+- [x] CI validates new PR goal fields, known gate ID, coherent Epic/independent mode and BLOCKER reference; offline tests cover valid and invalid payloads.
 - [ ] Required final-head CI and reviews pass without test suppression.
 - [ ] Epic #60 updates after implementation passes; physical, SDDM/Plymouth and cache objectives stay unassessed where unsupported.
 
 ## Implementation slices
 
-- [ ] Add auditable scenario gate catalog and repo agent/workflow/Issue/PR templates.
-- [ ] Extend existing plan validator and deterministic tests; do not add a new expensive workflow.
+- [x] Add auditable scenario gate catalog and repo agent/workflow/Issue/PR templates.
+- [x] Extend existing plan validator and deterministic tests; do not add a new expensive workflow.
 - [ ] Verify exact-head CI, merge implementation and amend Epic #60, then archive separately.
 
 ## Verification matrix
@@ -70,6 +70,8 @@ User explicitly approved the four-layer goal alignment strategy in conversation.
 ## Evidence log
 
 - 2026-11-13: inspected master and Epic #60, AGENTS.md, workflow, PR/Issue templates, plan validator, agent self-tests and active Ruleset #25323916. Ruleset protects four required statuses and currently requires zero approvals; this PR cannot alter administrator policy.
+
+- 2026-11-13: goal-gates.md plus AGENTS/workflow/Issue/PR/plan templates and CI validator/negative tests committed on the source branch; all exact-head CI statuses still pending. Historic completed plans without goal sections remain supported; any resumed active plan must adopt the new section.
 
 ## Deviations and discoveries
 
