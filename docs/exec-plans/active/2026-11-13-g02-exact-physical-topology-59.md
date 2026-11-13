@@ -1,7 +1,7 @@
 # G-02 exact mixed-resolution physical topology preflight
 
 Issue: #59
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-13
 Last checkpoint: 2026-11-13
@@ -44,8 +44,8 @@ Master 607d63dc2157f4fa6af7cb731dd1cf425257071c; no open PR. G-01 virtual contro
 
 ## Implementation slices
 
-- [ ] Add exact G-02 target-mode check to live read-only preflight before desktop writes.
-- [ ] Extend fake native topology tests and physically scoped operating instructions.
+- [x] Add exact G-02 target-mode check to live read-only preflight before desktop writes.
+- [x] Extend fake native topology tests and physically scoped operating instructions.
 - [ ] Verify final-head CI/reviews, squash merge, then archive plan independently.
 
 ## Verification matrix
@@ -63,6 +63,8 @@ Running the helper on real desktop requires the human operator's interactive con
 ## Evidence log
 
 - 2026-11-13: preflight gap identified by source inspection; no physical evidence claimed, no branch tests run.
+
+- 2026-11-13: strict preflight implementation plus negative/rotated portrait fake-native tests committed; physical run not performed; final-head CI pending.
 
 ## Deviations and discoveries
 
