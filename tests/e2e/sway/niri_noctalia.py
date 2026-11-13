@@ -8,6 +8,7 @@ This is NOT validation of released niri or physical monitors.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -321,6 +322,206 @@ def virtual_fractional_scale(binary: Path, fixtures: dict[str, Path],
                                      "pixel_fraction": round(ratio, 4)})
 
 
+
+def parse_native_rotation_result(raw: bytes, allowed: dict[str, dict[str, tuple[int, int, int]]]) -> dict:
+    """Reject a false CLI result before comparing actual IPC and frame pixels.
+
+    The controller's acknowledgement is a path observation, NOT independent
+    pixel evidence. Output names, paths and content IDs are bound to this
+    test-owned, per-output pool rather than trusting the returned JSON.
+    """
+    try:
+        document = parse_niri_inventory(raw)
+        if not isinstance(document, dict) or set(document) != {"schema_version", "outputs"}:
+            raise ValueError("wrong rotation envelope")
+        if type(document["schema_version"]) is not int or document["schema_version"] != 1:
+            raise ValueError("wrong rotation schema")
+        outputs = document["outputs"]
+        if not isinstance(outputs, list) or len(outputs) != len(allowed):
+            raise ValueError("not exactly two rotation outputs")
+        observed = {}
+        expected_fields = {
+            "output", "epoch", "decision", "content_id", "path",
+            "applied_path_observed", "visually_verified", "reason",
+        }
+        for item in outputs:
+            if not isinstance(item, dict) or set(item) != expected_fields:
+                raise ValueError("malformed rotation output entry")
+            name, path = item["output"], item["path"]
+            if not isinstance(name, str) or name not in allowed or name in observed:
+                raise ValueError("duplicate or unknown rotation connector")
+            if not isinstance(path, str) or path not in allowed[name]:
+                raise ValueError("rotation selected an unapproved per-output asset")
+            if type(item["epoch"]) is not int or item["epoch"] < 0:
+                raise ValueError("invalid acknowledged UTC bucket")
+            if item["decision"] not in ("select", "already_applied"):
+                raise ValueError("unexpected rotation decision")
+            if type(item["applied_path_observed"]) is not bool:
+                raise ValueError("invalid IPC evidence type")
+            if item["visually_verified"] is not False:
+                raise ValueError("CLI must not claim independently captured pixels")
+            if not isinstance(item["reason"], str) or not item["reason"]:
+                raise ValueError("missing rotation reason")
+            digest = "sha256:" + hashlib.sha256(Path(path).read_bytes()).hexdigest()
+            if item["content_id"] != digest:
+                raise ValueError("rotation content ID does not match selected image bytes")
+            observed[name] = item
+        if set(observed) != set(allowed):
+            raise ValueError("missing rotation connector")
+        epochs = {item["epoch"] for item in observed.values()}
+        if len(epochs) != 1:
+            raise ValueError("rotation outputs disagreed on UTC epoch")
+        return observed
+    except (ValueError, TypeError, KeyError, OSError, UnicodeError) as error:
+        raise E2EFailure(f"invalid native rotation result: {error}") from error
+
+
+def native_rotation_journey(binary: Path, artifact: Path, env: dict, result: dict) -> None:
+    """Execute the real controller in experimental niri, not fake-clock mocks.
+
+    Repeated subprocesses prove persisted same-bucket idempotence; a forced
+    re-selection after native output removal/recreation is a recovery test,
+    NOT proof that 24 real hours elapsed. The separate Core suite covers 24h.
+    """
+    root = Path(env["HOME"]) / "native-rotation"
+    left, right = root / "landscape", root / "portrait"
+    left.mkdir(parents=True)
+    right.mkdir(parents=True)
+    pools = {
+        "HEADLESS-1": {
+            str(left / "cyan.png"): (33, 187, 213),
+            str(left / "amber.png"): (240, 152, 39),
+        },
+        "HEADLESS-2": {
+            str(right / "violet.png"): (169, 88, 221),
+            str(right / "rose.png"): (226, 76, 141),
+        },
+    }
+    for choices in pools.values():
+        for path, color in choices.items():
+            Path(path).write_bytes(solid_png(320, 320, color))
+    profile, state = root / "profile.json", root / "state" / "rotation.json"
+    profile.write_text(json.dumps({
+        "schema_version": 1, "owner": "ezwallpaper",
+        "outputs": [
+            {"name": name, "dir": str(left if name == "HEADLESS-1" else right)}
+            for name in GEOMETRY
+        ],
+    }), encoding="utf-8")
+    command = [
+        str(binary), "rotate", "next", "--profile", str(profile),
+        "--state", str(state), "--apply", "--require-niri-outputs", "--json",
+    ]
+    journey = {"schema_version": 1, "status": "FAILED",
+               "test": "native niri Noctalia CLI rotate next to pixels",
+               "wall_clock_hour_elapsed": False, "physical_display_verified": False,
+               "stages": []}
+    result["native_rotation_journey"] = journey
+
+    def invoke(stage: str, *, force: bool = False, fail: bool = False) -> bytes:
+        args = command + (["--force"] if force else [])
+        try:
+            completed = subprocess.run(args, env=env, capture_output=True,
+                                       timeout=35, check=False)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise E2EFailure(f"native rotation CLI unavailable at {stage}") from error
+        (artifact / f"rotation-{stage}-command.json").write_text(json.dumps({
+            "exit": completed.returncode,
+            "stdout": completed.stdout.decode(errors="replace")[-10000:],
+            "stderr": completed.stderr.decode(errors="replace")[-10000:],
+        }, indent=2) + "\n", encoding="utf-8")
+        if (completed.returncode == 0) == fail:
+            raise E2EFailure(f"unexpected native rotation exit at {stage}: {completed.returncode}")
+        return completed.stdout
+
+    def verified(stage: str, data: bytes, *, selected: bool) -> dict:
+        outcomes = parse_native_rotation_result(data, pools)
+        expected_decision = "select" if selected else "already_applied"
+        for name, item in outcomes.items():
+            if item["decision"] != expected_decision:
+                raise E2EFailure(f"unexpected rotation decision on {name} at {stage}")
+            if item["applied_path_observed"] is not selected:
+                raise E2EFailure(f"wrong native IPC acknowledgement on {name} at {stage}")
+            expected_reason = (
+                "path_observed_pixels_unverified" if selected else "epoch_already_acknowledged"
+            )
+            if item["reason"] != expected_reason:
+                raise E2EFailure(f"incorrect rotation reason on {name} at {stage}")
+            assert_readback(native_get(name, env), Path(item["path"]))
+            ratio = capture(name, f"rotation-{stage}", artifact, env,
+                            pools[name][item["path"]], threshold=0.90)
+            journey["stages"].append({
+                "stage": stage, "output": name, "epoch": item["epoch"],
+                "decision": item["decision"], "path": item["path"],
+                "content_id": item["content_id"],
+                "native_path_observed": True,
+                "pixel_fraction": round(ratio, 4),
+            })
+        return outcomes
+
+    def persisted(outcomes: dict) -> bytes:
+        raw = state.read_bytes()
+        saved = parse_niri_inventory(raw)
+        if not isinstance(saved, dict) or saved.get("schema_version") != 1:
+            raise E2EFailure("native rotation durable state has invalid schema")
+        if saved.get("profile") != str(profile.resolve()):
+            raise E2EFailure("native rotation saved a different profile")
+        if not isinstance(saved.get("outputs"), dict) or set(saved["outputs"]) != set(pools):
+            raise E2EFailure("native rotation did not commit both outputs")
+        for name, item in outcomes.items():
+            committed = saved["outputs"][name]
+            if (committed.get("last_epoch") != item["epoch"] or
+                    committed.get("last_content_id") != item["content_id"]):
+                raise E2EFailure(f"native rotation committed wrong epoch/content on {name}")
+        return raw
+
+    first = verified("first", invoke("first"), selected=True)
+    original = persisted(first)
+    (artifact / "rotation-first-state.json").write_bytes(original)
+
+    same = verified("same-epoch", invoke("same-epoch"), selected=False)
+    if {n: x["content_id"] for n, x in same.items()} != {
+        n: x["content_id"] for n, x in first.items()
+    } or state.read_bytes() != original:
+        raise E2EFailure("same-hour native retry changed acknowledged state")
+    journey["same_epoch_idempotent"] = True
+
+    # A real compositor disconnect must not change the first output or
+    # silently commit a second-output selection. This is NOT hardware hotplug.
+    name = "HEADLESS-2"
+    removed = run(["niri", "msg", "remove-virtual-output", name], env=env, timeout=8)
+    if f"Removed virtual output: {name}" not in removed.stdout.decode(errors="replace"):
+        raise E2EFailure("niri did not acknowledge test-only output removal")
+    observe_topology(env, {"HEADLESS-1": GEOMETRY["HEADLESS-1"]},
+                     "rotation-output-missing", artifact)
+    invoke("output-missing", force=True, fail=True)
+    if state.read_bytes() != original:
+        raise E2EFailure("disconnected native output caused a false state commit")
+    assert_readback(native_get("HEADLESS-1", env), Path(first["HEADLESS-1"]["path"]))
+    capture("HEADLESS-1", "rotation-missing-left-unchanged", artifact, env,
+            pools["HEADLESS-1"][first["HEADLESS-1"]["path"]], threshold=0.90)
+    journey["disconnected_output_failed_closed"] = True
+
+    width, height = GEOMETRY[name]
+    added = run(["niri", "msg", "create-virtual-output", "--name", name,
+                 "--width", str(width), "--height", str(height),
+                 "--refresh-rate", "60"], env=env, timeout=8)
+    if f"Created virtual output: {name}" not in added.stdout.decode(errors="replace"):
+        raise E2EFailure("niri did not acknowledge test-only output recreation")
+    observe_topology(env, GEOMETRY, "rotation-output-restored", artifact)
+    rotated = verified("recovered-forced", invoke("recovered-forced", force=True), selected=True)
+    if {n: x["content_id"] for n, x in rotated.items()} == {
+        n: x["content_id"] for n, x in first.items()
+    } or any(rotated[name]["content_id"] == first[name]["content_id"] for name in pools):
+        raise E2EFailure("forced native recovery did not change BOTH output content IDs")
+    if {x["epoch"] for x in rotated.values()} != {x["epoch"] for x in first.values()}:
+        raise E2EFailure("forced same-hour retry changed UTC bucket unexpectedly")
+    last = persisted(rotated)
+    (artifact / "rotation-recovered-state.json").write_bytes(last)
+    journey["status"] = "PASS"
+    journey["recovery_changed_both_outputs"] = True
+
+
 def baseline(output: str, tag: str, folder: Path, env: dict) -> tuple[int, int, int]:
     screenshot = folder / f"{tag}-{output}.ppm"
     run(["grim", "-o", output, "-t", "ppm", str(screenshot)], env=env, timeout=8)
@@ -402,6 +603,7 @@ def execute(binary: Path, artifact: Path) -> int:
                                                  "pixel_fraction": round(ratio, 4)})
                     virtual_output_lifecycle(binary, fixtures, artifact, env, result)
                     virtual_fractional_scale(binary, fixtures, artifact, env, result)
+                    native_rotation_journey(binary, artifact, env, result)
                 owned_stop(shell, "Noctalia")
                 shell = None
                 result["cleanup"]["noctalia"] = "TERMINATED"
