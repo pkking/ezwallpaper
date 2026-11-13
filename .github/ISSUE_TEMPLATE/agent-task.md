@@ -10,6 +10,15 @@ assignees: ''
 
 What will be demonstrably different for the user?
 
+## Goal alignment
+
+Epic: #60 or independently approved goal
+Goal: G-XX from docs/agents/goal-gates.md, or INDEPENDENT
+Priority: P0 / P1 / P2 / SUPPORT
+Before: Current user-observable state and evidence
+After: Measurable user-facing acceptance, not a change-list
+Evidence level: CODE / CONTRACT / VIRTUAL_VERIFIED / PHYSICAL_VERIFIED / UNASSESSED
+
 ## Current facts
 
 Relevant code, reproduction, logs or official docs.
