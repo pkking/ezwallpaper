@@ -1,7 +1,7 @@
 # Wpaperd independently sampled native latency cohorts
 
 Issue: #223
-Status: VERIFYING
+Status: COMPLETED
 Owner: agent
 Started: 2026-11-12
 Last checkpoint: 2026-11-12
@@ -31,24 +31,24 @@ Original job-level distributions, fields, verified status and all strict timesta
 
 ## Acceptance criteria
 
-- [ ] Report additive per-head n, P50/P90 for job wall, queue and measured build/pixel steps.
-- [ ] Repeated attempts and manifest reorder do not inflate head sample count or change percentiles; latest verified hit/miss cohort wins.
-- [ ] Failed, skipped and unselected native checks are never counted as independent successful native samples.
-- [ ] All applicable final-head GitHub Actions CI and reviews pass without weakening gate selection.
+- [x] Report additive per-head n, P50/P90 for job wall, queue and measured build/pixel steps.
+- [x] Repeated attempts and manifest reorder do not inflate head sample count or change percentiles; latest verified hit/miss cohort wins.
+- [x] Failed, skipped and unselected native checks are never counted as independent successful native samples.
+- [x] All applicable final-head GitHub Actions CI and reviews pass without weakening gate selection.
 
 ## Implementation slices
 
 - [x] Implement additive independent-head sampler.
 - [x] Add deterministic repeated-attempt, cross-event, cohort-switch and manifest-order fixtures.
-- [ ] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
+- [x] Verify final-head checks/reviews; squash merge; independent docs-only plan archive PR.
 
 ## Verification matrix
 
 | Scope | Gate | Expected evidence | Status |
 |---|---|---|---|
-| Offline | python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v | distinct-head fixtures | PENDING |
-| CI | Rust, Windows, macOS, Agent, Sway and selected native | exact-head applicable jobs | PENDING |
-| Reviews | no blocking review threads | actual PR review records | PENDING |
+| Offline | python3 -m unittest discover -s tests -p 'test_wpaperd_native_helpers.py' -v | distinct-head fixtures | PASS: Sway CI wpaperd offline helper tests, 43264117739 |
+| CI | Rust, Windows, macOS, Agent, Sway and selected native | exact-head applicable jobs | PASS: 8 SUCCESS, 2 Noctalia intentionally SKIPPED, 43264117739 |
+| Reviews | no blocking review threads | actual PR review records | PASS: no blocking reviews or threads on #302 final head |
 
 ## Decision gates
 
@@ -60,6 +60,8 @@ None; strictly additive, offline evidence accounting. No runtime behavior, CLI, 
 
 - 2026-11-12: source and fixtures committed (26a63b2b936c29042fad919341968735467b7309, 53d23df8d39813e8fe42a3463c6d70813354b838); final-head CI and reviews remain PENDING and no local command exit code was observed.
 
+- 2026-11-12: PR #302 final head 9fa6ead2b713ad21fdccf7bcf904490a140a30bb, Actions 43264117739 8 SUCCESS/2 Noctalia SKIPPED. Rust, Windows/macOS, agent, Sway and selected native wpaperd IPC/dual-output framebuffer all passed; no blocking reviews/threads. Squash merged a55ddf208ce83154f6a203619f8e6dfa3ff1c3bc. This is not physical display evidence.
+
 ## Deviations and discoveries
 
 One SHA can switch from verified MISS on PR to verified HIT on a later push; the independent all-events view selects one last verified observation.
@@ -69,11 +71,11 @@ None.
 
 ## Resume from here
 
-Inspect the implementation PR's final head and exact-head CI, fix any failures, then merge only if all applicable checks and reviews pass. Archive completed plan independently; keep Issue #223 OPEN.
+Implementation PR #302 merged. Verify this *separate docs-only archive PR* final-head CI and review before merge; keep Issue #223 OPEN for broader warm-cache performance and physical validation.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: pending or native correctly scope-skipped; virtual displays are not physical display evidence
+Final commit: a55ddf208ce83154f6a203619f8e6dfa3ff1c3bc (PR #302 squash)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43264117739 (final implementation head 9fa6ead2b713ad21fdccf7bcf904490a140a30bb, 8 SUCCESS and 2 scope-skipped)
+E2E artifact: selected real native wpaperd IPC and virtual dual-output rendered pixel check SUCCESS on 43264117739; Noctalia/niri NOT SELECTED; artifact bytes not separately inspected; virtual displays are not physical display evidence
 Remaining unassessed items: five comparable independent warm-cache heads / default-branch provenance and physical monitors.
