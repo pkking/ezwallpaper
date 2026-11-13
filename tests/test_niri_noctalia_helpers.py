@@ -11,6 +11,7 @@ from dual import GEOMETRY, RGB, pixel_fraction
 from niri_noctalia import (
     NIRI_CONFIG, NIRI_PR_COMMIT, create_two_outputs, niri_topology_from_json,
     private_env, require_pinned_source, observe_topology,
+    parse_native_rotation_result,
     fractional_scale_from_json, observe_fractional_scale,
 )
 from noctalia_v5 import CONFIG, assert_readback
@@ -258,6 +259,59 @@ class NiriNoctaliaOfflineTests(unittest.TestCase):
         self.assertTrue(native["wallpaper"]["enabled"])
         self.assertFalse(native["lockscreen"]["enabled"])
         # KDL child nodes must be separated from the closing brace by a newline.\n        self.assertIn("animations {\\n    off\\n}", NIRI_CONFIG)\n        self.assertIn("hotkey-overlay {\\n    skip-at-startup\\n}", NIRI_CONFIG)
+
+    def test_real_rotation_json_binds_named_native_outputs_and_digest(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            allowed = {}
+            items = []
+            for index, name in enumerate(GEOMETRY):
+                path = root / f"verified-output-{index}.png"
+                path.write_bytes(bytes((index + 1, 30, 91, 155)))
+                allowed[name] = {str(path): RGB["red" if index == 0 else "blue"]}
+                items.append({
+                    "output": name, "epoch": 500000,
+                    "decision": "select", "path": str(path),
+                    "content_id": "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "applied_path_observed": True, "visually_verified": False,
+                    "reason": "path_observed_pixels_unverified",
+                })
+            valid = {"schema_version": 1, "outputs": items}
+            self.assertEqual(
+                set(parse_native_rotation_result(json.dumps(valid).encode(), allowed)),
+                set(GEOMETRY),
+            )
+            failures = []
+            unknown_path = json.loads(json.dumps(valid))
+            unknown_path["outputs"][0]["path"] = str(root / "outside.png")
+            failures.append(unknown_path)
+            wrong_digest = json.loads(json.dumps(valid))
+            wrong_digest["outputs"][1]["content_id"] = items[0]["content_id"]
+            failures.append(wrong_digest)
+            false_pixels = json.loads(json.dumps(valid))
+            false_pixels["outputs"][0]["visually_verified"] = True
+            failures.append(false_pixels)
+            duplicate = json.loads(json.dumps(valid))
+            duplicate["outputs"][1]["output"] = "HEADLESS-1"
+            failures.append(duplicate)
+            bogus_epoch = json.loads(json.dumps(valid))
+            bogus_epoch["outputs"][0]["epoch"] = True
+            failures.append(bogus_epoch)
+            differing_epochs = json.loads(json.dumps(valid))
+            differing_epochs["outputs"][0]["epoch"] = 500001
+            failures.append(differing_epochs)
+            wrong_schema = json.loads(json.dumps(valid))
+            wrong_schema["schema_version"] = 2
+            failures.append(wrong_schema)
+            for malformed in failures:
+                with self.subTest(malformed=malformed), self.assertRaises(E2EFailure):
+                    parse_native_rotation_result(json.dumps(malformed).encode(), allowed)
+            duplicated_key = json.dumps(valid).replace(
+                '"schema_version": 1', '"schema_version": 1, "schema_version": 1',
+            )
+            with self.assertRaisesRegex(E2EFailure, "duplicate niri JSON key"):
+                parse_native_rotation_result(duplicated_key.encode(), allowed)
 
     def test_no_niri_live_required_by_unit_tests(self):
         # The test suite only validates fixtures and parser contracts.
