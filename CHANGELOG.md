@@ -2,7 +2,7 @@
 
 This file records tagged distributions, not the number of merged pull requests. Product acceptance remains governed by [Epic #60](https://github.com/pkking/ezwallpaper/issues/60).
 
-## [0.3.0-alpha.1] — 2026-11-13
+## [0.3.0-alpha.1] — 2026-11-14
 
 **M1 source-only GitHub prerelease.** First integration checkpoint for the headless asset Core, cross-platform CLI, persistent per-output rotation and Noctalia v5 native integration.
 
