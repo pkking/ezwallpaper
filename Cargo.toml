@@ -5,7 +5,7 @@ resolver = "2"
 
 [package]
 name = "ezwallpaper"
-version = "0.2.1"
+version = "0.3.0-alpha.1"
 edition = "2018"
 authors = ["li chaoran <pkwarcraft@gmail.com>"]
 description = "CLI to fetch and set wallpaper from multiple sources"
@@ -18,7 +18,7 @@ anyhow = "1.0.90"
 clap = { version = "4.0.22", features = ["derive", "env", "string", "unicode"] }
 dirs = "5.0.1"
 env_logger = "0.11.5"
-ezwallpaper-core = { path = "crates/ezwallpaper-core" }
+ezwallpaper-core = { path = "crates/ezwallpaper-core", version = "=0.3.0-alpha.1" }
 log = "0.4.22"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
