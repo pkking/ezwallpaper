@@ -1,5 +1,7 @@
 # Outcome gates for Epic #60
 
+**Release-level roadmap:** [M1–M4 acceptance and no-go criteria](../../ROADMAP.md). This file retains the detailed G-00..G-06 technical evidence; the public roadmap defines version milestones.
+
 This is the version-controlled goal catalog for [Epic #60](https://github.com/pkking/ezwallpaper/issues/60). Every new PR identifies one gate using `Goal: G-XX` plus its exact acceptance gap. A gate is a **user scenario**, not a requirement to create a new PR. The linked Issue and plan provide the work and evidence details.
 
 **State vocabulary**: `PLANNED` = no accepted implementation; `IMPLEMENTED` = code exists but the named end-to-end outcome is unverified; `VIRTUAL_VERIFIED` = real isolated compositor pixels were observed under the pinned *virtual* environment; `PHYSICAL_VERIFIED` = user-approved, reversible hardware/session evidence exists. Different surfaces may have different states; these labels must never silently elevate a virtual result to physical proof. `BLOCKED_EVIDENCE` is a checkpoint, not a success state.

@@ -77,7 +77,10 @@ Provider capability limits:
 **Security and semantics:** Requests use bounded timeouts and limited 429/5xx retries; remote image URLs are HTTPS-only and restricted to the provider CDN, and downloads use staged completion. Pexels accepts the legacy `--token`, a private `--token-file`, or `EZWALLPAPER_PEXELS_TOKEN` (priority in that order), but no token is required for Wallhaven SFW. Actual API quotas, remote aspect-ratio correctness, content decoding and live network outcomes are **unassessed** by default offline CI. Do not interpret an API width/height field as verified decoded pixels. Bing is a recent feed, **not a full archive**; fetching it every hour does not guarantee different content. `--count` controls downloads, not wallpaper rotation.
 
 Sources: [Microsoft Bing API limitation](https://learn.microsoft.com/en-us/answers/questions/1473961/bing-hpimagearchive-aspx-question) · [Pexels search API](https://www.pexels.com/api/documentation/) · [Wallhaven v1 API](https://wallhaven.cc/help/api).
-## Agent development
+## Release roadmap
+
+[**Public Roadmap: M1 preview → M2 beta → M3 stable → M4 v1.0**](ROADMAP.md) defines exactly which user-visible outcomes and evidence are needed for each version. [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) tracks the overall niri+Noctalia integration, and [the goal-gate matrix](docs/agents/goal-gates.md) records actual tested results. **A green CI run does not establish a physical dual-display or two-hour timer result.** See [GitHub Releases](https://github.com/pkking/ezwallpaper/releases) for the versions actually published.
+
 
 Start with [AGENTS.md](AGENTS.md), [architecture](docs/architecture.md), and [agent workflow](docs/agents/workflow.md).
 For non-trivial work open an Issue, create an [active execution plan](docs/exec-plans/TEMPLATE.md), and submit a PR with matching Issue and Plan metadata. CI checks formatting, Clippy, Rust tests, offline CLI behavior, and plan integrity. Do not use real Pexels credentials or mutate the desktop in CI.
