@@ -1,5 +1,7 @@
 # ezwallpaper
 
+**M1 preview source version: `v0.3.0-alpha.1`.** See the [source-only prerelease notes](docs/releases/v0.3.0-alpha.1.md) for installation, verified niri + Noctalia *virtual* integration, and known limits. The released niri physical dual-monitor session, real elapsed-hour timer, lockscreen, SDDM and Plymouth are not yet accepted; keep [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) open.
+
 A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Existing cron and Windows Task Scheduler users can keep their flag-only workflows. See [ADR 0001](docs/adr/0001-core-cli-boundaries.md) for the accepted architecture.
 
 ## Architecture
