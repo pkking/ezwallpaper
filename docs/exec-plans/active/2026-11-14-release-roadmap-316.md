@@ -1,7 +1,7 @@
 # Versioned M1–M4 public release roadmap
 
 Issue: #316
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-14
 Last checkpoint: 2026-11-14
@@ -45,17 +45,17 @@ Only new docs and navigational links. The status labels reflect evidence and hav
 
 ## Acceptance criteria
 
-- [ ] Root ROADMAP.md defines M1/M2/M3/M4 with user-visible scope, strict acceptance evidence, and unassessed scopes.
-- [ ] Formal M3 no-go gates include released niri, opt-in physical 4K+portrait, actual hourly timer, failure recovery and installation/upgrade/rollback, with named Issue links.
-- [ ] M4 includes G-03 cross-surface login/lockscreen/SDDM/Plymouth and G-04 dynamic wallpapers/widgets.
-- [ ] README and docs/agents/goal-gates.md link to ROADMAP.md, keeping gate matrix as technical evidence source.
+- [x] Root ROADMAP.md defines M1/M2/M3/M4 with user-visible scope, strict acceptance evidence, and unassessed scopes.
+- [x] Formal M3 no-go gates include released niri, opt-in physical 4K+portrait, actual hourly timer, failure recovery and installation/upgrade/rollback, with named Issue links.
+- [x] M4 includes G-03 cross-surface login/lockscreen/SDDM/Plymouth and G-04 dynamic wallpapers/widgets.
+- [x] README and docs/agents/goal-gates.md link to ROADMAP.md, keeping gate matrix as technical evidence source.
 - [ ] Existing Epic #60 references ROADMAP.md after implementation verified; no changes to release PR #315, no premature closing/claims.
 - [ ] Final-head all applicable CI and no blocking reviews; source merge then separate verified archive.
 
 ## Implementation slices
 
-- [ ] Add self-contained roadmap and clear no-go/evidence matrix.
-- [ ] Add discoverable README and goal-gates links without changing #315.
+- [x] Add self-contained roadmap and clear no-go/evidence matrix.
+- [x] Add discoverable README and goal-gates links without changing #315.
 - [ ] Verify exact-head CI and reviews, squash merge, update Epic #60; archive plan separately.
 
 ## Verification matrix
@@ -73,6 +73,8 @@ No new design choices needed. Version structure was approved by user in this con
 ## Evidence log
 
 - 2026-11-14: checked master, README, goal gates, open issues and GitHub releases. Root ROADMAP.md is absent; #315 release prep remains open; no verified GitHub v0.3.0-alpha.1 prerelease published.
+
+- 2026-11-14: Published the versioned M1–M4 readiness document on the feature branch and linked it from README + goal-gates. Branch remains separate from #315's packaging/publisher changes. No released niri, physical GPU or real user timer success was claimed. Final-head PR checks pending.
 
 ## Deviations and discoveries
 
