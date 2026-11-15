@@ -17,12 +17,14 @@ import inspect_hourly_rotation_evidence as proof  # noqa: E402
 
 class FakeSession:
     def __init__(self, paths: dict[str, Path], *, mono_us=7_200_000_000,
-                 active="active", result="success", trigger=None):
+                 active="active", result="success", trigger=None,
+                 timer_unit=proof.TIMER):
         self.paths = paths
         self.mono_us = mono_us
         self.active = active
         self.result = result
         self.trigger = trigger if trigger is not None else mono_us - 60_000_000
+        self.timer_unit = timer_unit
         self.calls = []
 
     def __call__(self, argv, **kwargs):
@@ -45,7 +47,7 @@ class FakeSession:
             return subprocess.CompletedProcess(argv, 0, json.dumps(raw), "")
         if argv[:3] == ["noctalia", "msg", "wallpaper-get"]:
             return subprocess.CompletedProcess(argv, 0, str(self.paths[argv[3]]) + "\n", "")
-        if argv[:4] == ["systemctl", "--user", "show", proof.TIMER]:
+        if argv[:4] == ["systemctl", "--user", "show", self.timer_unit]:
             raw = (
                 "ActiveState=" + self.active + "\n"
                 "Unit=" + proof.SERVICE + "\n"
@@ -94,15 +96,41 @@ class RealHourEvidenceTests(unittest.TestCase):
             },
         }))
 
-    def snap(self, epoch=500000, *, mono_us=7_200_000_000, fake=None):
+    def snap(self, epoch=500000, *, mono_us=7_200_000_000, fake=None,
+             timer_unit=proof.TIMER):
         self.write_state(epoch)
-        runner = fake or FakeSession(self.paths, mono_us=mono_us)
+        runner = fake or FakeSession(self.paths, mono_us=mono_us, timer_unit=timer_unit)
         snapshot = proof.snapshot(
             self.state, self.profile, self.names, self.env, runner,
             wall_ns=lambda: (epoch * 3600 + 300) * 1_000_000_000,
             mono_ns=lambda: mono_us * 1000, boot_id="reboot-proof-test",
+            timer_unit=timer_unit,
         )
         return snapshot, runner
+
+    def test_default_timer_unit_remains_unchanged(self):
+        _, runner = self.snap()
+        timer_calls = [call for call in runner.calls if call[:3] ==
+                       ["systemctl", "--user", "show"]]
+        self.assertEqual(timer_calls[0][3], "ezwallpaper-rotation.timer")
+
+    def test_custom_timer_unit_is_passed_as_one_argv_element(self):
+        _, runner = self.snap(timer_unit="ezwallpaper-rotate.timer")
+        timer_calls = [call for call in runner.calls if call[:3] ==
+                       ["systemctl", "--user", "show"]]
+        self.assertEqual(timer_calls[0][3], "ezwallpaper-rotate.timer")
+        self.assertIsInstance(timer_calls[0], list)
+
+    def test_invalid_timer_units_fail_before_external_commands(self):
+        for invalid in ("", "   ", "bad name.timer", "bad\tname.timer", "bad\0name.timer", "-bad.timer"):
+            with self.subTest(timer_unit=invalid):
+                runner = FakeSession(self.paths, timer_unit=invalid)
+                with self.assertRaisesRegex(proof.ProofError, "invalid_timer_unit"):
+                    proof.snapshot(
+                        self.state, self.profile, self.names, self.env, runner,
+                        timer_unit=invalid,
+                    )
+                self.assertEqual(runner.calls, [])
 
     def test_two_actual_bucket_snapshots_require_distinct_real_state_and_systemd(self):
         first, fake1 = self.snap()
