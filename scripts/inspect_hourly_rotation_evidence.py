@@ -9,6 +9,7 @@ physical pixels, released-niri support, or a substitute for an operator.
 from __future__ import annotations
 
 import argparse
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import hashlib
 import json
 import os
@@ -118,10 +119,40 @@ def properties(runner, unit: str, names: tuple[str, ...]) -> dict[str, str]:
     return result
 
 
+_TIMESPAN_PART = re.compile(r"([0-9]+(?:\.[0-9]+)?)(ns|us|μs|ms|s|min|h|days|day|weeks|week|months|month|years|year)\Z")
+_TIMESPAN_MICROSECONDS = {
+    "ns": Decimal("0.001"), "us": Decimal(1), "μs": Decimal(1),
+    "ms": Decimal(1000), "s": Decimal(1_000_000),
+    "min": Decimal(60_000_000), "h": Decimal(3_600_000_000),
+    "day": Decimal(86_400_000_000), "days": Decimal(86_400_000_000),
+    "week": Decimal(604_800_000_000), "weeks": Decimal(604_800_000_000),
+    "month": Decimal(2_629_800_000_000), "months": Decimal(2_629_800_000_000),
+    "year": Decimal(31_557_600_000_000), "years": Decimal(31_557_600_000_000),
+}
+
+
 def nonzero_microseconds(value: str) -> int:
-    if not value.isascii() or not value.isdecimal() or len(value) > 20:
-        raise ProofError("invalid_systemd_timestamp")
-    result = int(value)
+    try:
+        if value.isascii() and value.isdecimal() and len(value) <= 20:
+            result = int(value)
+        else:
+            if not value or len(value) > 256:
+                raise ValueError
+            total = Decimal(0)
+            parts = value.split(" ")
+            if any(not part for part in parts):
+                raise ValueError
+            for part in parts:
+                match = _TIMESPAN_PART.fullmatch(part)
+                if match is None:
+                    raise ValueError
+                amount = Decimal(match.group(1))
+                total += amount * _TIMESPAN_MICROSECONDS[match.group(2)]
+                if total >= 2**64:
+                    raise ValueError
+            result = int(total.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    except (ValueError, InvalidOperation):
+        raise ProofError("invalid_systemd_timestamp") from None
     if result <= 0 or result >= 2**64:
         raise ProofError("invalid_systemd_timestamp")
     return result

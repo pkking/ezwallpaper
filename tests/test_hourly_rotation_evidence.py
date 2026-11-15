@@ -274,6 +274,25 @@ class RealHourEvidenceTests(unittest.TestCase):
             proof.save_exclusive(link, {"forged": True})
         self.assertEqual(target.read_text(), "original")
 
+    def test_systemd_monotonic_values_accept_decimal_and_format_timespan(self):
+        samples = {
+            "1h 51min 42.507020s": 6_702_507_020,
+            "3s": 3_000_000,
+            "5min 3.123456s": 303_123_456,
+            "6702630091": 6_702_630_091,
+            "1h 91min": 9_060_000_000,
+            "1.0000005s": 1_000_001,
+        }
+        for value, expected in samples.items():
+            with self.subTest(value=value):
+                self.assertEqual(proof.nonzero_microseconds(value), expected)
+
+    def test_systemd_monotonic_values_reject_garbage_zero_and_overflow(self):
+        for value in ("garbage", "0", "0s", "1h  2min", "1hour", str(2**64)):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(proof.ProofError, "invalid_systemd_timestamp"):
+                    proof.nonzero_microseconds(value)
+
     def test_nonadjacent_hours_not_accepted(self):
         first, _ = self.snap()
         for path in self.paths.values():
