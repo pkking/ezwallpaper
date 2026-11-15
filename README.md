@@ -1,6 +1,6 @@
 # ezwallpaper
 
-**Latest published: [v0.3.0-alpha.1](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-alpha.1); v0.3.0-beta.1 is an unpublished candidate.** [Beta notes](docs/releases/v0.3.0-beta.1.md) document the scoped real released-niri 26.04 / Noctalia v5.2.1 physical dual-output test evidence and limitations. Real cable hotplug, full-day uninterrupted uptime, lockscreen, SDDM greeter and Plymouth remain unverified; [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) stays open.
+**Release publication status: [GitHub Releases](https://github.com/pkking/ezwallpaper/releases) is authoritative; [v0.3.0-alpha.1](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-alpha.1) remains available.** The v0.3.0-beta.1 source-only candidate is qualified under [Issue #319](https://github.com/pkking/ezwallpaper/issues/319). [Beta notes](docs/releases/v0.3.0-beta.1.md) document the scoped real released-niri 26.04 / Noctalia v5.2.1 physical dual-output test evidence and limitations. Real cable hotplug, full-day uninterrupted uptime, lockscreen, SDDM greeter and Plymouth remain unverified; [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) stays open.
 
 A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Existing cron and Windows Task Scheduler users can keep their flag-only workflows. See [ADR 0001](docs/adr/0001-core-cli-boundaries.md) for the accepted architecture.
 
