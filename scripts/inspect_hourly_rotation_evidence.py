@@ -86,10 +86,18 @@ def command(runner, argv: list[str]) -> str:
     return answer.stdout
 
 
-def validate_timer_unit(value: str) -> str:
+def validate_unit(value: str, kind: str) -> str:
     if not value or any(char.isspace() for char in value) or "\0" in value or value.startswith("-"):
-        raise ProofError("invalid_timer_unit")
+        raise ProofError("invalid_" + kind + "_unit")
     return value
+
+
+def validate_timer_unit(value: str) -> str:
+    return validate_unit(value, "timer")
+
+
+def validate_service_unit(value: str) -> str:
+    return validate_unit(value, "service")
 
 
 def properties(runner, unit: str, names: tuple[str, ...]) -> dict[str, str]:
@@ -122,9 +130,10 @@ def nonzero_microseconds(value: str) -> int:
 def snapshot(
     state_path: Path, profile_path: Path, outputs: tuple[str, str], env: dict[str, str],
     runner=subprocess.run, *, wall_ns=time.time_ns, mono_ns=time.monotonic_ns,
-    boot_id: str | None = None, timer_unit: str = TIMER,
+    boot_id: str | None = None, timer_unit: str = TIMER, service_unit: str = SERVICE,
 ) -> dict:
     timer_unit = validate_timer_unit(timer_unit)
+    service_unit = validate_service_unit(service_unit)
     if (
         sys.platform != "linux"
         or env.get("XDG_SESSION_TYPE", "").lower() != "wayland"
@@ -157,10 +166,12 @@ def snapshot(
         raise ProofError("rotation_state_missing_outputs")
 
     timer = properties(runner, timer_unit, ("ActiveState", "Unit", "LastTriggerUSecMonotonic"))
-    service = properties(runner, SERVICE, (
+    service = properties(runner, service_unit, (
         "Result", "ExecMainStatus", "ExecMainStartTimestampMonotonic",
     ))
-    if timer["ActiveState"] != "active" or timer["Unit"] != SERVICE:
+    if timer["Unit"] != service_unit:
+        raise ProofError("timer_service_unit_mismatch")
+    if timer["ActiveState"] != "active":
         raise ProofError("hourly_user_timer_not_active")
     if service["Result"] != "success" or service["ExecMainStatus"] != "0":
         raise ProofError("rotation_service_not_successful")
@@ -289,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
     capture.add_argument("--output-b", required=True)
     capture.add_argument("--artifact", required=True, type=Path)
     capture.add_argument("--timer-unit", default=TIMER, help=f"user timer unit to observe (default: {TIMER})")
+    capture.add_argument("--service-unit", default=SERVICE, help=f"expected user service unit (default: {SERVICE})")
     capture.add_argument("--confirm-read-only", action="store_true")
     verify = sub.add_parser("verify", help="Compare two saved snapshots; no live IPC")
     verify.add_argument("--first", required=True, type=Path)
@@ -300,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ProofError("explicit_read_only_confirmation_required")
             proof = snapshot(
                 args.state, args.profile, (args.output_a, args.output_b), dict(os.environ),
-                timer_unit=args.timer_unit,
+                timer_unit=args.timer_unit, service_unit=args.service_unit,
             )
             save_exclusive(args.artifact, proof)
             print(json.dumps({"status": "SAVED_PRIVATE_OBSERVATION", "epoch": proof["utc_epoch"]}))

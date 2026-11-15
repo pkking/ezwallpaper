@@ -25,22 +25,23 @@ Goal: G-01
 ## Current facts
 
 - The read-only hourly evidence collector previously hard-coded `ezwallpaper-rotation.timer`, while Issue #319 reports a local installed timer named `ezwallpaper-rotate.timer`.
-- `capture --timer-unit UNIT` now allows selecting the timer observed by `systemctl show`; the default remains `ezwallpaper-rotation.timer`.
-- The value is passed as one argv element. Empty, whitespace-containing, NUL-containing and leading-dash values are rejected before external commands.
-- This plan format correction is being made on PR #320; its final CI result is pending.
+- `capture --timer-unit UNIT` selects the timer observed by `systemctl show`; the default remains `ezwallpaper-rotation.timer`.
+- `capture --service-unit UNIT` selects the expected service; the default remains `ezwallpaper-rotation.service`. The timer's `Unit` property must match it or capture fails.
+- Both values are passed as one argv element. Empty, whitespace-containing, NUL-containing and leading-dash values are rejected before external commands.
+- PR #320 review follow-up adds the configurable service unit and hard timer-to-service consistency check; final CI remains pending.
 
 ## Acceptance criteria
 
-- [x] Offline tests verify the unchanged default, custom timer argv, and invalid values rejected before the fake runner is called.
+- [x] Offline tests verify unchanged defaults, configured timer/service pairs, mismatch rejection, and invalid values rejected before the fake runner is called.
 - [x] Python syntax/AST, both focused unittest suites, CLI help, and `git diff --check` pass for the implementation revision.
 - [ ] CI passes for the final PR revision.
 - [x] No live capture, host `systemctl` query, or timer modification is performed.
 
 ## Implementation slices
 
-- [x] 1. Add an optional capture timer-unit override while preserving the existing default.
-- [x] 2. Add offline tests and usage documentation; reject unsafe values before external commands.
-- [ ] 3. Correct execution-plan metadata and required plan sections, then verify final CI.
+- [x] 1. Add optional capture timer/service unit overrides while preserving existing defaults.
+- [x] 2. Add offline tests and usage documentation; reject unsafe values before external commands and reject timer/service mismatch.
+- [ ] 3. Verify final CI and record the final PR revision.
 
 ## Verification matrix
 
@@ -48,14 +49,14 @@ Goal: G-01
 |---|---|---|---|
 | Agent plan contract | `python3 scripts/validate_agent_plan.py` with PR #320 event and workflow environment | `PLAN INTEGRITY OK` for Issue #319 and this plan | PASS (local) |
 | Agent plan tests | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v` | 29 tests pass | PASS (29) |
-| Hourly evidence tests | `python3 -m unittest discover -s tests -p 'test_hourly_rotation_evidence.py' -v` | 8 tests pass | PASS (8) |
+| Hourly evidence tests | `python3 -m unittest discover -s tests -p 'test_hourly_rotation_evidence.py' -v` | 11 tests pass | PASS (11) |
 | Python syntax | `python3 -m py_compile scripts/inspect_hourly_rotation_evidence.py tests/test_hourly_rotation_evidence.py` | exit 0 | PASS |
 | Patch whitespace | `git diff --check` | exit 0 | PASS |
 | Final PR CI | GitHub Actions for the pushed revision | all checks terminal and successful | pending |
 
 ## Evidence log
 
-- Implementation commit `cd822999496a4e40caebc076a1f917c0ca323732` is PR #320's original head. PR #320 is open; CI for the plan-format correction remains pending.
+- Implementation commit `cd822999496a4e40caebc076a1f917c0ca323732` is PR #320's original head. PR #320 is open. Review follow-up adds a configurable service unit with timer/service consistency enforcement; final revision and CI are pending.
 
 ## Resume from here
 
