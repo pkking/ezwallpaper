@@ -34,14 +34,14 @@ Goal: G-01
 
 - [x] Offline tests verify unchanged defaults, configured timer/service pairs, mismatch rejection, and invalid values rejected before the fake runner is called.
 - [x] Python syntax/AST, both focused unittest suites, CLI help, and `git diff --check` pass for the implementation revision.
-- [ ] CI passes for the final PR revision.
+- [x] CI passes for implementation revision `d89625f3e3926a6cf1ecbf478a0fb078bcdcfebf`; the plan-recording follow-up is rechecked before handoff.
 - [x] No live capture, host `systemctl` query, or timer modification is performed.
 
 ## Implementation slices
 
 - [x] 1. Add optional capture timer/service unit overrides while preserving existing defaults.
 - [x] 2. Add offline tests and usage documentation; reject unsafe values before external commands and reject timer/service mismatch.
-- [ ] 3. Verify final CI and record the final PR revision.
+- [x] 3. Verify implementation CI and record review-fix evidence; re-run checks after this plan update.
 
 ## Verification matrix
 
@@ -52,11 +52,11 @@ Goal: G-01
 | Hourly evidence tests | `python3 -m unittest discover -s tests -p 'test_hourly_rotation_evidence.py' -v` | 11 tests pass | PASS (11) |
 | Python syntax | `python3 -m py_compile scripts/inspect_hourly_rotation_evidence.py tests/test_hourly_rotation_evidence.py` | exit 0 | PASS |
 | Patch whitespace | `git diff --check` | exit 0 | PASS |
-| Final PR CI | GitHub Actions for the pushed revision | all checks terminal and successful | pending |
+| Final PR CI | [GitHub Actions #43724551321](https://github.com/pkking/ezwallpaper/actions/runs/43724551321) at `d89625f3e3926a6cf1ecbf478a0fb078bcdcfebf` | 8 checks passed; 2 conditionally skipped | PASS (implementation revision; rerun after plan update) |
 
 ## Evidence log
 
-- Implementation commit `cd822999496a4e40caebc076a1f917c0ca323732` is PR #320's original head. PR #320 is open. Review follow-up adds a configurable service unit with timer/service consistency enforcement; final revision and CI are pending.
+- Original implementation `cd822999496a4e40caebc076a1f917c0ca323732`; PR #320 review fix `d89625f3e3926a6cf1ecbf478a0fb078bcdcfebf`. Actions run #43724551321 completed successfully (8 pass, 2 conditional skips); the plan-recording commit requires a final PR-head rerun.
 
 ## Resume from here
 
