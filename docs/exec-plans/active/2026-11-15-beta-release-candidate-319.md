@@ -1,7 +1,7 @@
 # M2 Beta source-only release candidate — Issue #319
 
 Issue: #319
-Status: IN_PROGRESS
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-15
 Last checkpoint: 2026-11-15
