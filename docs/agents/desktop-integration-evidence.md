@@ -239,7 +239,11 @@ the operator*. Enable a single wallpaper scheduler, and check the user
 manager has the correct Wayland/niri/Noctalia session environment.
 
 Once a scheduled hourly run succeeds, capture a private snapshot inside
-that live niri session. Repeat after the **next actual UTC hour** and a
+that live niri session. If the installed user timer has another unit name,
+pass it with `--timer-unit UNIT` (the default remains
+`ezwallpaper-rotation.timer`). Set its expected service with `--service-unit UNIT`
+(default `ezwallpaper-rotation.service`); the captured timer's `Unit` must match.
+Repeat after the **next actual UTC hour** and a
 second successful timer trigger. Do not use `--force`, `--epoch`, fake
 clock, `systemctl start` or a service override to manufacture a result:
 
