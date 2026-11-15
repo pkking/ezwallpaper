@@ -62,7 +62,7 @@ Keep decimal values as microseconds. Parse timespan units strictly and sum compo
 |---|---|---|
 | Hourly tests | `python3 -m unittest discover -s tests -p 'test_hourly_rotation_evidence.py' -v` | PASS (13) |
 | Plan tests | `python3 -m unittest discover -s tests -p 'test_agent_plan.py' -v` | PASS (29) |
-| PR checks | GitHub Actions run 43733870097 at `224715b4095cea07e36ecc8852a005006187c5ba` | PASS (8 passed, 2 skipped) |
+| PR checks | GitHub Actions run 43734154124 at `2c3f47a0bdeaca0c4e791a2322a2807f99c5961d` | PASS (8 passed, 2 skipped) |
 | Syntax/AST | py_compile and AST parse for changed Python files | PASS |
 | Capture help | `python3 scripts/inspect_hourly_rotation_evidence.py capture --help` | PASS |
 | Live smoke | read-only user capture using configured timer/service arguments | PASS: `SAVED_PRIVATE_OBSERVATION`, epoch 498544; no parser error |
@@ -73,7 +73,7 @@ Keep decimal values as microseconds. Parse timespan units strictly and sum compo
 - Baseline probe: `systemd 262`; human-readable timer and decimal service values confirmed; JSON option rejected.
 - Regression suite: 13 hourly tests PASS; 29 agent-plan tests PASS; py_compile, AST, capture help and diff checks PASS.
 - Real read-only capture with requested timer/service/profile/state/output arguments: exit 0, `SAVED_PRIVATE_OBSERVATION`, epoch 498544. The timestamp parser accepts both actual formats; no next-stage error occurred. Private artifact SHA-256 `9bf62e92396b589ef53dbfe348a9fdddfd905720dbc3b6c27d3ae43693c4c694`.
-- PR #321 opened at `https://github.com/pkking/ezwallpaper/pull/321`, initial head `224715b4095cea07e36ecc8852a005006187c5ba`; CI run 43733870097 passed (8 passed, 2 skipped).
+- PR #321 opened at `https://github.com/pkking/ezwallpaper/pull/321`; final checked plan-update head `2c3f47a0bdeaca0c4e791a2322a2807f99c5961d`; CI run 43734154124 passed (8 passed, 2 skipped), including plan integrity.
 
 ## Deviations and discoveries
 
@@ -85,6 +85,6 @@ Review the final diff, run plan integrity using the proposed PR metadata, then c
 
 ## Completion
 
-Final commit: `224715b4095cea07e36ecc8852a005006187c5ba` (plan evidence update follows)
-CI run: https://github.com/pkking/ezwallpaper/actions/runs/43733870097 (initial implementation head)
+Final commit: `2c3f47a0bdeaca0c4e791a2322a2807f99c5961d` (plan evidence commit)
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43734154124 (8 passed, 2 skipped)
 Remaining unassessed items: adjacent real-hour observation, physical evidence and released-niri behavior.
