@@ -1,6 +1,6 @@
 # ezwallpaper
 
-**M1 preview source version: `v0.3.0-alpha.1`.** See the [source-only prerelease notes](docs/releases/v0.3.0-alpha.1.md) for installation, verified niri + Noctalia *virtual* integration, and known limits. The released niri physical dual-monitor session, real elapsed-hour timer, lockscreen, SDDM and Plymouth are not yet accepted; keep [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) open.
+**Latest published: [v0.3.0-alpha.1](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-alpha.1); v0.3.0-beta.1 is an unpublished candidate.** [Beta notes](docs/releases/v0.3.0-beta.1.md) document the scoped real released-niri 26.04 / Noctalia v5.2.1 physical dual-output test evidence and limitations. Real cable hotplug, full-day uninterrupted uptime, lockscreen, SDDM greeter and Plymouth remain unverified; [Epic #60](https://github.com/pkking/ezwallpaper/issues/60) stays open.
 
 A portable wallpaper acquisition and management library plus OS/DE-aware CLI. Existing cron and Windows Task Scheduler users can keep their flag-only workflows. See [ADR 0001](docs/adr/0001-core-cli-boundaries.md) for the accepted architecture.
 
@@ -19,7 +19,7 @@ The **headless `ezwallpaper-core`** acquires and exposes wallpaper assets, inclu
 - acquire SFW wallpaper candidates from [Wallhaven](https://wallhaven.cc/) as a headless Core source
 
 # Usage
-Original manual use was reported on Windows 10 and 11 (MinGW64). CI validates Rust and offline CLI behavior on Ubuntu, and native headless Rust tests plus nonmutating `doctor` on Windows/macOS. A separate **Sway Headless visual E2E** GitHub Actions job now verifies the rendered wallpaper pixels on one isolated virtual Wayland output; Windows/macOS/GNOME/Plasma/niri and physical monitor outcomes remain separately unassessed.
+Original manual use was reported on Windows 10 and 11 (MinGW64). CI validates Rust and offline CLI behavior on Ubuntu, and native headless Rust tests plus nonmutating `doctor` on Windows/macOS. A separate **Sway Headless visual E2E** GitHub Actions job now verifies the rendered wallpaper pixels on one isolated virtual Wayland output; Windows/macOS/GNOME/Plasma physical outcomes remain separately unassessed; one released-niri/Noctalia physical two-output configuration has explicit [Beta evidence](docs/releases/v0.3.0-beta.1.md).
 ```bash
 change wall paper from multiple sources
 

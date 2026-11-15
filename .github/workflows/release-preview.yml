@@ -1,7 +1,7 @@
-name: M1 preview package and publish
+name: M2 preview package and publish
 
 # PR is read-only validation. Only a successful, protected master CI push
-# specifically containing the v0.3.0-alpha.1 release merge can publish.
+# specifically containing the v0.3.0-beta.1 release merge can publish.
 on:
   pull_request:
     branches: [master]
@@ -20,12 +20,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: m1-preview-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha }}
+  group: m2-beta-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
   validate-source-package:
-    name: M1 source package validation
+    name: M2 source package validation
     # A workflow_run can access write tokens. Only accept an exact successful
     # push to protected master with the intended release commit title; all
     # PR code runs separately with read-only permissions and no secrets.
@@ -36,7 +36,7 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'master' &&
        github.event.workflow_run.head_repository.full_name == github.repository &&
-       startsWith(github.event.workflow_run.head_commit.message, 'chore(release): v0.3.0-alpha.1'))
+       startsWith(github.event.workflow_run.head_commit.message, 'chore(release): v0.3.0-beta.1'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -53,18 +53,18 @@ jobs:
           root = pathlib.Path('.')
           cli = tomllib.loads((root / "Cargo.toml").read_text())
           core = tomllib.loads((root / "crates/ezwallpaper-core/Cargo.toml").read_text())
-          expected = "0.3.0-alpha.1"
+          expected = "0.3.0-beta.1"
           assert cli["package"]["name"] == "ezwallpaper"
           assert core["package"]["name"] == "ezwallpaper-core"
           assert cli["package"]["version"] == core["package"]["version"] == expected
           dependency = cli["dependencies"]["ezwallpaper-core"]
           assert dependency["path"] == "crates/ezwallpaper-core"
           assert dependency["version"] == "=" + expected
-          notes = (root / "docs/releases/v0.3.0-alpha.1.md").read_text()
-          for needle in ("v0.3.0-alpha.1", "Source-only", "experimental niri", "not been observed", "physical", "crates.io"):
+          notes = (root / "docs/releases/v0.3.0-beta.1.md").read_text()
+          for needle in ("v0.3.0-beta.1", "Source-only", "released niri", "15/15", "physical", "crates.io"):
               assert needle.lower() in notes.lower(), needle
           assert (root / "CHANGELOG.md").read_text().find(expected) >= 0
-          print("M1 pre-release metadata and evidence scope verified")
+          print("M2 pre-release metadata and evidence scope verified")
           PY
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -74,9 +74,18 @@ jobs:
           cargo package -p ezwallpaper --list --allow-dirty
       - name: Validate actual Core crate packaging (no crates.io upload)
         run: cargo publish --dry-run -p ezwallpaper-core --allow-dirty
+      - name: Clean-root source install and non-mutating CLI smoke (Ubuntu)
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_root="$RUNNER_TEMP/ezwallpaper-beta-install"
+          mkdir -p "$install_root"
+          cargo install --path . --root "$install_root"
+          "$install_root/bin/ezwallpaper" --version | grep -F '0.3.0-beta.1'
+          "$install_root/bin/ezwallpaper" --help >/dev/null
 
   publish-github-prerelease:
-    name: Publish M1 source-only GitHub prerelease
+    name: Publish M2 source-only GitHub prerelease
     needs: validate-source-package
     if: >-
       github.event_name == 'workflow_run' &&
@@ -84,7 +93,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'master' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
-      startsWith(github.event.workflow_run.head_commit.message, 'chore(release): v0.3.0-alpha.1')
+      startsWith(github.event.workflow_run.head_commit.message, 'chore(release): v0.3.0-beta.1')
     runs-on: ubuntu-latest
     # The only write-capable job executes GitHub CLI against the protected,
     # already-tested exact SHA. No cargo, build scripts, PR code or artifacts
@@ -93,7 +102,7 @@ jobs:
       contents: write
     env:
       RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-      RELEASE_TAG: v0.3.0-alpha.1
+      RELEASE_TAG: v0.3.0-beta.1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,7 +120,13 @@ jobs:
             exit 1
           fi
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Already published; check existing release instead of overwriting."
+            existing_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+            existing_prerelease="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')"
+            if [[ "$existing_sha" != "$RELEASE_SHA" || "$existing_prerelease" != "true" ]]; then
+              echo "Existing release has unexpected SHA or status; manual reconciliation required." >&2
+              exit 1
+            fi
+            echo "Already published with expected exact SHA and prerelease status."
             exit 0
           fi
           if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
@@ -121,7 +136,7 @@ jobs:
           gh release create "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$RELEASE_SHA" \
-            --title "ezwallpaper v0.3.0-alpha.1 — M1 Integration Preview" \
-            --notes-file "docs/releases/v0.3.0-alpha.1.md" \
+            --title "ezwallpaper v0.3.0-beta.1 — M2 Integration Preview" \
+            --notes-file "docs/releases/v0.3.0-beta.1.md" \
             --prerelease --latest=false
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isPrerelease,targetCommitish
