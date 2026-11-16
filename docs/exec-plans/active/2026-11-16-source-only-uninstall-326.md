@@ -69,7 +69,7 @@ Remaining unassessed: Live user-manager timer shutdown, physical wallpaper rende
 | Manual version layout | delete only isolated `<sha>` fixture dir | target absent; alias deliberately left separate; unrelated version sentinel SHA unchanged | pass |
 | User unit boundary | file fixtures only | no production `systemctl --user` invocation; runtime timer shutdown unassessed | pass with boundary |
 | Repository governance | plan unittest suite and `git diff --check` | 29 tests pass; diff clean | pass |
-| CI | PR #328, head `248b9053726504c70cc7158ce56ae0c3be223aa4`; run `43924861730` | All applicable checks pass: plan integrity, contract self-tests, Rust quality/tests, macOS/Windows, Sway E2E; two Noctalia-specific jobs skipped as expected for docs-only impact | pass |
+| CI | PR #328, head `18476466dc4d0a568e9965f6afb9087296dbe649`; run `43925707811` | All applicable checks pass: plan integrity, contract self-tests, Rust quality/tests, macOS/Windows, Sway E2E; two Noctalia-specific jobs skipped as expected for docs-only impact | pass |
 
 ## Decision gates
 
@@ -78,7 +78,7 @@ None. `systemctl --user disable --now` is only documented as a user-confirmed ac
 ## Evidence log
 
 - 2026-11-16: fetched `origin/master`; exact base `d6598ae0d867890f42f0f0186efbae27a9ea6627`; Issue #326 is open. Existing workspace has unrelated untracked `Cargo.lock`; leave it untouched.
-- 2026-11-16: README uninstall guidance added at lines 211-230. Isolated Cargo install/version/uninstall verified; binary removed and data manifest unchanged. Manual version-dir fixture removed only its exact version; unrelated sentinel preserved. Plan tests 29/29 and `git diff --check` pass. Evidence report: `/home/lcr/.local/state/dotfiles-submission/upstream-uninstall-docs-20261116T175602Z/REPORT.md`. No user manager or real wallpaper tested.
+- 2026-11-16: README uninstall guidance added at lines 211-230. Isolated Cargo install/version/uninstall verified; binary removed and data manifest unchanged. Manual version-dir fixture removed only its exact version; unrelated sentinel preserved. Plan tests 29/29 and `git diff --check` pass. CI run `43925707811` passed on PR head `18476466dc4d0a568e9965f6afb9087296dbe649`; Noctalia-specific jobs skipped as expected. Full evidence report: `/home/lcr/.local/state/dotfiles-submission/upstream-uninstall-docs-20261116T175602Z/REPORT.md`. No user manager or real wallpaper tested.
 
 ## Deviations and discoveries
 
