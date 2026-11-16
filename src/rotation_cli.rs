@@ -1040,7 +1040,8 @@ mod tests {
 
         let candidates = selected_candidates(&output).expect("healthy candidate survives");
         assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates.values().next(), Some(&healthy));
+        let canonical_healthy = healthy.canonicalize().expect("canonical healthy image");
+        assert_eq!(candidates.values().next(), Some(&canonical_healthy));
         let constrained = Output {
             name: "DP-1".to_owned(),
             dir: pool.clone(),
@@ -1574,16 +1575,17 @@ mod tests {
             .all(|x| x.decision == RotationDecision::Select));
         assert!(result.iter().all(|x| !x.applied_path_observed));
         assert_ne!(result[0].output, result[1].output);
+        let canonical_root = _dir.path().canonicalize().expect("canonical fixture root");
         assert!(result[0]
             .path
             .as_ref()
             .expect("first output path")
-            .starts_with(_dir.path()));
+            .starts_with(&canonical_root));
         assert!(result[1]
             .path
             .as_ref()
             .expect("second output path")
-            .starts_with(_dir.path()));
+            .starts_with(&canonical_root));
         assert!(!state.exists());
         assert!(!state_lock_path(&state).exists());
     }
