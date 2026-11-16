@@ -193,6 +193,17 @@ fn load_profile(path: &Path) -> Result<Profile> {
             }
             _ => bail!("rotation output min_width and min_height must both be in 1..16384"),
         };
+        if !output.dir.is_absolute()
+            && output
+                .dir
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir))
+        {
+            bail!(
+                "relative wallpaper pool path must not contain parent traversal: {}",
+                output.dir.display()
+            );
+        }
         let chosen = if output.dir.is_absolute() {
             output.dir
         } else {
@@ -341,26 +352,42 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
         bail!("wallpaper pool has more than 4096 candidate files");
     }
     let mut by_id = BTreeMap::new();
+    let mut decoded_images = 0usize;
+    let mut rejected_images = 0usize;
     for asset in assets {
         if asset.size_bytes() > MAX_ASSET_BYTES {
             bail!("local wallpaper exceeds 64 MiB rotation source limit");
         }
-        let id = if let Some((min_width, min_height)) = output.min_size {
-            // Only explicit pixel constraints opt into bounded full decoding.
-            // A verified display orientation (including EXIF) is necessary:
-            // filename extensions and source HTTP metadata are not sufficient.
-            let verified = probe_image(asset.path())
-                .with_context(|| format!("cannot decode candidate for output {}", output.name))?;
+        // Candidate identity and eligibility both come from Core's bounded
+        // complete decode, irrespective of optional output geometry floors.
+        let verified = match probe_image(asset.path()) {
+            Ok(verified) => verified,
+            Err(error) => {
+                rejected_images += 1;
+                eprintln!(
+                    "warning: skipping undecodable rotation candidate for {}: {} ({})",
+                    output.name,
+                    asset.path().display(),
+                    error
+                );
+                continue;
+            }
+        };
+        decoded_images += 1;
+        if let Some((min_width, min_height)) = output.min_size {
             if verified.width < min_width || verified.height < min_height {
                 continue;
             }
-            verified.content_id
-        } else {
-            manager.content_id(&asset)?
-        };
+        }
         by_id
-            .entry(id)
+            .entry(verified.content_id)
             .or_insert_with(|| asset.path().to_path_buf());
+    }
+    if by_id.is_empty() && decoded_images == 0 && rejected_images > 0 {
+        bail!(
+            "wallpaper pool contains no decodable images for output {}",
+            output.name
+        );
     }
     Ok(by_id)
 }
@@ -945,6 +972,27 @@ fn run_with_backend_interval_scoped(
 mod tests {
     use super::*;
 
+    fn fixture_png(landscape: bool) -> &'static [u8] {
+        if landscape {
+            &[
+                0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+                0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+                0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78,
+                0xda, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x44, 0x00, 0x08, 0xfe, 0x01, 0xff, 0x19, 0xc0,
+                0x6b, 0xe7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+            ]
+        } else {
+            &[
+                0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+                0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x08, 0x02, 0x00, 0x00,
+                0x00, 0x16, 0xe3, 0x21, 0x70, 0x00, 0x00, 0x00, 0x0e, 0x49, 0x44, 0x41, 0x54, 0x78,
+                0xda, 0x63, 0xf8, 0xcf, 0xc0, 0xc0, 0x00, 0xc4, 0x00, 0x09, 0xfe, 0x01, 0xff, 0x9e,
+                0x8a, 0x60, 0x4e, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
+                0x82,
+            ]
+        }
+    }
+
     fn fixture() -> (tempfile::TempDir, PathBuf, PathBuf) {
         let dir = tempfile::tempdir().expect("temp profile/state root");
         let p = dir.path().join("profile.json");
@@ -956,7 +1004,7 @@ mod tests {
             ("portrait", ["c.png", "d.png"]),
         ] {
             for (number, name) in files.iter().enumerate() {
-                let content = format!("{}-{}", sub, number);
+                let content = fixture_png(number % 2 == 0);
                 fs::write(dir.path().join(sub).join(name), content).expect("test asset");
             }
         }
@@ -966,6 +1014,48 @@ mod tests {
         )
         .expect("profile");
         (dir, p, state)
+    }
+
+    #[test]
+    fn rotation_skips_corrupt_candidates_and_errors_when_no_decodable_image_remains() {
+        let (root, _profile, _state) = fixture();
+        let pool = root.path().join("landscape");
+        fs::write(pool.join("truncated.jpg"), [0xff, 0xd8, 0xff]).expect("truncated JPEG");
+        fs::write(
+            pool.join("truncated.png"),
+            [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+        )
+        .expect("truncated PNG");
+        fs::write(pool.join("text.jpg"), b"this is not an image").expect("text image");
+        fs::write(pool.join("empty.png"), []).expect("zero-byte image");
+        let healthy = pool.join("a.png");
+        fs::remove_file(pool.join("b.png")).expect("keep one healthy candidate");
+        let output = Output {
+            name: "DP-1".to_owned(),
+            dir: pool.clone(),
+            recursive: false,
+            follow_symlinks: false,
+            min_size: None,
+        };
+
+        let candidates = selected_candidates(&output).expect("healthy candidate survives");
+        assert_eq!(candidates.len(), 1);
+        let canonical_healthy = healthy.canonicalize().expect("canonical healthy image");
+        assert_eq!(candidates.values().next(), Some(&canonical_healthy));
+        let constrained = Output {
+            name: "DP-1".to_owned(),
+            dir: pool.clone(),
+            recursive: false,
+            follow_symlinks: false,
+            min_size: Some((16, 16)),
+        };
+        assert!(selected_candidates(&constrained)
+            .expect("decoded images below the floor preserve empty-pool behavior")
+            .is_empty());
+
+        fs::remove_file(&healthy).expect("remove healthy image");
+        let error = selected_candidates(&output).expect_err("corrupt-only pool fails closed");
+        assert!(error.to_string().contains("no decodable images"));
     }
 
     #[test]
@@ -1015,8 +1105,43 @@ mod tests {
         assert!(!state.exists(), "catalog filtering must not persist state");
 
         fs::write(pool.join("broken.jpg"), b"not an image").expect("corrupt candidate");
-        assert!(selected_candidates(&parsed.outputs[0]).is_err());
+        assert_eq!(
+            selected_candidates(&parsed.outputs[0])
+                .expect("skip corrupt candidate")
+                .len(),
+            1
+        );
         assert!(!state.exists());
+    }
+
+    #[test]
+    fn profile_pool_paths_reject_relative_parent_traversal_but_allow_explicit_locations() {
+        let (root, profile, _state) = fixture();
+        let outside = root.path().join("outside_pool");
+        fs::create_dir(&outside).expect("outside pool");
+        let safe_relative = r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"landscape"}]}"#;
+        fs::write(&profile, safe_relative).expect("safe profile");
+        assert!(load_profile(&profile).is_ok(), "relative child stays valid");
+
+        let absolute = serde_json::json!({
+            "schema_version": 1,
+            "owner": "ezwallpaper",
+            "outputs": [{"name": "DP-1", "dir": outside}]
+        });
+        fs::write(
+            &profile,
+            serde_json::to_vec(&absolute).expect("profile JSON"),
+        )
+        .expect("absolute profile");
+        assert!(
+            load_profile(&profile).is_ok(),
+            "explicit absolute pool remains valid"
+        );
+
+        let escaping = r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"../outside_pool"}]}"#;
+        fs::write(&profile, escaping).expect("escaping profile");
+        let error = load_profile(&profile).expect_err("relative parent traversal rejected");
+        assert!(error.to_string().contains("parent traversal"));
     }
 
     #[test]
@@ -1440,6 +1565,26 @@ mod tests {
     #[test]
     fn preview_is_read_only_and_separate_per_output() {
         let (_dir, profile, state) = fixture();
+        // Each output gets one fully decodable 2x1 PNG, with different pixels.
+        // Isolate the pools so this proves content separation, not just paths.
+        const RED: &[u8] = &[
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x44, 0x00, 0x08, 0xfe, 0x01, 0xff, 0xc6, 0x9e,
+            0x79, 0xf7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        const BLUE: &[u8] = &[
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9c, 0x63, 0x60, 0x60, 0xf8, 0x0f, 0x44, 0x00, 0x05, 0x02, 0x01, 0xff, 0xc1, 0x2b,
+            0x96, 0x9f, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        fs::write(_dir.path().join("landscape/a.png"), RED).expect("red fixture image");
+        fs::remove_file(_dir.path().join("landscape/b.png")).expect("single-image left pool");
+        fs::write(_dir.path().join("portrait/c.png"), BLUE).expect("blue fixture image");
+        fs::remove_file(_dir.path().join("portrait/d.png")).expect("single-image right pool");
         let result = run_with_adapter(&profile, &state, Some(123), false, false, |_, _| {
             panic!("preview may not call setter")
         })
@@ -1449,7 +1594,22 @@ mod tests {
             .iter()
             .all(|x| x.decision == RotationDecision::Select));
         assert!(result.iter().all(|x| !x.applied_path_observed));
-        assert_ne!(result[0].content_id, result[1].content_id);
+        assert_ne!(result[0].output, result[1].output);
+        assert_ne!(
+            result[0].content_id, result[1].content_id,
+            "separate outputs must select different decoded image content"
+        );
+        let canonical_root = _dir.path().canonicalize().expect("canonical fixture root");
+        assert!(result[0]
+            .path
+            .as_ref()
+            .expect("first output path")
+            .starts_with(&canonical_root));
+        assert!(result[1]
+            .path
+            .as_ref()
+            .expect("second output path")
+            .starts_with(&canonical_root));
         assert!(!state.exists());
         assert!(!state_lock_path(&state).exists());
     }
@@ -2022,9 +2182,12 @@ mod tests {
                         .expect("remove disposable portrait asset");
                 }
             } else if hour == 13 {
-                for (name, content) in [("c.png", "portrait-0"), ("d.png", "portrait-1")] {
-                    fs::write(root.path().join("portrait").join(name), content)
-                        .expect("restore disposable portrait asset");
+                for (name, landscape) in [("c.png", true), ("d.png", false)] {
+                    fs::write(
+                        root.path().join("portrait").join(name),
+                        fixture_png(landscape),
+                    )
+                    .expect("restore disposable portrait asset");
                 }
             }
 

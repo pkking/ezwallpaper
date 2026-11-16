@@ -306,6 +306,17 @@ fn run_store(root: &std::path::Path, operation: &StoreOperation) -> Result<()> {
     Ok(())
 }
 
+fn validate_credential_context(cli: &Args, pexels_env_present: bool) -> Result<()> {
+    let provider_command =
+        matches!(cli.command.as_ref(), Some(CliCommand::Fetch { .. })) || cli.command.is_none();
+    if !provider_command
+        && (!cli.token.is_empty() || cli.token_file.is_some() || pexels_env_present)
+    {
+        bail!("Pexels credential options are only valid for provider subcommands");
+    }
+    Ok(())
+}
+
 fn read_pexels_token(cli: &Args) -> Result<String> {
     if !cli.token.is_empty() {
         return Ok(cli.token.clone());
@@ -408,6 +419,7 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
 
 fn main() -> Result<()> {
     let cli = Args::parse();
+    validate_credential_context(&cli, std::env::var_os("EZWALLPAPER_PEXELS_TOKEN").is_some())?;
     env_logger::init();
 
     let manager = WallpaperManager;
@@ -626,6 +638,50 @@ mod list_cli_tests {
         }
 
         assert!(Args::try_parse_from(["ezwallpaper", "list", "--follow-symlinks"]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod credential_context_tests {
+    use super::*;
+
+    #[test]
+    fn credentials_are_rejected_outside_provider_commands_without_disclosing_values() {
+        let token = Args::try_parse_from([
+            "ezwallpaper",
+            "--token",
+            "secret-value",
+            "rotate",
+            "next",
+            "--profile",
+            "profile.json",
+        ])
+        .expect("global token parses for context validation");
+        let error = validate_credential_context(&token, false).expect_err("rotate rejects token");
+        assert!(error
+            .to_string()
+            .contains("only valid for provider subcommands"));
+        assert!(!error.to_string().contains("secret-value"));
+
+        let token_file = Args::try_parse_from(["ezwallpaper", "--token-file", "token.txt", "list"])
+            .expect("token file parses for context validation");
+        assert!(validate_credential_context(&token_file, false).is_err());
+
+        let rotate_with_env =
+            Args::try_parse_from(["ezwallpaper", "rotate", "next", "--profile", "profile.json"])
+                .expect("rotate without explicit credentials");
+        assert!(validate_credential_context(&rotate_with_env, true).is_err());
+    }
+
+    #[test]
+    fn provider_invocations_continue_to_accept_credentials() {
+        let fetch = Args::try_parse_from(["ezwallpaper", "--token", "secret-value", "fetch"])
+            .expect("fetch token parses");
+        assert!(validate_credential_context(&fetch, false).is_ok());
+
+        let fetch_env = Args::try_parse_from(["ezwallpaper", "fetch"])
+            .expect("fetch without explicit token parses");
+        assert!(validate_credential_context(&fetch_env, true).is_ok());
     }
 }
 
