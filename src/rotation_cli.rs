@@ -352,6 +352,7 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
         bail!("wallpaper pool has more than 4096 candidate files");
     }
     let mut by_id = BTreeMap::new();
+    let mut decoded_images = 0usize;
     let mut rejected_images = 0usize;
     for asset in assets {
         if asset.size_bytes() > MAX_ASSET_BYTES {
@@ -372,6 +373,7 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
                 continue;
             }
         };
+        decoded_images += 1;
         if let Some((min_width, min_height)) = output.min_size {
             if verified.width < min_width || verified.height < min_height {
                 continue;
@@ -381,8 +383,11 @@ fn selected_candidates(output: &Output) -> Result<BTreeMap<String, PathBuf>> {
             .entry(verified.content_id)
             .or_insert_with(|| asset.path().to_path_buf());
     }
-    if by_id.is_empty() && rejected_images > 0 {
-        bail!("wallpaper pool contains no decodable images for output {}", output.name);
+    if by_id.is_empty() && decoded_images == 0 && rejected_images > 0 {
+        bail!(
+            "wallpaper pool contains no decodable images for output {}",
+            output.name
+        );
     }
     Ok(by_id)
 }
@@ -971,20 +976,19 @@ mod tests {
         if landscape {
             &[
                 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
-                0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00,
-                0x00, 0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41,
-                0x54, 0x78, 0xda, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x44, 0x00, 0x08, 0xfe, 0x01,
-                0xff, 0x19, 0xc0, 0x6b, 0xe7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
-                0xae, 0x42, 0x60, 0x82,
+                0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+                0x00, 0x7b, 0x40, 0xe8, 0xdd, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78,
+                0xda, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x44, 0x00, 0x08, 0xfe, 0x01, 0xff, 0x19, 0xc0,
+                0x6b, 0xe7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
             ]
         } else {
             &[
                 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
-                0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x08, 0x02, 0x00,
-                0x00, 0x00, 0x16, 0xe3, 0x21, 0x70, 0x00, 0x00, 0x00, 0x0e, 0x49, 0x44, 0x41,
-                0x54, 0x78, 0xda, 0x63, 0xf8, 0xcf, 0xc0, 0xc0, 0x00, 0xc4, 0x00, 0x09, 0xfe,
-                0x01, 0xff, 0x9e, 0x8a, 0x60, 0x4e, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
-                0xae, 0x42, 0x60, 0x82,
+                0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x08, 0x02, 0x00, 0x00,
+                0x00, 0x16, 0xe3, 0x21, 0x70, 0x00, 0x00, 0x00, 0x0e, 0x49, 0x44, 0x41, 0x54, 0x78,
+                0xda, 0x63, 0xf8, 0xcf, 0xc0, 0xc0, 0x00, 0xc4, 0x00, 0x09, 0xfe, 0x01, 0xff, 0x9e,
+                0x8a, 0x60, 0x4e, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
+                0x82,
             ]
         }
     }
@@ -1037,6 +1041,16 @@ mod tests {
         let candidates = selected_candidates(&output).expect("healthy candidate survives");
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates.values().next(), Some(&healthy));
+        let constrained = Output {
+            name: "DP-1".to_owned(),
+            dir: pool.clone(),
+            recursive: false,
+            follow_symlinks: false,
+            min_size: Some((16, 16)),
+        };
+        assert!(selected_candidates(&constrained)
+            .expect("decoded images below the floor preserve empty-pool behavior")
+            .is_empty());
 
         fs::remove_file(&healthy).expect("remove healthy image");
         let error = selected_candidates(&output).expect_err("corrupt-only pool fails closed");
@@ -1090,7 +1104,12 @@ mod tests {
         assert!(!state.exists(), "catalog filtering must not persist state");
 
         fs::write(pool.join("broken.jpg"), b"not an image").expect("corrupt candidate");
-        assert_eq!(selected_candidates(&parsed.outputs[0]).expect("skip corrupt candidate").len(), 1);
+        assert_eq!(
+            selected_candidates(&parsed.outputs[0])
+                .expect("skip corrupt candidate")
+                .len(),
+            1
+        );
         assert!(!state.exists());
     }
 
@@ -1108,9 +1127,15 @@ mod tests {
             "owner": "ezwallpaper",
             "outputs": [{"name": "DP-1", "dir": outside}]
         });
-        fs::write(&profile, serde_json::to_vec(&absolute).expect("profile JSON"))
-            .expect("absolute profile");
-        assert!(load_profile(&profile).is_ok(), "explicit absolute pool remains valid");
+        fs::write(
+            &profile,
+            serde_json::to_vec(&absolute).expect("profile JSON"),
+        )
+        .expect("absolute profile");
+        assert!(
+            load_profile(&profile).is_ok(),
+            "explicit absolute pool remains valid"
+        );
 
         let escaping = r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"../outside_pool"}]}"#;
         fs::write(&profile, escaping).expect("escaping profile");
@@ -2132,8 +2157,11 @@ mod tests {
                 }
             } else if hour == 13 {
                 for (name, landscape) in [("c.png", true), ("d.png", false)] {
-                    fs::write(root.path().join("portrait").join(name), fixture_png(landscape))
-                        .expect("restore disposable portrait asset");
+                    fs::write(
+                        root.path().join("portrait").join(name),
+                        fixture_png(landscape),
+                    )
+                    .expect("restore disposable portrait asset");
                 }
             }
 
