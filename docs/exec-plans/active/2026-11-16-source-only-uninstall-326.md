@@ -52,13 +52,13 @@ Remaining unassessed: Live user-manager timer shutdown, physical wallpaper rende
 - [x] README distinguishes Cargo install-root and manually versioned source layouts, including exact executable-removal options and ownership caution.
 - [x] README defaults to retaining config/state/materials and user-authored units; documents separate opt-in unit and data cleanup with confirmation/backup language.
 - [x] Isolated installation/uninstall records command exits, binary non-executability, and before/after hashes proving fixture data retention; no production manager or wallpaper is touched.
-- [ ] Plan integrity and relevant CI checks pass, and PR metadata links this Issue/plan exactly once.
+- [x] Plan integrity and relevant CI checks pass, and PR metadata links this Issue/plan exactly once.
 
 ## Implementation slices
 
 - [x] 1. Confirm baseline d6598ae and create linked active plan.
 - [x] 2. Add README uninstall guidance and run isolated Cargo-root and manual-version-layout fixtures.
-- [ ] 3. Complete final plan/CI verification, commit and open PR; leave unmerged.
+- [x] 3. Complete final plan/CI verification, commit and open PR; leave unmerged.
 
 ## Verification matrix
 
@@ -69,7 +69,7 @@ Remaining unassessed: Live user-manager timer shutdown, physical wallpaper rende
 | Manual version layout | delete only isolated `<sha>` fixture dir | target absent; alias deliberately left separate; unrelated version sentinel SHA unchanged | pass |
 | User unit boundary | file fixtures only | no production `systemctl --user` invocation; runtime timer shutdown unassessed | pass with boundary |
 | Repository governance | plan unittest suite and `git diff --check` | 29 tests pass; diff clean | pass |
-| CI | GitHub required checks for exact PR head | final-head status recorded | pending |
+| CI | PR #328, head `248b9053726504c70cc7158ce56ae0c3be223aa4`; run `43924861730` | All applicable checks pass: plan integrity, contract self-tests, Rust quality/tests, macOS/Windows, Sway E2E; two Noctalia-specific jobs skipped as expected for docs-only impact | pass |
 
 ## Decision gates
 
@@ -91,7 +91,7 @@ Run final local plan/PR metadata checks, then stage only README and this plan; c
 
 ## Completion
 
-Final commit: pending
-CI run: pending
-E2E artifact: not applicable; isolated uninstall evidence at `/home/lcr/.local/state/dotfiles-submission/upstream-uninstall-docs-20261116T175602Z/REPORT.md`
+Final commit: `248b9053726504c70cc7158ce56ae0c3be223aa4`
+CI run: https://github.com/pkking/ezwallpaper/actions/runs/43924861730 (success; exact final head)
+E2E artifact: not applicable to uninstall; CI Sway headless visual E2E passed, while Noctalia jobs were skipped for this documentation-only change
 Remaining unassessed items: live user-manager timer shutdown, physical wallpaper preservation, custom user aliases/roots, and full upgrade/rollback matrix
