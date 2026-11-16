@@ -193,6 +193,17 @@ fn load_profile(path: &Path) -> Result<Profile> {
             }
             _ => bail!("rotation output min_width and min_height must both be in 1..16384"),
         };
+        if !output.dir.is_absolute()
+            && output
+                .dir
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir))
+        {
+            bail!(
+                "relative wallpaper pool path must not contain parent traversal: {}",
+                output.dir.display()
+            );
+        }
         let chosen = if output.dir.is_absolute() {
             output.dir
         } else {
@@ -1017,6 +1028,30 @@ mod tests {
         fs::write(pool.join("broken.jpg"), b"not an image").expect("corrupt candidate");
         assert!(selected_candidates(&parsed.outputs[0]).is_err());
         assert!(!state.exists());
+    }
+
+    #[test]
+    fn profile_pool_paths_reject_relative_parent_traversal_but_allow_explicit_locations() {
+        let (root, profile, _state) = fixture();
+        let outside = root.path().join("outside_pool");
+        fs::create_dir(&outside).expect("outside pool");
+        let safe_relative = r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"landscape"}]}"#;
+        fs::write(&profile, safe_relative).expect("safe profile");
+        assert!(load_profile(&profile).is_ok(), "relative child stays valid");
+
+        let absolute = serde_json::json!({
+            "schema_version": 1,
+            "owner": "ezwallpaper",
+            "outputs": [{"name": "DP-1", "dir": outside}]
+        });
+        fs::write(&profile, serde_json::to_vec(&absolute).expect("profile JSON"))
+            .expect("absolute profile");
+        assert!(load_profile(&profile).is_ok(), "explicit absolute pool remains valid");
+
+        let escaping = r#"{"schema_version":1,"owner":"ezwallpaper","outputs":[{"name":"DP-1","dir":"../outside_pool"}]}"#;
+        fs::write(&profile, escaping).expect("escaping profile");
+        let error = load_profile(&profile).expect_err("relative parent traversal rejected");
+        assert!(error.to_string().contains("parent traversal"));
     }
 
     #[test]
