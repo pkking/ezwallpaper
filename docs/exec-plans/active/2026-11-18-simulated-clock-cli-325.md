@@ -1,7 +1,7 @@
 # 2026-11-18-simulated-clock-cli-325: test-only clock and subprocess 25-bucket test
 
 Issue: #325
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-18
 Last checkpoint: 2026-11-17
@@ -34,7 +34,7 @@ No changes to production defaults or interval semantics, no clock setting, no pr
 ## Current facts
 
 - Repository/head SHA: `5c4519bbb42dd5a4dc8b3e2607fb79ba6f526f23`, branch `test/cloud-deterministic-24h-325`.
-- CI checks actually observed: Issue #325 is open; PR checks pending/not yet launched at checkpoint.
+- CI checks actually observed: PR #330 is open at `b75a984409774f1ef494d4b9bf27d486ca93f9de`; run 44120671933 had 9 passing checks, 2 pending (macOS queued and Noctalia dual-render in progress), 1 intentionally skipped release-publish check, and 0 failures at last poll. This plan update changes the head and requires rechecking.
 - Supported platforms vs unassessed: feature test is Linux-only because it uses Noctalia command mock and Unix process control; all physical and timer behavior remains unassessed.
 - Existing behavior and limitations: `--epoch` is preview-only; apply uses wall clock. Default feature set is empty.
 
@@ -50,14 +50,16 @@ No changes to production defaults or interval semantics, no clock setting, no pr
 - [x] Linux integration exercises real CLI binary over 25 buckets and same-bucket idempotency with persistent files.
 - [x] Controlled SIGKILL at mock setter boundary followed by next-bucket recovery.
 - [x] Default full suite, feature full suite, fmt and strict Clippy pass locally; default count matches detached baseline exactly.
-- [ ] Open PR on exact requested branch and record exact-head CI status; do not merge.
+- [x] Open PR #330 on the requested branch and record bounded CI status; do not merge.
+- [ ] Required checks pass on the final PR head; no merge.
 
 ## Implementation slices
 
 - [x] 1. Add feature-gated Unix seconds override with realtime fallback.
 - [x] 2. Add subprocess test: 25 consecutive simulated buckets, two independent outputs, persisted IDs/events, idempotent repeat, kill/recovery.
 - [x] 3. Run verification and document local evidence.
-- [ ] 4. Open PR and record exact-head CI; do not merge.
+- [x] 4. Open PR #330 and start CI.
+- [ ] 5. Wait for final-head CI; address any failure and keep the PR unmerged.
 
 ## Verification matrix
 
@@ -86,7 +88,7 @@ None. Feature is explicit opt-in and default remains empty.
 
 ## Resume from here
 
-Commit the verified changes, push `test/cloud-deterministic-24h-325`, open the #325 PR with proposal-comment link and full template fields, then watch CI for at most 600 seconds. Record the actual CI state and keep the PR unmerged. This simulated test does not satisfy physical #325 acceptance.
+Poll `gh pr checks 330 --watch` on the current exact PR head for at most 600 seconds, recording pending/pass/failure states. If macOS is cancelled with zero steps, rerun failed checks once only. Do not merge. This simulated test does not satisfy physical #325 acceptance.
 
 ## Completion
 
