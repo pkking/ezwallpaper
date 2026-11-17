@@ -334,6 +334,20 @@ fn utc_bucket_for_seconds(seconds: u64, interval_minutes: u64) -> Result<i64> {
 }
 
 fn current_utc_epoch(interval_minutes: u64) -> Result<i64> {
+    // This override exists only in explicitly feature-enabled test binaries.
+    // Release/default builds compile the original SystemTime path unchanged.
+    #[cfg(feature = "test-clock")]
+    let seconds = match std::env::var("EZWALLPAPER_TEST_CLOCK_UNIX") {
+        Ok(value) => value
+            .parse::<u64>()
+            .context("EZWALLPAPER_TEST_CLOCK_UNIX must be unsigned Unix seconds")?,
+        Err(std::env::VarError::NotPresent) => SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .context("system clock is before Unix epoch")?
+            .as_secs(),
+        Err(error) => return Err(error).context("cannot read test clock override"),
+    };
+    #[cfg(not(feature = "test-clock"))]
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .context("system clock is before Unix epoch")?

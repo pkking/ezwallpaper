@@ -227,6 +227,11 @@ jobs:
           mkdir -p artifacts/ci
           set -o pipefail
           cargo test --workspace --all-targets --verbose 2>&1 | tee artifacts/ci/cargo-test.log
+      - name: Deterministic simulated-clock CLI subprocess integration
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --features test-clock --test rotation_simulated_clock_cli -- --nocapture 2>&1 | tee artifacts/ci/simulated-clock-cli.log
       - name: Verify headless core independently
         run: cargo check -p ezwallpaper-core
       - name: Offline CLI acceptance
