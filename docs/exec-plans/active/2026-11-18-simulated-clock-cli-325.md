@@ -13,7 +13,7 @@ Provide the layer-2 deterministic substitute proposed for #325: feature-gated cl
 ## Goal alignment
 
 Epic: #60
-Goal: G-02
+Goal: G-01
 Contribution type: MAINTENANCE
 Gap: #325's 24-hour real-online acceptance cannot be safely accelerated through a real wall clock; current in-process simulation cannot test binary/environment/state persistence across process boundaries.
 Before: Baseline 5c4519b; production clock in `src/rotation_cli.rs::current_utc_epoch` uses `SystemTime::now`; the 24-bucket test calls in-process adapters.
