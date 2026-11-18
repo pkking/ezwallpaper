@@ -30,7 +30,9 @@ No root helper, systemd/system service, sudo, `/etc` or `/usr` writes, initramfs
 
 `AGENTS.md`; `docs/agents/goal-gates.md`; `docs/adr/0011-wallpaper-events.md`; `src/rotation_event.rs`; `src/rotation_cli.rs`; `scripts/read_wallpaper_events.py`; `docs/examples/root-greeter-import-policy.md`; `docs/examples/README.md`; private design input `/home/lcr/.local/share/chezmoi/docs/sddm-wallpaper-sync.md`.
 
-## Current facts / gap matrix
+## Current facts
+
+### Gap matrix
 
 - Event code: versioned per-output changed record, epoch, raw content ID and source path; exact-path acknowledgement only; no derived artifact metadata, wall-clock update timestamp, aggregate current manifest, fixed-argv hooks, timeout/exit handling or hook idempotency key.
 - Apply: durable per-output rotation state precedes atomic event publication. Explicit same-epoch reconciliation validates source bytes and backend path; this repairs missing/stale event files without a second setter call. Multi-output event snapshot helper validates a requested same epoch but is not a producer-side cross-file atomic transaction.
@@ -48,6 +50,12 @@ Preserve legacy behavior; all event output is explicit opt-in and user-owned. Ne
 - [x] Document staged follow-up and explicit SDDM/Plymouth cache/initramfs boundaries.
 - [ ] Offline tests, Rust formatting/Clippy/tests, plan-integrity, and final CI.
 - [ ] Open PR; leave Issue open and explicitly mark overall acceptance partial.
+
+## Implementation slices
+
+- [x] 1. Inspect current event publisher, CLI recovery, consumers, goal gate and root-policy preflights.
+- [x] 2. Publish the contract/gap documentation as a deliberately partial Issue slice.
+- [ ] 3. In a follow-up, implement and independently review the fixed-target root import transaction and its sandbox tests.
 
 ## Verification matrix
 
