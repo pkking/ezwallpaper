@@ -1,7 +1,7 @@
 # 2026-11-20-versioned-export-contract-56: Issue #56
 
 Issue: #56
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-20
 Last checkpoint: 2026-11-20
@@ -48,8 +48,8 @@ Preserve legacy behavior; all event output is explicit opt-in and user-owned. Ne
 
 - [x] Pin and record actual baseline/repository call chain and current/missing contract matrix.
 - [x] Document staged follow-up and explicit SDDM/Plymouth cache/initramfs boundaries.
-- [ ] Offline tests, Rust formatting/Clippy/tests, plan-integrity, and final CI.
-- [ ] Open PR; leave Issue open and explicitly mark overall acceptance partial.
+- [x] Rust fmt/Clippy/tests and focused Python tests pass; full Python discovery has a documented unrelated stale assertion failure. PR plan-integrity and other active CI checks pass; see evidence.
+- [x] Open PR #331; Issue remains open and PR explicitly states overall acceptance is partial.
 
 ## Implementation slices
 
@@ -61,10 +61,10 @@ Preserve legacy behavior; all event output is explicit opt-in and user-owned. Ne
 
 | Scope | Command / gate | Expected evidence | Status |
 |---|---|---|---|
-| Rust quality | `cargo fmt --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` | local output | pending |
-| Python contracts | `python3 -m unittest discover -s tests` | local output | pending |
-| Governance | `python3 scripts/validate_agent_plan.py --help` and relevant tests | local output | pending |
-| CI | `gh pr checks --watch --fail-fast` bounded 600s | final PR head checks | pending |
+| Rust quality | `cargo fmt --all -- --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` | pass; 209 tests | pass |
+| Python contracts | focused `tests.test_agent_plan tests.test_wallpaper_events_consumer`; full discovery also run | 37 focused pass; full suite has one unrelated stale adapter-boundary assertion | partial |
+| Governance | PR plan-integrity CI and `python3 scripts/validate_agent_plan.py` with PR event context | PR check pass; local validator pass | pass |
+| CI | `gh run watch 44332701735 --exit-status`, bounded 600s | all active jobs pass at PR head; optional live tests skipped | pass |
 
 ## Evidence log
 
@@ -74,11 +74,11 @@ Preserve legacy behavior; all event output is explicit opt-in and user-owned. Ne
 
 ## Resume from here
 
-Add contract document and link from `docs/examples/README.md`, run listed checks, then open a non-merge PR with G-03 partial-scope fields and explicit remaining unassessed requirements.
+PR #331 is open and must remain unmerged; monitor review and keep Issue #56 open. The next implementation task is the root-owned fixed-target importer with sandbox rejection tests, not a claim that this contract slice completes G-03.
 
 ## Completion
 
-Final commit: pending
-CI run: pending
+Final commit: `569a1398abe07ec9b426358ba698354a9aa638be` (PR open; plan remains active until PR disposition).
+CI run: [44332701735](https://github.com/pkking/ezwallpaper/actions/runs/44332701735), all active checks passed; optional live integration checks skipped.
 E2E artifact: not applicable; this is a contract/gap documentation slice only.
 Remaining unassessed items: see Goal alignment.
