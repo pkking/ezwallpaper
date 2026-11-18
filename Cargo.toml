@@ -3,6 +3,11 @@ members = [".", "crates/ezwallpaper-core"]
 default-members = ["."]
 resolver = "2"
 
+[features]
+default = []
+# Enables a narrowly scoped wall-clock override for subprocess integration tests.
+test-clock = []
+
 [package]
 name = "ezwallpaper"
 version = "0.3.0"

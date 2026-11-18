@@ -8,7 +8,7 @@ Source-only release candidate preparation based on merged PR #324 (security and 
 
 - Completed: #324 fixed relative profile parent traversal, corrupt pool image selection and provider credential misuse, with isolated post-merge tests; #328 documents source-only uninstall.
 - Qualified in isolation: #326 0.2.0 fresh-start, alpha/beta state reads and alias/timer preservation; #327 timeout, SIGKILL, empty pool, fail-fast and retry behavior with a mock Noctalia.
-- **Release gates pending:** #325 ≥24h uninterrupted real niri/Noctalia dual-output hourly observation; #326 final stable candidate clean install, upgrade/rollback/uninstall; #327 physical-session recovery or explicitly scoped support; #319 final support matrix and GO decision.
+- **Release gates pending:** #325 approved layered reliability (real online timer audit, #330 25 simulated CLI subprocess buckets, real short-hour regression and #327 recovery/approved support boundary); #326 final candidate install/upgrade/rollback/uninstall; #319 final support matrix and GO. **Continuous 24h Soak Test: NOT TESTED**, not a standalone hard gate.
 - Physical cable HPD and absent-output timer periods are **not verified** and must be excluded from the supported matrix unless independently tested.
 - Do not publish a stable tag from this candidate. Source archives only; no crates.io/binary publishing.
 
