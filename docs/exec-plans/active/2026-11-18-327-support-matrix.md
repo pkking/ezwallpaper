@@ -16,7 +16,7 @@ Contribution type: BLOCKER
 Gap: Real bounded recovery and isolated regressions exist, but not all hardware/dependency failure scenarios have been observed naturally.
 Before: #327 evidence and release scope did not fully distinguish the support classifications and latest-ACK event contract.
 After: Each item states its evidence tier, environment boundary and canonical public reference; residual cases remain UNASSESSED or explicitly UNSUPPORTED.
-Evidence plan: Reconcile final-candidate isolated matrix and real #325 evidence; sync Release Notes and #319; maintainer makes release-risk decisions.
+Evidence plan: Reconcile final-candidate isolated matrix and real #325 evidence; synchronize Release Notes and #319 to canonical #326/#327 public records. Approved scope boundaries are settled; final STABLE_GO and merge/release authorization remain separate.
 Priority rationale: #327 is a named #319 release qualification input.
 Remaining unassessed: Natural in-rotation timeout, rotation at natural hour while an output is absent, multi-day Noctalia health, broad platforms/topologies.
 
@@ -25,7 +25,7 @@ Do not claim general hardware/DE support from one physical setup or mocks; do no
 
 ## Candidate evidence
 - Candidate runtime source baseline: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`; runtime remains unchanged at historical PR #329 head `177630a5a86e09a6650938d55897c614cdac622c`. Stable binary SHA-256: `7681ff93540096f9c451f7eee5067df29d29fdb4c6813b56e2c4d3b84a55312e`.
-- Corrected rollback provenance: published GitHub tag [`v0.3.0-beta.1`](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-beta.1) is `a3ae57c5a845a612f6bfe49ce10250c89092717e`; `d6598ae0…` is a post-beta fix, not the published tag. Actual tag-source binary was source-built with offline-resolved dependencies (no Cargo.lock in tag), SHA-256 `00dac8f177b8b2cae158acdedb33bf6ff11a5725fc931c7ef80a290ddc6944e7`. Standalone 17-assertion replay does not establish a continuous rollback chain. The later actual-provenance chain had eight exit-0 commands but no expected mock IPC/getter ledger, so it is INCOMPLETE / NOT PASS; see [#326 correction context](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990) (new correction link to be added only by Main).
+- Corrected and independently qualified rollback provenance: published GitHub tag [`v0.3.0-beta.1`](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-beta.1) is `a3ae57c5a845a612f6bfe49ce10250c89092717e`; `d6598ae0…` is a post-beta fix, not the tag. Beta is a source-built exact-tag binary with offline-resolved dependencies (not recovered published executable). The actual-tag-source Stable→Beta→Alpha→Stable chain is bounded isolated PASS: 8/8 commands, 24 actual mock IPC rows, per-version setter/getter evidence, state/asset snapshots and independent review. See canonical [#326 qualified evidence](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7017556549). Same-bucket replay PASS; natural new-bucket NOT TESTED.
 - [#327 final matrix and missing-output CLI test](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7011311708); [real Noctalia restart recovery](https://github.com/pkking/ezwallpaper/issues/325#issuecomment-6984080678); [final candidate safety/fault rechecks](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-6985789420).
 - Private isolated matrix manifest SHA-256: `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918`.
 
@@ -39,20 +39,20 @@ Do not claim general hardware/DE support from one physical setup or mocks; do no
 | Injected timeout/crash/kill, partial success and retry | SUPPORTED (isolated mock only) | Three write boundaries, retry and fail-fast partial commit. Does not prove a naturally occurring production timeout or power-loss safety. [#327](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-6924924396) |
 | Missing-output injected `rotate` then recovery | TESTED (isolated mock only) | Healthy DP-1 commits before absent HDMI-A-1 setter fails; exit 1. Same-bucket retry skips ACKed DP-1 and completes HDMI-A-1. This is fail-fast partial progress, not a multi-output transaction or natural scheduled event. [#327](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7011311708) |
 | Empty pool and refill | SUPPORTED (isolated mock only) | No state advance while empty; refill continues queue. [#327](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-6924924396) |
-| Rollback lifecycle / data integrity | PASS (isolated chain; bounded) | Stable/Beta/Alpha/Stable six invocations, state/schema/ACK and fixture integrity; same-bucket post-rollback idempotency only. [#326](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990) |
+| Rollback lifecycle / data integrity | PASS (bounded isolated actual-tag-source chain) | Stable→Beta→Alpha→Stable, 8/8 invocations, 24 actual mock IPC rows, per-version setter/getter and state/schema/asset snapshots; independently reviewed. Same-bucket replay PASS; natural new-bucket NOT TESTED. [#326 canonical evidence](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7017556549) |
 | Force-event semantics | SUPPORTED contract (source + regression) | `<output>.json` is an atomically replaceable latest acknowledged record, not append-only history. Does not provide historical event retention. `rotation_event::publish` and atomic per-output regression establish replacement semantics. |
 | Software-simulated output off/getter failure | TESTED (simulated only) | Getter reports unknown output; no physical cable/HPD inference. [#59](https://github.com/pkking/ezwallpaper/issues/59#issuecomment-6888528063) |
 | Physical monitor HPD cable disconnect/reconnect | UNSUPPORTED | No physical test; operator declined. Reconnect via compositor-supported workflow and rerun once outputs are available. |
 | Natural rotation at hourly boundary while output absent | UNASSESSED | Injected fail-fast CLI case is not a natural scheduler boundary; no catch-up/automatic compensation guarantee. |
 | Naturally occurring IPC timeout during rotation | UNASSESSED | Injected >5s timeout only; no naturally occurring production timeout observed. |
-| Long-term Noctalia degradation | UNSUPPORTED / external dependency | No long-term guarantee; Noctalia/compositor health is external to ezwallpaper. |
+| Long-term Noctalia degradation | Not promised; external dependency | No long-term guarantee; Noctalia/compositor health is external to ezwallpaper. |
 | Multi-day soak | NOT TESTED; not an additional mandatory gate | Use #325 approved layered L1–L4 qualification. No multi-day endurance claim. |
 
 ## Verification / acceptance
 - [x] Reused exact published evidence and verified local manifest digests; no event assertion or test outcome promoted beyond the captured scenario.
 - [x] Missing-output case is explicitly isolated; reports output-order-dependent fail-fast partial progress and same-bucket retry, not natural hourly compensation.
 - [x] Event writer traced to source (`src/rotation_event.rs::publish`) and existing atomic per-output regression; no new test or runtime change needed.
-- [x] Support classifications and bounded wording synchronized to `docs/releases/v0.3.0.md` and #319 execution plan.
+- [x] Support classifications and bounded wording synchronized to `docs/releases/v0.3.0.md` and #319 execution plan; canonical approved scope is [#327 comment 7017564245](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7017564245).
 - [x] Approved support dispositions are settled: HPD UNSUPPORTED; natural timeout and natural absent-output hourly rotation UNASSESSED with no catch-up guarantee; long-run Noctalia health external/not promised; no additional multi-day soak gate under approved #325 layered method. These are not pending risk approval.
 - [ ] Exact-SHA `STABLE_GO` and separate merge/release authorization remain independent gates; do not infer authorization from evidence or plan synchronization.
 
@@ -66,9 +66,10 @@ Private evidence: access-restricted local artifacts retained for authorized audi
 The prior plan called natural output absence/timeout unassessed and suggested another natural test. The user-approved disposition retains both as UNASSESSED; no natural event is fabricated. HPD is UNSUPPORTED. Latest-ACK files replace, rather than append. #325 layered qualification replaces any newly invented mandatory multi-day soak.
 
 ## Resume from here
-Main independently reviews the bounded matrix, actual-Beta provenance correction, and exact updated-head CI. Keep #329 Draft / `RELEASE_BLOCKED` and #331 independent. Main owns final synchronization/comments and #332 closure after review. Exact-master CI is a future post-merge/release gate, not a pre-merge requirement.
+Canonical [#327 scope record](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7017564245) records the final approved dispositions; these boundaries are settled, not awaiting risk approval. Main owns synchronization and #332 closure after review. Keep #329 Draft / `RELEASE_BLOCKED` and #331 independent. Exact-master CI is a future post-merge/release gate, not a pre-merge requirement.
 
 ## Completion
-Final source candidate: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413` (PR #329 head runtime source-equivalent)
-Evidence manifests: `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`; `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918`
-Remaining unassessed: natural IPC timeout; natural hourly rotation while output absent; broad platform/topology; multi-day endurance (not a separate gate).
+Final source candidate: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413` (PR #329 runtime-source-equivalent baseline).
+Canonical public scope: [#327 comment 7017564245](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7017564245). Actual-tag rollback: [#326 comment 7017556549](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7017556549), bounded isolated PASS; same-bucket replay only, natural new-bucket NOT TESTED.
+Evidence manifests for earlier matrix runs: `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`; `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918`.
+Remaining unassessed: natural IPC timeout; natural hourly rotation while output absent; broad platform/topology; multi-day endurance (not a separate gate). Approved scope dispositions are settled.
