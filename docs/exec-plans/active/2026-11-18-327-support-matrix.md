@@ -1,7 +1,7 @@
 # 2026-11-18-327-support-matrix: qualify Stable support boundaries
 
 Issue: #327
-Status: BLOCKED_DECISION
+Status: READY_FOR_REVIEW
 Owner: agent
 Started: 2026-11-18
 Last checkpoint: 2026-11-19
@@ -24,8 +24,8 @@ Remaining unassessed: Natural in-rotation timeout, rotation at natural hour whil
 Do not claim general hardware/DE support from one physical setup or mocks; do not mutate production state, timer, displays, or Noctalia; do not perform physical HPD. Private evidence stays private. This plan is not risk acceptance or Stable authorization.
 
 ## Candidate evidence
-- Candidate runtime source: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`, matching the runtime source at PR #329 head `65c686a73407531cb91bff58e9a48516510a309e`.
-- Binary SHA-256: `7681ff93540096f9c451f7eee5067df29d29fdb4c6813b56e2c4d3b84a55312e`.
+- Candidate runtime source baseline: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`; runtime remains unchanged at historical PR #329 head `177630a5a86e09a6650938d55897c614cdac622c`. Stable binary SHA-256: `7681ff93540096f9c451f7eee5067df29d29fdb4c6813b56e2c4d3b84a55312e`.
+- Corrected rollback provenance: published GitHub tag [`v0.3.0-beta.1`](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-beta.1) is `a3ae57c5a845a612f6bfe49ce10250c89092717e`; `d6598ae0…` is a post-beta fix, not the published tag. Actual tag-source binary was source-built with offline-resolved dependencies (no Cargo.lock in tag), SHA-256 `00dac8f177b8b2cae158acdedb33bf6ff11a5725fc931c7ef80a290ddc6944e7`. Standalone 17-assertion replay does not establish a continuous rollback chain. The later actual-provenance chain had eight exit-0 commands but no expected mock IPC/getter ledger, so it is INCOMPLETE / NOT PASS; see [#326 correction context](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990) (new correction link to be added only by Main).
 - [#327 final matrix and missing-output CLI test](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7011311708); [real Noctalia restart recovery](https://github.com/pkking/ezwallpaper/issues/325#issuecomment-6984080678); [final candidate safety/fault rechecks](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-6985789420).
 - Private isolated matrix manifest SHA-256: `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918`.
 
@@ -53,7 +53,8 @@ Do not claim general hardware/DE support from one physical setup or mocks; do no
 - [x] Missing-output case is explicitly isolated; reports output-order-dependent fail-fast partial progress and same-bucket retry, not natural hourly compensation.
 - [x] Event writer traced to source (`src/rotation_event.rs::publish`) and existing atomic per-output regression; no new test or runtime change needed.
 - [x] Support classifications and bounded wording synchronized to `docs/releases/v0.3.0.md` and #319 execution plan.
-- [ ] Maintainer risk disposition and exact-SHA `STABLE_GO` remain independent gates; do not infer acceptance from evidence or plan synchronization.
+- [x] Approved support dispositions are settled: HPD UNSUPPORTED; natural timeout and natural absent-output hourly rotation UNASSESSED with no catch-up guarantee; long-run Noctalia health external/not promised; no additional multi-day soak gate under approved #325 layered method. These are not pending risk approval.
+- [ ] Exact-SHA `STABLE_GO` and separate merge/release authorization remain independent gates; do not infer authorization from evidence or plan synchronization.
 
 ## Maintainer review / decision boundaries
 Physical HPD is UNSUPPORTED; natural IPC timeout and natural hourly rotation during output absence are UNASSESSED; no automatic compensation guarantee is made. Multi-day soak is not an added gate under approved #325 layered qualification. Long-term Noctalia health is outside product guarantees. Latest-ACK replacement is the actual documented writer contract. These are explicit boundaries, not a request to mark untested behavior PASS.
@@ -65,7 +66,7 @@ Private evidence: access-restricted local artifacts retained for authorized audi
 The prior plan called natural output absence/timeout unassessed and suggested another natural test. The user-approved disposition retains both as UNASSESSED; no natural event is fabricated. HPD is UNSUPPORTED. Latest-ACK files replace, rather than append. #325 layered qualification replaces any newly invented mandatory multi-day soak.
 
 ## Resume from here
-Maintainer reviews the bounded public-safe matrix and final-head CI. Keep #329 Draft, RELEASE_BLOCKED and #331 independent; main owns final synchronization/closure.
+Main independently reviews the bounded matrix, actual-Beta provenance correction, and exact updated-head CI. Keep #329 Draft / `RELEASE_BLOCKED` and #331 independent. Main owns final synchronization/comments and #332 closure after review. Exact-master CI is a future post-merge/release gate, not a pre-merge requirement.
 
 ## Completion
 Final source candidate: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413` (PR #329 head runtime source-equivalent)

@@ -24,26 +24,29 @@ Remaining unassessed: A new natural bucket after rollback; live user-manager or 
 No production profile, timer, alias, state, user data or desktop mutation. No release authorization. Keep raw artifacts private (directory 0700/files 0600); publish only safe summary, digest and canonical URL.
 
 ## Candidate and evidence
-- Tested candidate source revision: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`, source-equivalent to #329 tested runtime code; PR #329 head is `65c686a73407531cb91bff58e9a48516510a309e`.
-- Stable binary SHA-256: `7681ff93540096f9c451f7eee5067df29d29fdb4c6813b56e2c4d3b84a55312e`.
-- Beta executable provenance is `d6598ae0…` (post-beta fix commit); it is not the published beta tag. Published `v0.3.0-beta.1` tag resolves to `a3ae57c5a845a612f6bfe49ce10250c89092717e`; do not conflate these revisions.
-- Alpha executable revision: `4e72605f…` (read-only).
-- Canonical public result: [#326 comment 7011310990](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990).
+- Stable runtime source baseline: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`, unchanged at #329 historical head `177630a5a86e09a6650938d55897c614cdac622c`; Stable binary SHA-256 `7681ff93540096f9c451f7eee5067df29d29fdb4c6813b56e2c4d3b84a55312e`.
+- The published Beta is GitHub tag [`v0.3.0-beta.1`](https://github.com/pkking/ezwallpaper/releases/tag/v0.3.0-beta.1), exact source SHA `a3ae57c5a845a612f6bfe49ce10250c89092717e`. `d6598ae0d867890f42f0f0186efbae27a9ea6627` is the later #324 fix commit, not the published Beta tag. Earlier public [#326 comment 7011310990](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990) mislabeled/overstated the provenance of the continuous rollback chain and is corrected here; it must not be silently repeated as a verified actual-tag chain.
+- Published-tag Beta was source-built from that tag with offline-resolved dependencies because the tag has no committed Cargo.lock; no release binary was recovered. Binary SHA-256 `00dac8f177b8b2cae158acdedb33bf6ff11a5725fc931c7ef80a290ddc6944e7`. Its isolated standalone replay17 had 17 passing assertions; it is not a cross-version chain.
+- Alpha source revision `4e72605fe788f1c1da1cb9aeba103353df547838`; binary SHA-256 `7cd1ac81d8b1ddc1716f6ebc775d0dc5f938f22bfad8c11f47719b86e03de95c`.
+- Actual-provenance Stable → published-tag-source Beta → Alpha → Stable execution: eight `rotate next --apply` commands exit 0, but expected mock IPC ledger was not created and mock getter state remained empty. Therefore independent set/get readback was not evidenced. The chain is **INCOMPLETE / NOT PASS**; do not count output labels or exit 0 as independent ACK verification. Per-command state snapshots exist; new-bucket continuation is NOT TESTED.
+- Prior canonical public summaries: [#326 comment 7011310990](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990) and [#327 comment 7011311708](https://github.com/pkking/ezwallpaper/issues/327#issuecomment-7011311708). A new correction comment URL will be supplied only by Main after publication.
 
 ## Acceptance and observed result
-- [x] Six isolated invocations: Stable write, Beta idempotent read, Beta `--force`, Alpha idempotent read, Stable idempotent read, and Stable post-rollback invocation; all exited 0.
-- [x] State schema-v1 fields, output ACK/content references, fixture profile and pool assets verified; all content IDs resolve to matching asset SHA-256. Before/after state and event hashes were captured; input profile/assets remained unchanged.
-- [x] Rollback operation did not require state reinitialization. The final Stable invocation reports `already_applied` for both outputs with no state advance.
-- [x] Per-output event behavior traced to source: `src/rotation_event.rs::publish` stages JSON in the target directory, flushes/syncs it, then `NamedTempFile::persist(&target)` atomically replaces `<output>.json`; `src/rotation_cli.rs` invokes this after state persistence. Existing regression `rotation_event::tests::opt_in_publish_is_atomic_and_per_output` covers atomic per-output publication. `--force` changes the current ACK record at that path. These files are the latest acknowledged record, not append-only history.
-- [ ] A new-bucket continuation was not tested. Same-bucket idempotency is not evidence of new-bucket rotation; do not mark that assertion PASS.
-- [ ] Maintainer review of bounded evidence and documented latest-ACK semantics remains separate from this technical record.
+- [ ] The actual-published-Beta-provenance chain is incomplete: eight invocations exit 0 but expected mock IPC ledger/getter evidence is absent; do not claim independent setter/readback verification or chain PASS.
+- [x] Exact published-tag-source Beta standalone replay17 is separate evidence: 17 assertions passed for isolated apply/idempotent replay, but it does not establish a continuous Stable→Beta→Alpha→Stable chain.
+- [x] State snapshots and binary provenance are recorded. The attempted chain retained state/profile/pool hashes; absence of the mock ledger means backend ACK verification is not evidenced.
+- [x] Per-output event behavior traced to source: `src/rotation_event.rs::publish` stages JSON in the target directory, flushes/syncs it, then atomically replaces `<output>.json`; `src/rotation_cli.rs` invokes this after state persistence. Existing regression `rotation_event::tests::opt_in_publish_is_atomic_and_per_output` covers atomic per-output publication. These files are the latest acknowledged record, not append-only history.
+- [ ] A new-bucket continuation was not tested. Same-bucket idempotency is not evidence of new-bucket rotation.
+- [ ] Main's correction of prior public overclaim and publication of exact evidence/status remain to be done; no link is fabricated.
 
 ## Verification matrix
 | Assertion | Evidence | Status |
 |---|---|---|
-| Rollback chain command success | Six isolated commands, each exit 0 | PASS |
-| State/schema/content integrity | Per-stage snapshots; profile/pool stable; content IDs hash-match assets | PASS |
-| Existing ACK idempotency | Alpha/stable reads and post-rollback same-bucket invocation | PASS (same bucket only) |
+| Actual published-Beta-provenance chain | Eight isolated invocations exit 0; mock IPC/getter ledger absent | INCOMPLETE / NOT PASS |
+| Published-tag Beta standalone replay | Source-built tag binary; 17 independent assertions | PASS (standalone replay only; not chain) |
+| State/schema/content integrity in actual-provenance chain | State/profile/pool snapshots retained, but missing backend ledger prevents independent ACK/readback proof | PARTIAL evidence; not chain PASS |
+| Prior chain using d6598ae0 post-beta fix binary | Six prior invocations claimed successful in prior evidence; this was not the published Beta tag | Does not establish published-beta provenance |
+| Existing ACK idempotency | Same-bucket replay only | PASS only within previously evidenced fixture scope; not new bucket |
 | New-bucket continuation | No natural bucket awaited | NOT TESTED |
 | Event history append-only | Source and `--force` prove atomic replacement of one latest record per output | NOT APPLICABLE / not promised |
 | Production/user-manager rollback | Not exercised | UNASSESSED |
@@ -57,9 +60,9 @@ Canonical published summary: [#326](https://github.com/pkking/ezwallpaper/issues
 The previous plan's “continued rotation” criterion conflated same-bucket command/idempotency with advancement to a new UTC bucket. Corrected: only same-bucket idempotency is measured. Event files are per-output atomic latest-ACK records, not event history. No new runtime behavior or regression was necessary: source and existing regression already establish the contract.
 
 ## Resume from here
-Maintainer reviews the public-safe result and accepts or requests a separately scoped follow-up for any new-bucket evidence; keep Stable release blocked pending all #319 gates.
+Main independently reviews this corrected provenance and records the missing mock-ledger/getter evidence as INCOMPLETE / NOT PASS in final public synchronization. Do not repeat old six-command suites or claim standalone replay is a chain. Keep #329 Draft / `RELEASE_BLOCKED`; exact-head CI and maintainer STABLE_GO/merge/release authorization remain separate gates.
 
 ## Completion
-Final source candidate: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413` (PR #329 head source-equivalent)
-Evidence manifest digest: `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`
-Remaining unassessed: new-bucket continuation; live user-manager/production behavior.
+Historical Stable baseline: `36aca9e0df5c3f21f22c42ae266006f2bbdb5413`; runtime source unchanged at #329 `177630a5a86e09a6650938d55897c614cdac622c`.
+Prior #326/#327 evidence manifests: `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`; `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918`. Actual-beta audit manifest: `8fb27bf9c09397d34f15542f020430168983852ce7498273d92db5b2e890f714`.
+Remaining unassessed: actual-tag full-chain independent backend readback (this attempt incomplete); new-bucket continuation; live user-manager/production behavior.
