@@ -59,7 +59,7 @@ Do not claim general hardware/DE support from one physical setup or mocks; do no
 Physical HPD is UNSUPPORTED; natural IPC timeout and natural hourly rotation during output absence are UNASSESSED; no automatic compensation guarantee is made. Multi-day soak is not an added gate under approved #325 layered qualification. Long-term Noctalia health is outside product guarantees. Latest-ACK replacement is the actual documented writer contract. These are explicit boundaries, not a request to mark untested behavior PASS.
 
 ## Evidence and privacy
-Private evidence directories: `~/.local/state/dotfiles-submission/final-327-matrix-20261119T132551Z/` and `final-326-rollback-suite-20261119T132607Z/` (private paths only for authorized audit; do not include in public comments). Manifests: `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918` and `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`.
+Private evidence: access-restricted local artifacts retained for authorized audit; paths intentionally omitted from public documentation. Manifests: `ca769e0087f17a258952eff77ddc0ac3874f09024d5ead131ca4fc6e207b2918` and `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`.
 
 ## Deviations and discoveries
 The prior plan called natural output absence/timeout unassessed and suggested another natural test. The user-approved disposition retains both as UNASSESSED; no natural event is fabricated. HPD is UNSUPPORTED. Latest-ACK files replace, rather than append. #325 layered qualification replaces any newly invented mandatory multi-day soak.

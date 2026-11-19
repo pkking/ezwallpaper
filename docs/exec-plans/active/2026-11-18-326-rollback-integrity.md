@@ -49,7 +49,7 @@ No production profile, timer, alias, state, user data or desktop mutation. No re
 | Production/user-manager rollback | Not exercised | UNASSESSED |
 
 ## Evidence and provenance
-Private evidence directory: `~/.local/state/dotfiles-submission/final-326-rollback-suite-20261119T132607Z/` (private path for authorized audit; do not copy into public comments).
+Private evidence: access-restricted local artifacts retained for authorized audit; location intentionally omitted from public documentation.
 Manifest SHA-256: `a95ad8aa938b3d829d06446b57057ff13a80384565650038181c0d79f41fd13d`.
 Canonical published summary: [#326](https://github.com/pkking/ezwallpaper/issues/326#issuecomment-7011310990).
 
