@@ -1,0 +1,142 @@
+name: M3 stable source package and gated release
+
+# PR validates package and source installation with read-only token.
+# Only maintainer-triggered workflow_dispatch on master may publish, after a
+# verified #319 STABLE_GO comment, exact protected master CI, and final notes.
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - Cargo.toml
+      - crates/ezwallpaper-core/Cargo.toml
+      - CHANGELOG.md
+      - docs/releases/**
+      - .github/workflows/release-stable.yml
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Full CI-verified protected master commit SHA"
+        required: true
+        type: string
+      go_comment_id:
+        description: "GitHub Issue #319 maintainer STABLE_GO comment ID"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-stable-${{ github.event_name }}-${{ github.event.pull_request.head.sha || inputs.release_sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate-source-package:
+    name: M3 stable source package validation
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.release_sha }}
+          persist-credentials: false
+      - name: Confirm stable package versions and scoped source-only notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import tomllib
+          root = pathlib.Path(".")
+          cli = tomllib.loads((root / "Cargo.toml").read_text())
+          core = tomllib.loads((root / "crates/ezwallpaper-core/Cargo.toml").read_text())
+          expected = "0.3.0"
+          assert cli["package"]["name"] == "ezwallpaper"
+          assert core["package"]["name"] == "ezwallpaper-core"
+          assert cli["package"]["version"] == core["package"]["version"] == expected
+          dep = cli["dependencies"]["ezwallpaper-core"]
+          assert dep["path"] == "crates/ezwallpaper-core"
+          assert dep["version"] == "=" + expected
+          notes = (root / "docs/releases/v0.3.0.md").read_text()
+          for needle in ("v0.3.0", "source-only", "#319", "#325", "#326", "#327", "HPD", "Noctalia", "niri"):
+              assert needle.lower() in notes.lower(), needle
+          assert "[Unreleased]" in (root / "CHANGELOG.md").read_text() or "## [0.3.0]" in (root / "CHANGELOG.md").read_text()
+          print("M3 candidate manifests and disclosed support scope verified")
+          PY
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check both crate source packages without publishing
+        run: |
+          cargo package -p ezwallpaper-core --list --allow-dirty
+          cargo package -p ezwallpaper --list --allow-dirty
+      - name: Validate Core package without crates.io upload
+        run: cargo publish --dry-run -p ezwallpaper-core --allow-dirty
+      - name: Clean-root source install and CLI smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_root="$RUNNER_TEMP/ezwallpaper-stable-install"
+          mkdir -p "$install_root"
+          cargo install --path . --root "$install_root"
+          "$install_root/bin/ezwallpaper" --version | grep -F '0.3.0'
+          "$install_root/bin/ezwallpaper" --help >/dev/null
+
+  publish-stable:
+    name: Publish M3 GitHub stable source-only release
+    needs: validate-source-package
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    # No untrusted PR steps, Cargo, local executables, or build scripts run
+    # with this job's write token. Only GitHub CLI and checked-in notes.
+    permissions:
+      contents: write
+      issues: read
+    env:
+      RELEASE_SHA: ${{ inputs.release_sha }}
+      GO_COMMENT_ID: ${{ inputs.go_comment_id }}
+      RELEASE_TAG: v0.3.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+      - name: Verify final master, successful push CI and maintainer GO
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid exact SHA" >&2; exit 1; }
+          [[ "$GO_COMMENT_ID" =~ ^[0-9]+$ ]] || { echo "Invalid issue comment id" >&2; exit 1; }
+          actual_master="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/master" --jq '.object.sha')"
+          [[ "$actual_master" == "$RELEASE_SHA" ]] || { echo "Refusing stale master" >&2; exit 1; }
+          passed="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&event=push&per_page=100" --jq '[.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success" and .head_branch == "master")] | length')"
+          [[ "$passed" -ge 1 ]] || { echo "No successful exact-master push CI" >&2; exit 1; }
+          comment_issue="$(gh api "repos/${GITHUB_REPOSITORY}/issues/comments/${GO_COMMENT_ID}" --jq '.issue_url')"
+          [[ "$comment_issue" == "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/319" ]] || { echo "GO comment does not belong to #319" >&2; exit 1; }
+          association="$(gh api "repos/${GITHUB_REPOSITORY}/issues/comments/${GO_COMMENT_ID}" --jq '.author_association')"
+          [[ "$association" == "OWNER" || "$association" == "MEMBER" || "$association" == "COLLABORATOR" ]] || { echo "GO comment author not authorized" >&2; exit 1; }
+          body="$(gh api "repos/${GITHUB_REPOSITORY}/issues/comments/${GO_COMMENT_ID}" --jq '.body')"
+          grep -Fxq "STABLE_GO: ${RELEASE_SHA}" <<< "$body" || { echo "Exact SHA GO decision missing" >&2; exit 1; }
+          if grep -Fq "RELEASE_BLOCKED" docs/releases/v0.3.0.md; then
+            echo "Stable release notes still marked blocked" >&2; exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            existing_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+            existing_prerelease="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')"
+            [[ "$existing_sha" == "$RELEASE_SHA" && "$existing_prerelease" == "false" ]] || { echo "Existing release mismatch" >&2; exit 1; }
+            echo "Already published exactly verified stable release"
+            exit 0
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Stable tag already exists without release; manual reconciliation required" >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "ezwallpaper v0.3.0 — stable" \
+            --notes-file "docs/releases/v0.3.0.md" \
+            --latest
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isPrerelease,targetCommitish

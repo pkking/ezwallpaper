@@ -45,7 +45,23 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.workflow_run.head_sha }}
           persist-credentials: false
+      - name: Detect whether this PR still targets the released Beta package
+        id: beta-target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fxq 'version = "0.3.0-beta.1"' Cargo.toml; then
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          else
+            if [[ "$GITHUB_EVENT_NAME" == 'workflow_run' ]]; then
+              echo 'Refusing Beta release with non-Beta package version' >&2
+              exit 1
+            fi
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+            echo 'Non-Beta PR: Beta package/release validation not applicable'
+          fi
       - name: Confirm both package versions and honest source-only release notes
+        if: steps.beta-target.outputs.active == 'true'
         run: |
           python3 - <<'PY'
           import pathlib
@@ -67,14 +83,19 @@ jobs:
           print("M2 pre-release metadata and evidence scope verified")
           PY
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.beta-target.outputs.active == 'true'
       - uses: Swatinem/rust-cache@v2
+        if: steps.beta-target.outputs.active == 'true'
       - name: Check both crate source manifests without publishing them
+        if: steps.beta-target.outputs.active == 'true'
         run: |
           cargo package -p ezwallpaper-core --list --allow-dirty
           cargo package -p ezwallpaper --list --allow-dirty
       - name: Validate actual Core crate packaging (no crates.io upload)
+        if: steps.beta-target.outputs.active == 'true'
         run: cargo publish --dry-run -p ezwallpaper-core --allow-dirty
       - name: Clean-root source install and non-mutating CLI smoke (Ubuntu)
+        if: steps.beta-target.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail

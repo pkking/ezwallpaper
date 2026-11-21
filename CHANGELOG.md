@@ -2,6 +2,16 @@
 
 This file records tagged distributions, not the number of merged pull requests. Product acceptance remains governed by [Epic #60](https://github.com/pkking/ezwallpaper/issues/60).
 
+## [Unreleased] — v0.3.0 stable qualification (NOT RELEASED)
+
+Source-only release candidate preparation based on merged PR #324 (security and stability repairs) and the released v0.3.0-beta.1. This entry **does not** claim a stable release or full hardware qualification.
+
+- Completed: #324 fixed relative profile parent traversal, corrupt pool image selection and provider credential misuse, with isolated post-merge tests; #328 documents source-only uninstall.
+- Qualified in isolation: #326 0.2.0 fresh-start, alpha/beta state reads and alias/timer preservation; #327 timeout, SIGKILL, empty pool, fail-fast and retry behavior with a mock Noctalia.
+- **Release gates pending:** #325 approved layered reliability (real online timer audit, #330 25 simulated CLI subprocess buckets, real short-hour regression and #327 recovery/approved support boundary); #326 final candidate install/upgrade/rollback/uninstall; #319 final support matrix and GO. **Continuous 24h Soak Test: NOT TESTED**, not a standalone hard gate.
+- Physical cable HPD and absent-output timer periods are **not verified** and must be excluded from the supported matrix unless independently tested.
+- Do not publish a stable tag from this candidate. Source archives only; no crates.io/binary publishing.
+
 ## [0.3.0-beta.1] — M2 source-only Beta prerelease
 
 **M2 source-only GitHub Beta prerelease candidate.** Scoped to operator-tested released niri 26.04 + Noctalia 5.2.1 on one physical Intel UHD 630 dual-monitor configuration (3840×2160 scale 1.5 landscape + 1080×1920 portrait).
