@@ -148,6 +148,15 @@ does not prove real pixels.
 JSON schema source: [niri v26.04 Output](https://github.com/niri-wm/niri/blob/v26.04/niri-ipc/src/lib.rs)
 and [niri msg output serialization](https://github.com/niri-wm/niri/blob/v26.04/src/ipc/client.rs).
 
+## SDDM/Plymouth integration boundary
+
+The current per-output event files are untrusted, user-owned observations, not
+a privileged import interface. The [SDDM/Plymouth export contract](sddm-plymouth-export-contract.md)
+records the implemented boundary, required root-owned fixed-target design, and
+why atomic replacement does not promise a running SDDM greeter refresh or an
+immediate Plymouth update. No system paths or initramfs are modified by these
+examples.
+
 ## Optional private lock-screen asset staging
 
 The event reader alone does not verify that a source image still has the
