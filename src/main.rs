@@ -81,6 +81,10 @@ struct Args {
     #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
     max_download_bytes: Option<u64>,
 
+    /// Limit completed image bytes in one sequential acquisition batch (not a disk quota).
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
+    max_batch_download_bytes: Option<u64>,
+
     /// Fetch without modifying the desktop.
     #[arg(long, default_value_t = false)]
     download_only: bool,
@@ -317,6 +321,16 @@ fn validate_credential_context(cli: &Args, pexels_env_present: bool) -> Result<(
     Ok(())
 }
 
+fn validate_batch_budget_context(cli: &Args) -> Result<()> {
+    if cli.max_batch_download_bytes.is_some()
+        && !matches!(cli.command.as_ref(), Some(CliCommand::Fetch { .. }))
+        && cli.command.is_some()
+    {
+        bail!("--max-batch-download-bytes is only valid for acquisition");
+    }
+    Ok(())
+}
+
 fn read_pexels_token(cli: &Args) -> Result<String> {
     if !cli.token.is_empty() {
         return Ok(cli.token.clone());
@@ -358,14 +372,16 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
             if cli.token_file.is_some() {
                 bail!("--token-file is only supported for Pexels");
             }
-            Ok(Box::new(
-                BingProvider::new()
-                    .with_zone(&cli.locale)?
-                    .with_resolution(&cli.resolution)?
-                    .with_time_offset(cli.bing_offset)
-                    .with_dir(&cli.dir)
-                    .with_max_download_bytes(max_download_bytes)?,
-            ))
+            let mut provider = BingProvider::new()
+                .with_zone(&cli.locale)?
+                .with_resolution(&cli.resolution)?
+                .with_time_offset(cli.bing_offset)
+                .with_dir(&cli.dir)
+                .with_max_download_bytes(max_download_bytes)?;
+            if let Some(bytes) = cli.max_batch_download_bytes {
+                provider = provider.with_max_batch_download_bytes(bytes)?;
+            }
+            Ok(Box::new(provider))
         }
         "pexel" => {
             if cli.resolution != DEFAULT_RESOLUTION {
@@ -383,6 +399,9 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
                 .with_page(cli.page)?
                 .with_orientation(orientation.unwrap_or(Orientation::Landscape))
                 .with_max_download_bytes(max_download_bytes)?;
+            if let Some(bytes) = cli.max_batch_download_bytes {
+                provider = provider.with_max_batch_download_bytes(bytes)?;
+            }
             if let Some(query) = &cli.query {
                 provider = provider.with_query(query)?;
             } else if orientation == Some(Orientation::Portrait) {
@@ -405,6 +424,9 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
                 .with_page(cli.page)?
                 .with_orientation(orientation.unwrap_or(Orientation::Landscape))
                 .with_max_download_bytes(max_download_bytes)?;
+            if let Some(bytes) = cli.max_batch_download_bytes {
+                provider = provider.with_max_batch_download_bytes(bytes)?;
+            }
             if let Some(query) = &cli.query {
                 provider = provider.with_query(query)?;
             }
@@ -420,6 +442,7 @@ fn build_provider(cli: &Args) -> Result<Box<dyn GetImgUrl>> {
 fn main() -> Result<()> {
     let cli = Args::parse();
     validate_credential_context(&cli, std::env::var_os("EZWALLPAPER_PEXELS_TOKEN").is_some())?;
+    validate_batch_budget_context(&cli)?;
     env_logger::init();
 
     let manager = WallpaperManager;
@@ -884,5 +907,52 @@ mod rotate_cli_tests {
             "--dry-run",
         ])
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod batch_budget_cli_tests {
+    use super::*;
+
+    #[test]
+    fn batch_budget_is_positive_and_opt_in() {
+        let legacy = Args::try_parse_from(["ezwallpaper", "fetch"]).expect("legacy fetch");
+        assert_eq!(legacy.max_batch_download_bytes, None);
+        let bounded = Args::try_parse_from([
+            "ezwallpaper",
+            "--max-batch-download-bytes",
+            "500000000",
+            "fetch",
+        ])
+        .expect("positive batch budget");
+        assert_eq!(bounded.max_batch_download_bytes, Some(500_000_000));
+        assert!(validate_batch_budget_context(&bounded).is_ok());
+        assert!(Args::try_parse_from([
+            "ezwallpaper",
+            "--max-batch-download-bytes",
+            "0",
+            "fetch",
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn batch_budget_is_rejected_outside_acquisition() {
+        let args = Args::try_parse_from([
+            "ezwallpaper",
+            "--max-batch-download-bytes",
+            "100",
+            "doctor",
+        ])
+        .expect("parse before context validation");
+        assert!(validate_batch_budget_context(&args).is_err());
+        let legacy = Args::try_parse_from([
+            "ezwallpaper",
+            "--max-batch-download-bytes",
+            "100",
+            "--download-only",
+        ])
+        .expect("legacy acquisition");
+        assert!(validate_batch_budget_context(&legacy).is_ok());
     }
 }
