@@ -68,6 +68,14 @@ ezwallpaper --backend wallhaven --orientation landscape --query 'nature' \
   --min-width 3840 --min-height 2160 --count 12 -d ./landscape fetch --json
 ```
 
+To limit image acquisition in one sequential invocation, use `--max-batch-download-bytes` (positive bytes). For example:
+
+```sh
+ezwallpaper --backend bing --count 8 --max-batch-download-bytes 500000000 fetch --json
+```
+
+The optional batch budget limits completed image payloads and caps each subsequent image by the remaining budget, in addition to the per-image limit (`--max-download-bytes`, default 64 MiB). It does not include metadata responses, failed reads, the overflow-detection byte, other processes, or existing disk usage. It is not a persistent store quota. The option is unset by default.
+
 Provider capability limits:
 
 | Provider | Orientation | Query/page | Minimum dimensions | Count limit |
