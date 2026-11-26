@@ -1,7 +1,7 @@
 # Expose provider batch budget in CLI
 
 Issue: #79
-Status: IMPLEMENTING
+Status: VERIFYING
 Owner: agent
 Started: 2026-11-26
 Last checkpoint: 2026-11-26
@@ -42,13 +42,13 @@ Opt-in only. No real network or desktop mutation in tests; no token output. Pres
 
 ## Acceptance criteria
 
-- [ ] Positive CLI flag reaches all three provider builders; zero rejected.
-- [ ] Non-provider invocation rejects the flag before side effects.
+- [x] Positive CLI flag reaches all three provider builders; zero rejected.
+- [x] Non-provider invocation rejects the flag before side effects.
 - [ ] Offline tests and exact final-head required CI pass.
 
 ## Implementation slices
 
-- [ ] Wire CLI and provider builders; add parser/context tests.
+- [x] Wire CLI and provider builders; add parser/context tests.
 - [ ] Review final diff and required checks.
 
 ## Verification matrix
@@ -65,7 +65,7 @@ No quota/GC schema or changed defaults; ADR required separately for #57.
 
 ## Evidence log
 
-- 2026-11-26: inspected current master provider and CLI source; stable release published; #334 and #331 merged. No local Rust execution.
+- 2026-11-26: inspected current master provider and CLI source; stable release published; #334 and #331 merged. No local Rust execution. CLI wiring, documentation and offline test source committed; CI pending.
 
 ## Deviations and discoveries
 
@@ -73,7 +73,7 @@ Core batch cap is already implemented; only expose it, not reimplement streaming
 
 ## Resume from here
 
-Implement CLI wiring and offline tests, then inspect exact PR-head CI.
+Inspect exact PR-head CI; fix any failures before merging.
 
 ## Completion
 
